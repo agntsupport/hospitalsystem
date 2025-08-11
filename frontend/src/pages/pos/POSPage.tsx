@@ -1,0 +1,224 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tabs,
+  Tab,
+  Alert,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  PointOfSale as POSIcon,
+  Receipt as ReceiptIcon,
+  AttachMoney as MoneyIcon,
+  AccountBalance as AccountIcon,
+  ShoppingCart as CartIcon,
+} from '@mui/icons-material';
+
+import { posService } from '@/services/posService';
+import { POSStats, PatientAccount } from '@/types/pos.types';
+import POSStatsCards from '@/components/pos/POSStatsCards';
+import NewAccountDialog from '@/components/pos/NewAccountDialog';
+import OpenAccountsList from '@/components/pos/OpenAccountsList';
+import POSTransactionDialog from '@/components/pos/POSTransactionDialog';
+import HistoryTab from '@/components/pos/HistoryTab';
+import QuickSalesTab from '@/components/pos/QuickSalesTab';
+
+const POSPage: React.FC = () => {
+  const [stats, setStats] = useState<POSStats | null>(null);
+  const [openAccounts, setOpenAccounts] = useState<PatientAccount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Dialogs
+  const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<PatientAccount | null>(null);
+  
+  // Tabs
+  const [currentTab, setCurrentTab] = useState(0);
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      await Promise.all([
+        loadStats(),
+        loadOpenAccounts()
+      ]);
+    } catch (error: any) {
+      setError(error.message || 'Error al cargar datos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await posService.getStats();
+      if (response.success) {
+        setStats(response.data.stats);
+      }
+    } catch (error) {
+      console.error('Error loading POS stats:', error);
+    }
+  };
+
+  const loadOpenAccounts = async () => {
+    try {
+      const response = await posService.getPatientAccounts({ estado: 'abierta' });
+      if (response.success) {
+        setOpenAccounts(response.data.items || []);
+      }
+    } catch (error) {
+      console.error('Error loading open accounts:', error);
+    }
+  };
+
+  const handleNewAccount = () => {
+    setNewAccountOpen(true);
+  };
+
+  const handleAccountCreated = () => {
+    setNewAccountOpen(false);
+    loadStats();
+    loadOpenAccounts();
+  };
+
+  const handleAddTransaction = (account: PatientAccount) => {
+    setSelectedAccount(account);
+    setTransactionDialogOpen(true);
+  };
+
+  const handleTransactionAdded = () => {
+    setTransactionDialogOpen(false);
+    setSelectedAccount(null);
+    loadStats();
+    loadOpenAccounts();
+  };
+
+  const handleCloseAccount = async (accountId: number, montoRecibido?: number) => {
+    try {
+      await posService.closeAccount(accountId, { montoRecibido });
+      loadStats();
+      loadOpenAccounts();
+    } catch (error: any) {
+      setError(error.message || 'Error al cerrar cuenta');
+    }
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <POSIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+          Punto de Venta
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          size="large"
+          onClick={handleNewAccount}
+        >
+          Nueva Cuenta
+        </Button>
+      </Box>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Estadísticas */}
+      {stats && <POSStatsCards stats={stats} />}
+
+      {/* Integración con Inventario */}
+      <Alert severity="info" sx={{ mt: 2, mb: 1 }} icon={<CartIcon />}>
+        <Typography variant="body2" component="span">
+          <strong>Sistema Integrado:</strong> Los productos mostrados provienen del módulo de inventario en tiempo real. 
+          Las ventas actualizan automáticamente el stock y generan movimientos de inventario.
+        </Typography>
+      </Alert>
+
+      {/* Tabs */}
+      <Card sx={{ mt: 3 }}>
+        <Tabs
+          value={currentTab}
+          onChange={(_, newValue) => setCurrentTab(newValue)}
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab 
+            icon={<AccountIcon />} 
+            label="Cuentas Abiertas" 
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<ReceiptIcon />} 
+            label="Historial" 
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<CartIcon />} 
+            label="Ventas Rápidas" 
+            iconPosition="start"
+          />
+        </Tabs>
+
+        <CardContent>
+          {currentTab === 0 && (
+            <OpenAccountsList
+              accounts={openAccounts}
+              loading={loading}
+              onAddTransaction={handleAddTransaction}
+              onCloseAccount={handleCloseAccount}
+              onRefresh={loadOpenAccounts}
+            />
+          )}
+          
+          {currentTab === 1 && (
+            <HistoryTab onRefresh={loadInitialData} />
+          )}
+          
+          {currentTab === 2 && (
+            <QuickSalesTab onRefresh={loadInitialData} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialogs */}
+      <NewAccountDialog
+        open={newAccountOpen}
+        onClose={() => setNewAccountOpen(false)}
+        onAccountCreated={handleAccountCreated}
+      />
+
+      <POSTransactionDialog
+        open={transactionDialogOpen}
+        account={selectedAccount}
+        onClose={() => {
+          setTransactionDialogOpen(false);
+          setSelectedAccount(null);
+        }}
+        onTransactionAdded={handleTransactionAdded}
+      />
+    </Box>
+  );
+};
+
+export default POSPage;

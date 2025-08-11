@@ -1,0 +1,686 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  IconButton,
+  Tooltip,
+  Alert,
+  CircularProgress,
+  Pagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  InputAdornment
+} from '@mui/material';
+import {
+  LocalHospital as LocalHospitalIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  ExitToApp as ExitToAppIcon,
+  TrendingUp as TrendingUpIcon,
+  People as PeopleIcon,
+  Hotel as HotelIcon,
+  Assignment as AssignmentIcon,
+  CalendarToday as CalendarIcon,
+  FilterList as FilterIcon
+} from '@mui/icons-material';
+
+import hospitalizationService from '@/services/hospitalizationService';
+import AdmissionFormDialog from './AdmissionFormDialog';
+import MedicalNotesDialog from './MedicalNotesDialog';
+import DischargeDialog from './DischargeDialog';
+import { toast } from 'react-toastify';
+import {
+  HospitalAdmission,
+  HospitalizationStats,
+  HospitalizationFilters
+} from '@/types/hospitalization.types';
+
+const HospitalizationPage: React.FC = () => {
+  // Estados principales
+  const [admissions, setAdmissions] = useState<HospitalAdmission[]>([]);
+  const [stats, setStats] = useState<HospitalizationStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Estados de filtros y búsqueda
+  const [filters, setFilters] = useState<HospitalizationFilters>({
+    pagina: 1,
+    limite: 10
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
+
+  // Estados de paginación
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Estados de diálogos
+  const [admissionDialogOpen, setAdmissionDialogOpen] = useState(false);
+  const [selectedAdmission, setSelectedAdmission] = useState<HospitalAdmission | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [medicalNotesDialogOpen, setMedicalNotesDialogOpen] = useState(false);
+  const [selectedAdmissionForNotes, setSelectedAdmissionForNotes] = useState<HospitalAdmission | null>(null);
+  const [dischargeDialogOpen, setDischargeDialogOpen] = useState(false);
+  const [selectedAdmissionForDischarge, setSelectedAdmissionForDischarge] = useState<HospitalAdmission | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, [filters]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Cargar admisiones y estadísticas en paralelo
+      const [admissionsResponse, statsResponse] = await Promise.all([
+        hospitalizationService.getAdmissions(filters),
+        hospitalizationService.getStats()
+      ]);
+
+      if (admissionsResponse.success && admissionsResponse.data) {
+        setAdmissions(admissionsResponse.data.items || []);
+        setTotalItems(admissionsResponse.data.pagination?.total || 0);
+        setTotalPages(admissionsResponse.data.pagination?.totalPages || 1);
+      } else {
+        setError(admissionsResponse.message || 'Error al cargar hospitalizaciones');
+      }
+
+      if (statsResponse.success && statsResponse.data) {
+        setStats(statsResponse.data);
+      }
+    } catch (error: any) {
+      console.error('Error al cargar datos:', error);
+      setError('Error al cargar los datos de hospitalización');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    setFilters(prev => ({
+      ...prev,
+      busqueda: searchTerm || undefined,
+      estado: selectedStatus ? [selectedStatus as any] : undefined,
+      especialidades: selectedSpecialty ? [selectedSpecialty] : undefined,
+      pagina: 1
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedStatus('');
+    setSelectedSpecialty('');
+    setFilters({
+      pagina: 1,
+      limite: 10
+    });
+  };
+
+  const handlePageChange = (event: React.ChangeEvent<unknown>, page: number) => {
+    setFilters(prev => ({ ...prev, pagina: page }));
+  };
+
+  const handleViewDetails = (admission: HospitalAdmission) => {
+    setSelectedAdmission(admission);
+    setDetailDialogOpen(true);
+  };
+
+  const handleOpenMedicalNotes = (admission: HospitalAdmission) => {
+    setSelectedAdmissionForNotes(admission);
+    setMedicalNotesDialogOpen(true);
+  };
+
+  const handleOpenDischarge = (admission: HospitalAdmission) => {
+    setSelectedAdmissionForDischarge(admission);
+    setDischargeDialogOpen(true);
+  };
+
+  const getStatusChip = (status: string) => (
+    <Chip
+      label={hospitalizationService.formatAdmissionStatus(status)}
+      color={hospitalizationService.getStatusColor(status)}
+      size="small"
+    />
+  );
+
+  const getGeneralStatusChip = (status: string) => (
+    <Chip
+      label={hospitalizationService.formatGeneralStatus(status)}
+      color={hospitalizationService.getGeneralStatusColor(status)}
+      size="small"
+      variant="outlined"
+    />
+  );
+
+  const renderStatsCards = () => {
+    if (!stats) return null;
+
+    return (
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography color="textSecondary" gutterBottom variant="overline">
+                    Total Camas
+                  </Typography>
+                  <Typography variant="h4" component="div">
+                    {stats.totalCamas}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {stats.camasDisponibles} disponibles
+                  </Typography>
+                </Box>
+                <HotelIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography color="textSecondary" gutterBottom variant="overline">
+                    Ocupación
+                  </Typography>
+                  <Typography variant="h4" component="div">
+                    {stats.porcentajeOcupacion}%
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {stats.camasOcupadas} ocupadas
+                  </Typography>
+                </Box>
+                <TrendingUpIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography color="textSecondary" gutterBottom variant="overline">
+                    Pacientes Hospitalizados
+                  </Typography>
+                  <Typography variant="h4" component="div">
+                    {stats.pacientesHospitalizados}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {stats.ingresosHoy} ingresos hoy
+                  </Typography>
+                </Box>
+                <PeopleIcon sx={{ fontSize: 40, color: 'success.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography color="textSecondary" gutterBottom variant="overline">
+                    Altas Hoy
+                  </Typography>
+                  <Typography variant="h4" component="div">
+                    {stats.altasHoy}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Estancia: {stats.estanciaPromedio} días
+                  </Typography>
+                </Box>
+                <ExitToAppIcon sx={{ fontSize: 40, color: 'info.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    );
+  };
+
+  const renderFilters = () => (
+    <Card sx={{ mb: 3 }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FilterIcon />
+          Filtros de Búsqueda
+        </Typography>
+        
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Buscar paciente, expediente o diagnóstico"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch();
+                }
+              }}
+            />
+          </Grid>
+
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Estado</InputLabel>
+              <Select
+                value={selectedStatus}
+                label="Estado"
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="activa">Activa</MenuItem>
+                <MenuItem value="alta">Alta Médica</MenuItem>
+                <MenuItem value="traslado">Traslado</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Especialidad</InputLabel>
+              <Select
+                value={selectedSpecialty}
+                label="Especialidad"
+                onChange={(e) => setSelectedSpecialty(e.target.value)}
+              >
+                <MenuItem value="">Todas</MenuItem>
+                <MenuItem value="Cardiología">Cardiología</MenuItem>
+                <MenuItem value="Ginecología">Ginecología y Obstetricia</MenuItem>
+                <MenuItem value="Neumología">Neumología</MenuItem>
+                <MenuItem value="Medicina Interna">Medicina Interna</MenuItem>
+                <MenuItem value="Cirugía General">Cirugía General</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={2}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="contained"
+                onClick={handleSearch}
+                startIcon={<SearchIcon />}
+                fullWidth
+              >
+                Buscar
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
+
+        {(searchTerm || selectedStatus || selectedSpecialty) && (
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleClearFilters}
+            >
+              Limpiar Filtros
+            </Button>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderAdmissionsTable = () => (
+    <Card>
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AssignmentIcon />
+            Pacientes Hospitalizados ({totalItems})
+          </Typography>
+          
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAdmissionDialogOpen(true)}
+            color="primary"
+          >
+            Nuevo Ingreso
+          </Button>
+        </Box>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        ) : admissions.length === 0 ? (
+          <Alert severity="info">
+            No se encontraron pacientes hospitalizados con los filtros seleccionados.
+          </Alert>
+        ) : (
+          <>
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Paciente</TableCell>
+                    <TableCell>Habitación</TableCell>
+                    <TableCell>Diagnóstico</TableCell>
+                    <TableCell>Médico Tratante</TableCell>
+                    <TableCell>Ingreso</TableCell>
+                    <TableCell>Estancia</TableCell>
+                    <TableCell>Estado</TableCell>
+                    <TableCell>Estado General</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {admissions.map((admission) => (
+                    <TableRow key={admission.id} hover>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {admission.paciente.nombre}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {admission.paciente.numeroExpediente} • {admission.numeroIngreso}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {admission.habitacion.numero}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {admission.habitacion.tipo} • Piso {admission.habitacion.piso}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2">
+                          {admission.diagnosticoIngreso}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {admission.especialidad}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {admission.medicoTratante.nombre}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {admission.medicoTratante.especialidad}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2">
+                          {hospitalizationService.formatDate(admission.fechaIngreso)}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {admission.horaIngreso}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {admission.diasEstancia} días
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {hospitalizationService.formatAdmissionType(admission.tipoHospitalizacion)}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        {getStatusChip(admission.estado)}
+                      </TableCell>
+
+                      <TableCell>
+                        {getGeneralStatusChip(admission.estadoGeneral)}
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Tooltip title="Ver Detalle">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewDetails(admission)}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          <Tooltip title="Notas Médicas SOAP">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleOpenMedicalNotes(admission)}
+                              color="primary"
+                            >
+                              <AssignmentIcon />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          {admission.estado === 'activa' && (
+                            <>
+                              <Tooltip title="Editar">
+                                <IconButton size="small">
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              
+                              <Tooltip title="Dar de Alta">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleOpenDischarge(admission)}
+                                >
+                                  <ExitToAppIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {totalPages > 1 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                <Pagination
+                  count={totalPages}
+                  page={filters.pagina || 1}
+                  onChange={handlePageChange}
+                  color="primary"
+                  showFirstButton
+                  showLastButton
+                />
+              </Box>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Encabezado */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <LocalHospitalIcon sx={{ fontSize: 40 }} />
+          Hospitalización
+        </Typography>
+        <Typography variant="body1" color="textSecondary">
+          Gestión integral de pacientes hospitalizados, ingresos y altas médicas
+        </Typography>
+      </Box>
+
+      {/* Tarjetas de estadísticas */}
+      {renderStatsCards()}
+
+      {/* Filtros de búsqueda */}
+      {renderFilters()}
+
+      {/* Tabla de hospitalizaciones */}
+      {renderAdmissionsTable()}
+
+      {/* Diálogo de detalle de hospitalización */}
+      <Dialog
+        open={detailDialogOpen}
+        onClose={() => setDetailDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box>
+            <Typography variant="h6" component="div">
+              Detalle de Hospitalización
+            </Typography>
+            {selectedAdmission && (
+              <Typography variant="subtitle2" color="textSecondary">
+                {selectedAdmission.paciente?.nombre || 'Paciente'} • {selectedAdmission.numeroIngreso}
+              </Typography>
+            )}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedAdmission && (
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Información del Paciente
+                </Typography>
+                <Typography><strong>Nombre:</strong> {selectedAdmission.paciente?.nombre || 'No especificado'}</Typography>
+                <Typography><strong>Expediente:</strong> {selectedAdmission.paciente?.numeroExpediente || 'No especificado'}</Typography>
+                <Typography><strong>Edad:</strong> {selectedAdmission.paciente?.edad ? `${selectedAdmission.paciente.edad} años` : 'No especificada'}</Typography>
+                <Typography><strong>Género:</strong> {selectedAdmission.paciente?.genero || 'No especificado'}</Typography>
+                <Typography><strong>Tipo de Sangre:</strong> {selectedAdmission.paciente?.tipoSangre || 'No especificado'}</Typography>
+                
+                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                  Contacto de Emergencia
+                </Typography>
+                <Typography><strong>Nombre:</strong> {selectedAdmission.paciente.contactoEmergencia?.nombre || 'No especificado'}</Typography>
+                <Typography><strong>Teléfono:</strong> {selectedAdmission.paciente.contactoEmergencia?.telefono || 'No especificado'}</Typography>
+                <Typography><strong>Relación:</strong> {selectedAdmission.paciente.contactoEmergencia?.relacion || 'No especificado'}</Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Información del Ingreso
+                </Typography>
+                <Typography><strong>Fecha de Ingreso:</strong> {selectedAdmission.fechaIngreso ? hospitalizationService.formatDateTime(selectedAdmission.fechaIngreso, selectedAdmission.horaIngreso || '00:00') : 'No especificada'}</Typography>
+                <Typography><strong>Motivo:</strong> {selectedAdmission.motivoIngreso}</Typography>
+                <Typography><strong>Diagnóstico:</strong> {selectedAdmission.diagnosticoIngreso}</Typography>
+                <Typography><strong>Tipo:</strong> {hospitalizationService.formatAdmissionType(selectedAdmission.tipoHospitalizacion)}</Typography>
+                <Typography><strong>Especialidad:</strong> {selectedAdmission.especialidad}</Typography>
+                <Typography><strong>Estado General:</strong> {hospitalizationService.formatGeneralStatus(selectedAdmission.estadoGeneral)}</Typography>
+                <Typography><strong>Días de Estancia:</strong> {selectedAdmission.diasEstancia}</Typography>
+
+                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                  Habitación y Médico
+                </Typography>
+                <Typography><strong>Habitación:</strong> {selectedAdmission.habitacion?.numero || 'No asignada'} {selectedAdmission.habitacion?.tipo ? `(${selectedAdmission.habitacion.tipo})` : ''}</Typography>
+                <Typography><strong>Médico Tratante:</strong> {selectedAdmission.medicoTratante?.nombre || selectedAdmission.medicoTratante?.username || 'No asignado'}</Typography>
+                <Typography><strong>Especialidad:</strong> {selectedAdmission.medicoTratante?.especialidad || 'No especificada'}</Typography>
+              </Grid>
+
+              {selectedAdmission.observacionesIngreso && (
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom>
+                    Observaciones
+                  </Typography>
+                  <Typography>{selectedAdmission.observacionesIngreso}</Typography>
+                </Grid>
+              )}
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailDialogOpen(false)}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo para nuevo ingreso */}
+      <AdmissionFormDialog
+        open={admissionDialogOpen}
+        onClose={() => setAdmissionDialogOpen(false)}
+        onSuccess={() => {
+          setAdmissionDialogOpen(false);
+          loadData(); // Recargar lista y estadísticas
+        }}
+      />
+
+      {/* Diálogo para notas médicas SOAP */}
+      <MedicalNotesDialog
+        open={medicalNotesDialogOpen}
+        onClose={() => {
+          setMedicalNotesDialogOpen(false);
+          setSelectedAdmissionForNotes(null);
+        }}
+        admission={selectedAdmissionForNotes}
+        onSuccess={() => {
+          // Las notas no afectan las estadísticas principales, solo refrescar si es necesario
+          toast.success('Nota médica guardada exitosamente');
+        }}
+      />
+
+      {/* Diálogo para alta hospitalaria */}
+      <DischargeDialog
+        open={dischargeDialogOpen}
+        onClose={() => {
+          setDischargeDialogOpen(false);
+          setSelectedAdmissionForDischarge(null);
+        }}
+        admission={selectedAdmissionForDischarge}
+        onSuccess={() => {
+          setDischargeDialogOpen(false);
+          setSelectedAdmissionForDischarge(null);
+          loadData(); // Recargar lista y estadísticas después del alta
+        }}
+      />
+    </Box>
+  );
+};
+
+export default HospitalizationPage;

@@ -1,0 +1,207 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+import { store } from '@/store/store';
+import Layout from '@/components/common/Layout';
+import ProtectedRoute from '@/components/common/ProtectedRoute';
+import Login from '@/pages/auth/Login';
+import Dashboard from '@/pages/dashboard/Dashboard';
+import EmployeesPage from '@/pages/employees/EmployeesPage';
+import POSPage from '@/pages/pos/POSPage';
+import RoomsPage from '@/pages/rooms/RoomsPage';
+import PatientsPage from '@/pages/patients/PatientsPage';
+import InventoryPage from '@/pages/inventory/InventoryPage';
+import BillingPage from '@/pages/billing/BillingPage';
+import ReportsPage from '@/pages/reports/ReportsPage';
+import HospitalizationPage from '@/pages/hospitalization/HospitalizationPage';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+      '50': '#e3f2fd',
+      '200': '#90caf9',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+    background: {
+      default: '#f5f5f5',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h4: {
+      fontWeight: 600,
+    },
+    h6: {
+      fontWeight: 600,
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+});
+
+// Componente placeholder para rutas no implementadas
+const ComingSoon: React.FC<{ title: string }> = ({ title }) => (
+  <div style={{ padding: '2rem', textAlign: 'center' }}>
+    <h2>{title}</h2>
+    <p>Esta funcionalidad estará disponible próximamente.</p>
+  </div>
+);
+
+function App() {
+  return (
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <Routes>
+            {/* Ruta pública - Login */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* Rutas protegidas con Layout */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Navigate to="/dashboard" replace />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/patients" element={
+              <ProtectedRoute roles={['cajero', 'enfermero', 'almacenista', 'medico_residente', 'medico_especialista', 'administrador']}>
+                <Layout>
+                  <PatientsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/employees" element={
+              <ProtectedRoute roles={['administrador']}>
+                <Layout>
+                  <EmployeesPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/rooms" element={
+              <ProtectedRoute roles={['cajero', 'enfermero', 'almacenista', 'medico_residente', 'medico_especialista', 'administrador']}>
+                <Layout>
+                  <RoomsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/pos" element={
+              <ProtectedRoute roles={['cajero', 'administrador']}>
+                <Layout>
+                  <POSPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/inventory" element={
+              <ProtectedRoute roles={['almacenista', 'administrador']}>
+                <Layout>
+                  <InventoryPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/billing" element={
+              <ProtectedRoute roles={['cajero', 'administrador', 'socio']}>
+                <Layout>
+                  <BillingPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/hospitalization" element={
+              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
+                <Layout>
+                  <HospitalizationPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/reports" element={
+              <ProtectedRoute roles={['administrador', 'socio', 'almacenista']}>
+                <Layout>
+                  <ReportsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ComingSoon title="Mi Perfil" />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            {/* 404 */}
+            <Route path="*" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ComingSoon title="Página No Encontrada" />
+                </Layout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Router>
+        
+        {/* Toast notifications */}
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+      </ThemeProvider>
+    </Provider>
+  );
+}
+
+export default App;
