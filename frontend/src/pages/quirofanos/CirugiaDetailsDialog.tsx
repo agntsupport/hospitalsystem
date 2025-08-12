@@ -16,7 +16,9 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Paper,
+  Paper
+} from '@mui/material';
+import {
   Timeline,
   TimelineItem,
   TimelineSeparator,
@@ -24,7 +26,7 @@ import {
   TimelineConnector,
   TimelineContent,
   TimelineOppositeContent
-} from '@mui/material';
+} from '@mui/lab';
 import {
   Person as PersonIcon,
   LocalHospital as HospitalIcon,
