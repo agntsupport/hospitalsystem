@@ -22,7 +22,12 @@ router.get('/', authenticateToken, async (req, res) => {
       offset = 0
     } = req.query;
 
-    const whereClause = {};
+    const whereClause = {
+      // Por defecto, excluir quirófanos eliminados (fuera de servicio)
+      estado: {
+        not: 'fuera_de_servicio'
+      }
+    };
 
     // Filtros opcionales
     if (estado) {
@@ -136,12 +141,15 @@ router.get('/stats', authenticateToken, async (req, res) => {
       porTipo,
       cirugiasHoy
     ] = await Promise.all([
-      prisma.quirofano.count(),
+      prisma.quirofano.count({
+        where: { estado: { not: 'fuera_de_servicio' } }
+      }),
       prisma.quirofano.count({ where: { estado: 'disponible' } }),
       prisma.quirofano.count({ where: { estado: 'ocupado' } }),
       prisma.quirofano.count({ where: { estado: 'mantenimiento' } }),
       prisma.quirofano.groupBy({
         by: ['tipo'],
+        where: { estado: { not: 'fuera_de_servicio' } },
         _count: { id: true }
       }),
       prisma.cirugiaQuirofano.count({
