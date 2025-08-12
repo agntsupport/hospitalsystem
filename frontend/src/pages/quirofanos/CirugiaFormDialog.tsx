@@ -24,7 +24,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { es } from 'date-fns/locale';
 import { addHours, isBefore, isAfter } from 'date-fns';
 import quirofanosService, { CirugiaQuirofano, Quirofano } from '@/services/quirofanosService';
-import patientsService from '@/services/patientsService';
+import { patientsService } from '@/services/patientsService';
 import { employeeService } from '@/services/employeeService';
 
 interface CirugiaFormDialogProps {
