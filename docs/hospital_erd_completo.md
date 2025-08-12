@@ -1,4 +1,8 @@
-# Diagrama Entidad-Relación Completo - Sistema de Gestión Hospitalaria
+# Diagrama Entidad-Relación Completo - Sistema de Gestión Hospitalaria Integral
+
+**Desarrollado por:** Alfredo Manuel Reyes  
+**Empresa:** agnt_ - Software Development Company  
+**Arquitectura:** Base de Datos Relacional PostgreSQL con Prisma ORM
 
 ## Entidades Principales
 
@@ -408,3 +412,13 @@ CREATE INDEX idx_aplicaciones_fecha ON aplicacion_medicamentos(fecha_aplicacion)
 - Control de stock en tiempo real
 
 Este diseño permite el seguimiento colaborativo completo durante la hospitalización, manteniendo la trazabilidad y el control financiero.
+
+---
+
+**Documentación Técnica - Sistema de Gestión Hospitalaria Integral**  
+**👨‍💻 Desarrollado por:** Alfredo Manuel Reyes  
+**🏢 Empresa:** agnt_ - Software Development Company  
+**📅 Última actualización:** 12 de agosto de 2025  
+
+---
+*© 2025 agnt_ Software Development Company. Todos los derechos reservados.*

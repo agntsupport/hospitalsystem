@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { sanitizeSearch } = require('../utils/helpers');
 const { getSafeSelect, validateSelect } = require('../utils/schema-validator');
 
@@ -124,7 +126,7 @@ router.get('/products', validatePagination, async (req, res) => {
 });
 
 // POST /products - Crear nuevo producto
-router.post('/products', validateRequired(['nombre', 'categoria', 'precioVenta']), async (req, res) => {
+router.post('/products', authenticateToken, auditMiddleware('inventario'), validateRequired(['nombre', 'categoria', 'precioVenta']), async (req, res) => {
   try {
     const {
       codigo,
@@ -187,7 +189,7 @@ router.post('/products', validateRequired(['nombre', 'categoria', 'precioVenta']
 });
 
 // PUT /products/:id - Actualizar producto
-router.put('/products/:id', async (req, res) => {
+router.put('/products/:id', authenticateToken, auditMiddleware('inventario'), captureOriginalData('producto'), async (req, res) => {
   try {
     const { id } = req.params;
     const productoId = parseInt(id);
@@ -247,7 +249,7 @@ router.put('/products/:id', async (req, res) => {
 });
 
 // DELETE /products/:id - Eliminar producto (soft delete)
-router.delete('/products/:id', async (req, res) => {
+router.delete('/products/:id', authenticateToken, auditMiddleware('inventario'), criticalOperationAudit, async (req, res) => {
   try {
     const { id } = req.params;
     const productoId = parseInt(id);
@@ -368,7 +370,7 @@ router.get('/movements', validatePagination, async (req, res) => {
 });
 
 // POST /movements - Crear movimiento de inventario
-router.post('/movements', validateRequired(['productoId', 'tipo', 'cantidad', 'motivo']), async (req, res) => {
+router.post('/movements', authenticateToken, auditMiddleware('inventario'), validateRequired(['productoId', 'tipo', 'cantidad', 'motivo']), async (req, res) => {
   try {
     const {
       productoId,

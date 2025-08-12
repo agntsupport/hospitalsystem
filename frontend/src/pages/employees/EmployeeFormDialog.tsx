@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Dialog,
   DialogTitle,
@@ -24,7 +26,8 @@ import {
 import { toast } from 'react-toastify';
 
 import { employeeService } from '@/services/employeeService';
-import { Employee, EmployeeFormData, EmployeeType } from '@/types/employee.types';
+import { Employee, EmployeeType } from '@/types/employee.types';
+import { employeeFormSchema, EmployeeFormValues } from '@/schemas/employees.schemas';
 import { EMPLOYEE_TYPE_LABELS } from '@/utils/constants';
 
 interface EmployeeFormDialogProps {
@@ -40,127 +43,113 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
   onEmployeeCreated,
   editingEmployee
 }) => {
-  const [formData, setFormData] = useState<EmployeeFormData>({
-    nombre: '',
-    apellidoPaterno: '',
-    apellidoMaterno: '',
-    tipoEmpleado: 'enfermero',
-    cedulaProfesional: '',
-    especialidad: '',
-    telefono: '',
-    email: '',
-    salario: undefined,
-    fechaIngreso: new Date().toISOString().split('T')[0],
-    activo: true
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
   const isEditing = !!editingEmployee;
+  
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<EmployeeFormValues>({
+    resolver: yupResolver(employeeFormSchema),
+    context: { isNew: !isEditing },
+    defaultValues: {
+      nombre: '',
+      apellidoPaterno: '',
+      apellidoMaterno: '',
+      fechaNacimiento: '',
+      genero: 'M',
+      telefono: '',
+      email: '',
+      direccion: '',
+      tipo: 'enfermero',
+      especialidad: '',
+      numeroLicencia: '',
+      fechaIngreso: new Date().toISOString().split('T')[0],
+      salario: 0,
+      turno: 'matutino',
+      username: '',
+      password: '',
+      confirmPassword: '',
+      rol: 'enfermero',
+      activo: true
+    }
+  });
 
   // Cargar datos del empleado cuando se está editando
   useEffect(() => {
     if (editingEmployee && open) {
-      setFormData({
+      reset({
         nombre: editingEmployee.nombre,
         apellidoPaterno: editingEmployee.apellidoPaterno,
         apellidoMaterno: editingEmployee.apellidoMaterno || '',
-        tipoEmpleado: editingEmployee.tipoEmpleado,
-        cedulaProfesional: editingEmployee.cedulaProfesional || '',
-        especialidad: editingEmployee.especialidad || '',
+        fechaNacimiento: '', // Este campo no existe en el Employee actual, mantener vacío
+        genero: 'M', // Default, no existe en Employee actual
         telefono: editingEmployee.telefono || '',
         email: editingEmployee.email || '',
-        salario: editingEmployee.salario,
+        direccion: '', // Este campo no existe en el Employee actual, mantener vacío
+        tipo: editingEmployee.tipoEmpleado,
+        especialidad: editingEmployee.especialidad || '',
+        numeroLicencia: editingEmployee.cedulaProfesional || '',
         fechaIngreso: editingEmployee.fechaIngreso 
           ? new Date(editingEmployee.fechaIngreso).toISOString().split('T')[0] 
           : new Date().toISOString().split('T')[0],
+        salario: editingEmployee.salario || 0,
+        turno: 'matutino', // Default, no existe en Employee actual
+        username: '',
+        password: '',
+        confirmPassword: '',
+        rol: 'enfermero', // Mapear desde tipoEmpleado
         activo: editingEmployee.activo
       });
     } else if (!editingEmployee && open) {
       // Reset form for new employee
-      setFormData({
+      reset({
         nombre: '',
         apellidoPaterno: '',
         apellidoMaterno: '',
-        tipoEmpleado: 'enfermero',
-        cedulaProfesional: '',
-        especialidad: '',
+        fechaNacimiento: '',
+        genero: 'M',
         telefono: '',
         email: '',
-        salario: undefined,
+        direccion: '',
+        tipo: 'enfermero',
+        especialidad: '',
+        numeroLicencia: '',
         fechaIngreso: new Date().toISOString().split('T')[0],
+        salario: 0,
+        turno: 'matutino',
+        username: '',
+        password: '',
+        confirmPassword: '',
+        rol: 'enfermero',
         activo: true
       });
     }
-    setErrors({});
-  }, [editingEmployee, open]);
+  }, [editingEmployee, open, reset]);
 
-  const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es requerido';
-    }
-
-    if (!formData.apellidoPaterno.trim()) {
-      newErrors.apellidoPaterno = 'El apellido paterno es requerido';
-    }
-
-    if (!formData.tipoEmpleado) {
-      newErrors.tipoEmpleado = 'El tipo de empleado es requerido';
-    }
-
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email inválido';
-    }
-
-    if (formData.salario && formData.salario < 0) {
-      newErrors.salario = 'El salario no puede ser negativo';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-
+  const onSubmit = async (data: EmployeeFormValues) => {
     try {
-      const dataToSend = { ...formData };
-      
-      // Convert empty strings to null
-      Object.keys(dataToSend).forEach(key => {
-        if (dataToSend[key as keyof EmployeeFormData] === '') {
-          dataToSend[key as keyof EmployeeFormData] = undefined as any;
-        }
-      });
+      // Mapear los datos del schema al formato esperado por el servicio
+      const mappedData = {
+        nombre: data.nombre,
+        apellidoPaterno: data.apellidoPaterno,
+        apellidoMaterno: data.apellidoMaterno || undefined,
+        tipoEmpleado: data.tipo as EmployeeType,
+        cedulaProfesional: data.numeroLicencia || undefined,
+        especialidad: data.especialidad || undefined,
+        telefono: data.telefono || undefined,
+        email: data.email || undefined,
+        salario: data.salario || undefined,
+        fechaIngreso: data.fechaIngreso,
+        activo: data.activo
+      };
 
       let response;
       if (isEditing) {
-        response = await employeeService.updateEmployee(editingEmployee!.id, dataToSend);
+        response = await employeeService.updateEmployee(editingEmployee!.id, mappedData);
       } else {
-        response = await employeeService.createEmployee(dataToSend);
+        response = await employeeService.createEmployee(mappedData);
       }
 
       if (response.success) {
@@ -174,13 +163,11 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
       console.error('Error submitting employee:', error);
       const errorMessage = error?.message || error?.error || `Error al ${isEditing ? 'actualizar' : 'crear'} empleado`;
       toast.error(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleClose = () => {
-    if (!loading) {
+    if (!isSubmitting) {
       onClose();
     }
   };
@@ -215,48 +202,115 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Nombre *"
-              value={formData.nombre}
-              onChange={(e) => handleInputChange('nombre', e.target.value)}
-              error={!!errors.nombre}
-              helperText={errors.nombre}
-              disabled={loading}
+            <Controller
+              name="nombre"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Nombre *"
+                  error={!!errors.nombre}
+                  helperText={errors.nombre?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Apellido Paterno *"
-              value={formData.apellidoPaterno}
-              onChange={(e) => handleInputChange('apellidoPaterno', e.target.value)}
-              error={!!errors.apellidoPaterno}
-              helperText={errors.apellidoPaterno}
-              disabled={loading}
+            <Controller
+              name="apellidoPaterno"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Apellido Paterno *"
+                  error={!!errors.apellidoPaterno}
+                  helperText={errors.apellidoPaterno?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Apellido Materno"
-              value={formData.apellidoMaterno}
-              onChange={(e) => handleInputChange('apellidoMaterno', e.target.value)}
-              disabled={loading}
+            <Controller
+              name="apellidoMaterno"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Apellido Materno"
+                  error={!!errors.apellidoMaterno}
+                  helperText={errors.apellidoMaterno?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Fecha de Ingreso"
-              type="date"
-              value={formData.fechaIngreso}
-              onChange={(e) => handleInputChange('fechaIngreso', e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              disabled={loading}
+            <Controller
+              name="fechaNacimiento"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Fecha de Nacimiento *"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  error={!!errors.fechaNacimiento}
+                  helperText={errors.fechaNacimiento?.message}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="genero"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.genero}>
+                  <InputLabel>Género *</InputLabel>
+                  <Select
+                    {...field}
+                    label="Género *"
+                    disabled={isSubmitting}
+                  >
+                    <MenuItem value="M">Masculino</MenuItem>
+                    <MenuItem value="F">Femenino</MenuItem>
+                    <MenuItem value="Otro">Otro</MenuItem>
+                  </Select>
+                  {errors.genero && (
+                    <FormHelperText>{errors.genero.message}</FormHelperText>
+                  )}
+                </FormControl>
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="fechaIngreso"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Fecha de Ingreso *"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  error={!!errors.fechaIngreso}
+                  helperText={errors.fechaIngreso?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
 
@@ -269,58 +323,106 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth error={!!errors.tipoEmpleado}>
-              <InputLabel>Tipo de Empleado *</InputLabel>
-              <Select
-                value={formData.tipoEmpleado}
-                label="Tipo de Empleado *"
-                onChange={(e) => handleInputChange('tipoEmpleado', e.target.value as EmployeeType)}
-                disabled={loading}
-              >
-                <MenuItem value="enfermero">Enfermero</MenuItem>
-                <MenuItem value="medico_residente">Médico Residente</MenuItem>
-                <MenuItem value="medico_especialista">Médico Especialista</MenuItem>
-              </Select>
-              {errors.tipoEmpleado && (
-                <FormHelperText>{errors.tipoEmpleado}</FormHelperText>
+            <Controller
+              name="tipo"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.tipo}>
+                  <InputLabel>Tipo de Empleado *</InputLabel>
+                  <Select
+                    {...field}
+                    label="Tipo de Empleado *"
+                    disabled={isSubmitting}
+                  >
+                    <MenuItem value="enfermero">Enfermero</MenuItem>
+                    <MenuItem value="medico_residente">Médico Residente</MenuItem>
+                    <MenuItem value="medico_especialista">Médico Especialista</MenuItem>
+                  </Select>
+                  {errors.tipo && (
+                    <FormHelperText>{errors.tipo.message}</FormHelperText>
+                  )}
+                </FormControl>
               )}
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Cédula Profesional"
-              value={formData.cedulaProfesional}
-              onChange={(e) => handleInputChange('cedulaProfesional', e.target.value)}
-              disabled={loading}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Especialidad"
-              value={formData.especialidad}
-              onChange={(e) => handleInputChange('especialidad', e.target.value)}
-              disabled={loading}
-              helperText="Solo para médicos especialistas"
+            <Controller
+              name="numeroLicencia"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Cédula Profesional"
+                  error={!!errors.numeroLicencia}
+                  helperText={errors.numeroLicencia?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Salario"
-              type="number"
-              value={formData.salario || ''}
-              onChange={(e) => handleInputChange('salario', e.target.value ? parseFloat(e.target.value) : undefined)}
-              error={!!errors.salario}
-              helperText={errors.salario}
-              disabled={loading}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>
-              }}
+            <Controller
+              name="especialidad"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Especialidad"
+                  error={!!errors.especialidad}
+                  helperText={errors.especialidad?.message || "Solo para médicos especialistas"}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="salario"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Salario *"
+                  type="number"
+                  error={!!errors.salario}
+                  helperText={errors.salario?.message}
+                  disabled={isSubmitting}
+                  InputProps={{
+                    startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="turno"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth error={!!errors.turno}>
+                  <InputLabel>Turno *</InputLabel>
+                  <Select
+                    {...field}
+                    label="Turno *"
+                    disabled={isSubmitting}
+                  >
+                    <MenuItem value="matutino">Matutino</MenuItem>
+                    <MenuItem value="vespertino">Vespertino</MenuItem>
+                    <MenuItem value="nocturno">Nocturno</MenuItem>
+                    <MenuItem value="mixto">Mixto</MenuItem>
+                  </Select>
+                  {errors.turno && (
+                    <FormHelperText>{errors.turno.message}</FormHelperText>
+                  )}
+                </FormControl>
+              )}
             />
           </Grid>
 
@@ -333,45 +435,169 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Teléfono"
-              value={formData.telefono}
-              onChange={(e) => handleInputChange('telefono', e.target.value)}
-              disabled={loading}
+            <Controller
+              name="telefono"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Teléfono *"
+                  error={!!errors.telefono}
+                  helperText={errors.telefono?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              error={!!errors.email}
-              helperText={errors.email}
-              disabled={loading}
+            <Controller
+              name="email"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Email *"
+                  type="email"
+                  error={!!errors.email}
+                  helperText={errors.email?.message}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </Grid>
+
+          <Grid item xs={12}>
+            <Controller
+              name="direccion"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Dirección *"
+                  multiline
+                  rows={2}
+                  error={!!errors.direccion}
+                  helperText={errors.direccion?.message}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+          </Grid>
+
+          {!isEditing && (
+            <>
+              {/* Información de Usuario - Solo para nuevos empleados */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="primary" gutterBottom sx={{ mt: 2 }}>
+                  Información de Usuario
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="username"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Nombre de Usuario *"
+                      error={!!errors.username}
+                      helperText={errors.username?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="rol"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={!!errors.rol}>
+                      <InputLabel>Rol *</InputLabel>
+                      <Select
+                        {...field}
+                        label="Rol *"
+                        disabled={isSubmitting}
+                      >
+                        <MenuItem value="cajero">Cajero</MenuItem>
+                        <MenuItem value="enfermero">Enfermero</MenuItem>
+                        <MenuItem value="almacenista">Almacenista</MenuItem>
+                        <MenuItem value="administrador">Administrador</MenuItem>
+                        <MenuItem value="socio">Socio</MenuItem>
+                        <MenuItem value="medico_residente">Médico Residente</MenuItem>
+                        <MenuItem value="medico_especialista">Médico Especialista</MenuItem>
+                      </Select>
+                      {errors.rol && (
+                        <FormHelperText>{errors.rol.message}</FormHelperText>
+                      )}
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="password"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Contraseña *"
+                      type="password"
+                      error={!!errors.password}
+                      helperText={errors.password?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="confirmPassword"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Confirmar Contraseña *"
+                      type="password"
+                      error={!!errors.confirmPassword}
+                      helperText={errors.confirmPassword?.message}
+                      disabled={isSubmitting}
+                    />
+                  )}
+                />
+              </Grid>
+            </>
+          )}
         </Grid>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button 
           onClick={handleClose}
-          disabled={loading}
+          disabled={isSubmitting}
           color="inherit"
         >
           Cancelar
         </Button>
         <Button
-          onClick={handleSubmit}
+          onClick={handleSubmit(onSubmit)}
           variant="contained"
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : (isEditing ? <EditIcon /> : <PersonAddIcon />)}
+          disabled={isSubmitting}
+          startIcon={isSubmitting ? <CircularProgress size={20} /> : (isEditing ? <EditIcon /> : <PersonAddIcon />)}
         >
-          {loading ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear')}
+          {isSubmitting ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear')}
         </Button>
       </DialogActions>
     </Dialog>

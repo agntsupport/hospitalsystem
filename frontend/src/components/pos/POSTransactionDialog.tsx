@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Dialog,
   DialogTitle,
@@ -25,6 +27,7 @@ import {
   Paper,
   IconButton,
   Divider,
+  FormHelperText,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -35,6 +38,7 @@ import {
 
 import { posService } from '@/services/posService';
 import { PatientAccount, Service, Product, CartItem } from '@/types/pos.types';
+import { cartSchema, CartFormValues } from '@/schemas/pos.schemas';
 
 interface POSTransactionDialogProps {
   open: boolean;
@@ -49,6 +53,26 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
   onClose,
   onTransactionAdded,
 }) => {
+  // React Hook Form setup for cart validation
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CartFormValues>({
+    resolver: yupResolver(cartSchema),
+    defaultValues: {
+      items: [],
+    },
+  });
+
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: 'items',
+  });
+
   const [services, setServices] = useState<Service[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -91,9 +115,10 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
 
   const addToCart = (item: Service | Product, type: 'servicio' | 'producto') => {
     const cartItemId = `${type}_${item.id}`;
-    const existingItem = cart.find(c => c.id === cartItemId);
+    const existingItemIndex = cart.findIndex(c => c.id === cartItemId);
     
-    if (existingItem) {
+    if (existingItemIndex >= 0) {
+      const existingItem = cart[existingItemIndex];
       // Si es producto, verificar stock disponible
       if (type === 'producto') {
         const product = item as Product;
@@ -103,11 +128,13 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
         }
       }
       
-      setCart(cart.map(c => 
+      const updatedCart = cart.map(c => 
         c.id === cartItemId 
           ? { ...c, cantidad: c.cantidad + 1, subtotal: (c.cantidad + 1) * c.precio }
           : c
-      ));
+      );
+      setCart(updatedCart);
+      setValue('items', updatedCart);
     } else {
       const precio = type === 'servicio' ? (item as Service).precio : (item as Product).precioVenta;
       const newCartItem: CartItem = {
@@ -120,7 +147,9 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
         subtotal: precio,
         disponible: type === 'producto' ? (item as Product).stockActual : undefined
       };
-      setCart([...cart, newCartItem]);
+      const updatedCart = [...cart, newCartItem];
+      setCart(updatedCart);
+      setValue('items', updatedCart);
     }
     setError(null);
   };
@@ -137,28 +166,27 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
       return;
     }
 
-    setCart(cart.map(c => 
+    const updatedCart = cart.map(c => 
       c.id === cartItemId 
         ? { ...c, cantidad: newQuantity, subtotal: newQuantity * c.precio }
         : c
-    ));
+    );
+    setCart(updatedCart);
+    setValue('items', updatedCart);
     setError(null);
   };
 
   const removeFromCart = (cartItemId: string) => {
-    setCart(cart.filter(c => c.id !== cartItemId));
+    const updatedCart = cart.filter(c => c.id !== cartItemId);
+    setCart(updatedCart);
+    setValue('items', updatedCart);
   };
 
   const getTotalCart = () => {
     return cart.reduce((total, item) => total + item.subtotal, 0);
   };
 
-  const handleSubmitTransactions = async () => {
-    if (cart.length === 0) {
-      setError('Debe agregar al menos un item al carrito');
-      return;
-    }
-
+  const onSubmit = async (data: CartFormValues) => {
     if (!account) return;
 
     setLoading(true);
@@ -166,7 +194,7 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
 
     try {
       // Procesar cada item del carrito como una transacción separada
-      for (const item of cart) {
+      for (const item of data.items) {
         const transactionData = {
           tipo: item.tipo,
           cantidad: item.cantidad,
@@ -190,6 +218,7 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
 
   const handleClose = () => {
     setCart([]);
+    reset({ items: [] });
     setError(null);
     setSearchType('servicio');
     onClose();
@@ -216,10 +245,17 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
         )}
       </DialogTitle>
       
-      <DialogContent>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
+          </Alert>
+        )}
+        
+        {errors.items && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {errors.items.message}
           </Alert>
         )}
 
@@ -385,19 +421,20 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
         </Grid>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={handleClose}>
-          Cancelar
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmitTransactions}
-          disabled={loading || cart.length === 0}
-          startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
-        >
-          {loading ? 'Procesando...' : `Agregar ${cart.length} Item(s)`}
-        </Button>
-      </DialogActions>
+        <DialogActions>
+          <Button onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || cart.length === 0}
+            startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
+          >
+            {loading ? 'Procesando...' : `Agregar ${cart.length} Item(s)`}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 };

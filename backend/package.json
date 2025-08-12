@@ -1,11 +1,11 @@
 {
   "name": "hospital-backend",
   "version": "1.0.0",
-  "description": "Backend API para sistema de gestión hospitalaria",
+  "description": "Backend API para Sistema de Gestión Hospitalaria Integral",
   "main": "server-modular.js",
   "scripts": {
     "dev": "nodemon server-modular.js",
-    "dev:simple": "node simple-server.js", 
+    "dev:simple": "node simple-server.js",
     "start": "node server-modular.js",
     "build": "echo 'No build process needed'",
     "test": "jest",
@@ -42,8 +42,13 @@
     "hospital",
     "management",
     "api",
-    "nodejs"
+    "nodejs",
+    "healthcare",
+    "postgresql",
+    "prisma",
+    "agnt"
   ],
-  "author": "Hospital Management Team",
+  "author": "Alfredo Manuel Reyes <alfredo@agnt.dev>",
+  "company": "agnt_ - Software Development Company",
   "license": "MIT"
 }

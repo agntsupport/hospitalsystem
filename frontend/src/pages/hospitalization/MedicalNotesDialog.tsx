@@ -28,6 +28,8 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Assignment as AssignmentIcon,
   Psychology as PsychologyIcon,
@@ -44,6 +46,7 @@ import { useAuth } from '@/hooks/useAuth';
 import hospitalizationService from '@/services/hospitalizationService';
 import { toast } from 'react-toastify';
 import { HospitalAdmission, MedicalNote } from '@/types/hospitalization.types';
+import { medicalNoteSchema, MedicalNoteFormValues } from '@/schemas/hospitalization.schemas';
 
 interface MedicalNotesDialogProps {
   open: boolean;
@@ -52,35 +55,27 @@ interface MedicalNotesDialogProps {
   onSuccess: () => void;
 }
 
-interface SOAPFormData {
-  tipo: 'evolucion' | 'interconsulta' | 'procedimiento' | 'enfermeria' | 'alta';
-  subjetivo: string;
-  objetivo: string;
-  analisis: string;
-  plan: string;
-  especialidad?: string;
-  diagnosticos: string[];
-  seguimiento?: string;
-  proximaRevision?: string;
-}
-
-const initialFormData: SOAPFormData = {
-  tipo: 'evolucion',
+// Default values matching the schema
+const defaultValues: MedicalNoteFormValues = {
   subjetivo: '',
   objetivo: '',
   analisis: '',
   plan: '',
-  especialidad: '',
-  diagnosticos: [],
-  seguimiento: '',
-  proximaRevision: '',
+  tipoNota: 'evolucion',
+  signos_vitales: {
+    temperatura: undefined,
+    presion_sistolica: undefined,
+    presion_diastolica: undefined,
+    frecuencia_cardiaca: undefined,
+    frecuencia_respiratoria: undefined,
+    saturacion_oxigeno: undefined,
+  },
 };
 
 const tiposNota = [
   { value: 'evolucion', label: 'Evolución Médica', icon: <MedicalServicesIcon />, color: 'primary' },
   { value: 'interconsulta', label: 'Interconsulta', icon: <PsychologyIcon />, color: 'secondary' },
   { value: 'procedimiento', label: 'Procedimiento', icon: <AssignmentIcon />, color: 'info' },
-  { value: 'enfermeria', label: 'Nota de Enfermería', icon: <PersonIcon />, color: 'success' },
   { value: 'alta', label: 'Nota de Alta', icon: <ScheduleIcon />, color: 'warning' },
 ];
 
@@ -128,26 +123,32 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
 }) => {
   const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
-  const [formData, setFormData] = useState<SOAPFormData>(initialFormData);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [existingNotes, setExistingNotes] = useState<MedicalNote[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
-  const [newDiagnostico, setNewDiagnostico] = useState('');
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<MedicalNoteFormValues>({
+    resolver: yupResolver(medicalNoteSchema),
+    defaultValues,
+  });
+
+  const watchedValues = watch();
 
   // Cargar notas existentes cuando se abre el diálogo
   useEffect(() => {
     if (open && admission) {
       loadExistingNotes();
-      // Precargar especialidad si el usuario tiene una
-      if (user?.especialidad) {
-        setFormData(prev => ({
-          ...prev,
-          especialidad: user.especialidad
-        }));
-      }
+      // Reset form with default values
+      reset(defaultValues);
     }
-  }, [open, admission, user]);
+  }, [open, admission, reset]);
 
   const loadExistingNotes = async () => {
     if (!admission) return;
@@ -165,94 +166,21 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
     }
   };
 
-  const handleInputChange = (field: keyof SOAPFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
 
-    // Limpiar error del campo
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: '',
-      }));
-    }
-  };
 
-  const handleAddDiagnostico = () => {
-    if (newDiagnostico.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        diagnosticos: [...prev.diagnosticos, newDiagnostico.trim()]
-      }));
-      setNewDiagnostico('');
-    }
-  };
 
-  const handleRemoveDiagnostico = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      diagnosticos: prev.diagnosticos.filter((_, i) => i !== index)
-    }));
-  };
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.subjetivo.trim()) {
-      newErrors.subjetivo = 'El componente subjetivo es requerido';
-    } else if (formData.subjetivo.length < 10) {
-      newErrors.subjetivo = 'Debe tener al menos 10 caracteres';
-    }
-
-    if (!formData.objetivo.trim()) {
-      newErrors.objetivo = 'El componente objetivo es requerido';
-    } else if (formData.objetivo.length < 10) {
-      newErrors.objetivo = 'Debe tener al menos 10 caracteres';
-    }
-
-    if (!formData.analisis.trim()) {
-      newErrors.analisis = 'El análisis es requerido';
-    } else if (formData.analisis.length < 10) {
-      newErrors.analisis = 'Debe tener al menos 10 caracteres';
-    }
-
-    if (!formData.plan.trim()) {
-      newErrors.plan = 'El plan es requerido';
-    } else if (formData.plan.length < 10) {
-      newErrors.plan = 'Debe tener al menos 10 caracteres';
-    }
-
-    if (formData.tipo === 'interconsulta' && !formData.especialidad) {
-      newErrors.especialidad = 'La especialidad es requerida para interconsultas';
-    }
-
-    if (formData.diagnosticos.length === 0) {
-      newErrors.diagnosticos = 'Debe agregar al menos un diagnóstico';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm() || !admission) {
-      return;
-    }
+  const onSubmit = async (data: MedicalNoteFormValues) => {
+    if (!admission) return;
 
     setLoading(true);
     try {
       const response = await hospitalizationService.createMedicalNote(admission.id, {
-        tipo: formData.tipo,
-        subjetivo: formData.subjetivo,
-        objetivo: formData.objetivo,
-        analisis: formData.analisis,
-        plan: formData.plan,
-        especialidad: formData.especialidad,
-        diagnosticos: formData.diagnosticos,
-        seguimiento: formData.seguimiento,
-        proximaRevision: formData.proximaRevision,
+        tipo: data.tipoNota,
+        subjetivo: data.subjetivo,
+        objetivo: data.objetivo,
+        analisis: data.analisis,
+        plan: data.plan,
+        signosVitales: data.signos_vitales,
       });
 
       if (response.success) {
@@ -270,9 +198,7 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
   };
 
   const handleClose = () => {
-    setFormData(initialFormData);
-    setErrors({});
-    setNewDiagnostico('');
+    reset();
     setTabValue(0);
     onClose();
   };
@@ -372,48 +298,74 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
 
             {/* Tipo de Nota */}
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Tipo de Nota</InputLabel>
-                <Select
-                  value={formData.tipo}
-                  onChange={(e) => handleInputChange('tipo', e.target.value)}
-                  label="Tipo de Nota"
-                >
-                  {tiposNota.map((tipo) => (
-                    <MenuItem key={tipo.value} value={tipo.value}>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        {tipo.icon}
-                        {tipo.label}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Controller
+                name="tipoNota"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <FormControl fullWidth required error={!!fieldState.error}>
+                    <InputLabel>Tipo de Nota</InputLabel>
+                    <Select
+                      {...field}
+                      label="Tipo de Nota"
+                    >
+                      {tiposNota.map((tipo) => (
+                        <MenuItem key={tipo.value} value={tipo.value}>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            {tipo.icon}
+                            {tipo.label}
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {fieldState.error && (
+                      <FormHelperText>{fieldState.error.message}</FormHelperText>
+                    )}
+                  </FormControl>
+                )}
+              />
             </Grid>
 
-            {/* Especialidad */}
+            {/* Signos Vitales */}
             <Grid item xs={12} sm={6}>
-              <FormControl 
-                fullWidth 
-                required={formData.tipo === 'interconsulta'}
-                error={!!errors.especialidad}
-              >
-                <InputLabel>Especialidad</InputLabel>
-                <Select
-                  value={formData.especialidad || ''}
-                  onChange={(e) => handleInputChange('especialidad', e.target.value)}
-                  label="Especialidad"
-                >
-                  {especialidades.map((esp) => (
-                    <MenuItem key={esp} value={esp}>
-                      {esp}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors.especialidad && (
-                  <FormHelperText>{errors.especialidad}</FormHelperText>
-                )}
-              </FormControl>
+              <Typography variant="subtitle2" gutterBottom>
+                Signos Vitales (Opcional)
+              </Typography>
+              <Grid container spacing={1}>
+                <Grid item xs={6}>
+                  <Controller
+                    name="signos_vitales.temperatura"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        size="small"
+                        type="number"
+                        label="Temp (°C)"
+                        inputProps={{ step: 0.1, min: 30, max: 45 }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Controller
+                    name="signos_vitales.frecuencia_cardiaca"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        size="small"
+                        type="number"
+                        label="FC (lpm)"
+                        inputProps={{ min: 30, max: 250 }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
             </Grid>
 
             {/* Método SOAP */}
@@ -436,16 +388,21 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
                   <Typography variant="body2" color="textSecondary" gutterBottom>
                     Lo que refiere el paciente (síntomas, molestias, preocupaciones)
                   </Typography>
-                  <TextField
-                    fullWidth
-                    required
-                    multiline
-                    rows={4}
-                    value={formData.subjetivo}
-                    onChange={(e) => handleInputChange('subjetivo', e.target.value)}
-                    error={!!errors.subjetivo}
-                    helperText={errors.subjetivo || `${formData.subjetivo.length} caracteres`}
-                    placeholder="Ej: Paciente refiere dolor abdominal tipo cólico de 6/10, náuseas ocasionales, niega vómito..."
+                  <Controller
+                    name="subjetivo"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        required
+                        multiline
+                        rows={4}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message || `${field.value?.length || 0} caracteres`}
+                        placeholder="Ej: Paciente refiere dolor abdominal tipo cólico de 6/10, náuseas ocasionales, niega vómito..."
+                      />
+                    )}
                   />
                 </CardContent>
               </Card>
@@ -462,16 +419,21 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
                   <Typography variant="body2" color="textSecondary" gutterBottom>
                     Hallazgos físicos, signos vitales, estudios de laboratorio
                   </Typography>
-                  <TextField
-                    fullWidth
-                    required
-                    multiline
-                    rows={4}
-                    value={formData.objetivo}
-                    onChange={(e) => handleInputChange('objetivo', e.target.value)}
-                    error={!!errors.objetivo}
-                    helperText={errors.objetivo || `${formData.objetivo.length} caracteres`}
-                    placeholder="Ej: TA: 120/80, FC: 78, FR: 18, Temp: 36.5°C. Abdomen blando, doloroso a la palpación en FID..."
+                  <Controller
+                    name="objetivo"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        required
+                        multiline
+                        rows={4}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message || `${field.value?.length || 0} caracteres`}
+                        placeholder="Ej: TA: 120/80, FC: 78, FR: 18, Temp: 36.5°C. Abdomen blando, doloroso a la palpación en FID..."
+                      />
+                    )}
                   />
                 </CardContent>
               </Card>
@@ -488,16 +450,21 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
                   <Typography variant="body2" color="textSecondary" gutterBottom>
                     Impresión diagnóstica, evaluación de la condición actual
                   </Typography>
-                  <TextField
-                    fullWidth
-                    required
-                    multiline
-                    rows={4}
-                    value={formData.analisis}
-                    onChange={(e) => handleInputChange('analisis', e.target.value)}
-                    error={!!errors.analisis}
-                    helperText={errors.analisis || `${formData.analisis.length} caracteres`}
-                    placeholder="Ej: Probable apendicitis aguda. Paciente estable hemodinámicamente, requiere valoración quirúrgica..."
+                  <Controller
+                    name="analisis"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        required
+                        multiline
+                        rows={4}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message || `${field.value?.length || 0} caracteres`}
+                        placeholder="Ej: Probable apendicitis aguda. Paciente estable hemodinámicamente, requiere valoración quirúrgica..."
+                      />
+                    )}
                   />
                 </CardContent>
               </Card>
@@ -514,82 +481,103 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
                   <Typography variant="body2" color="textSecondary" gutterBottom>
                     Plan de tratamiento, medicamentos, procedimientos
                   </Typography>
-                  <TextField
-                    fullWidth
-                    required
-                    multiline
-                    rows={4}
-                    value={formData.plan}
-                    onChange={(e) => handleInputChange('plan', e.target.value)}
-                    error={!!errors.plan}
-                    helperText={errors.plan || `${formData.plan.length} caracteres`}
-                    placeholder="Ej: 1. Ayuno absoluto 2. Solucion Hartmann 1000ml c/8hrs 3. Interconsulta a cirugía general..."
+                  <Controller
+                    name="plan"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        required
+                        multiline
+                        rows={4}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message || `${field.value?.length || 0} caracteres`}
+                        placeholder="Ej: 1. Ayuno absoluto 2. Solucion Hartmann 1000ml c/8hrs 3. Interconsulta a cirugía general..."
+                      />
+                    )}
                   />
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Diagnósticos */}
+            {/* Signos Vitales Adicionales */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Diagnósticos</Typography>
-              <Box display="flex" gap={1} mb={2}>
-                <TextField
-                  fullWidth
-                  label="Agregar diagnóstico"
-                  value={newDiagnostico}
-                  onChange={(e) => setNewDiagnostico(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddDiagnostico();
-                    }
-                  }}
-                  error={!!errors.diagnosticos}
-                  helperText={errors.diagnosticos}
-                />
-                <Button
-                  variant="outlined"
-                  onClick={handleAddDiagnostico}
-                  startIcon={<AddIcon />}
-                  sx={{ minWidth: 120 }}
-                >
-                  Agregar
-                </Button>
-              </Box>
-              <Box display="flex" flexWrap="wrap" gap={1}>
-                {formData.diagnosticos.map((diagnostico, index) => (
-                  <Chip
-                    key={index}
-                    label={diagnostico}
-                    onDelete={() => handleRemoveDiagnostico(index)}
-                    color="primary"
-                    variant="outlined"
+              <Typography variant="h6" gutterBottom>Signos Vitales Detallados (Opcional)</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={3}>
+                  <Controller
+                    name="signos_vitales.presion_sistolica"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="Presión Sistólica"
+                        inputProps={{ min: 50, max: 250 }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
                   />
-                ))}
-              </Box>
-            </Grid>
-
-            {/* Información Adicional */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Seguimiento"
-                multiline
-                rows={2}
-                value={formData.seguimiento}
-                onChange={(e) => handleInputChange('seguimiento', e.target.value)}
-                placeholder="Indicaciones de seguimiento y monitoreo"
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Próxima Revisión"
-                value={formData.proximaRevision}
-                onChange={(e) => handleInputChange('proximaRevision', e.target.value)}
-                placeholder="Ej: En 8 horas, En 24 horas, etc."
-              />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Controller
+                    name="signos_vitales.presion_diastolica"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="Presión Diastólica"
+                        inputProps={{ min: 30, max: 150 }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Controller
+                    name="signos_vitales.frecuencia_respiratoria"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="FR (rpm)"
+                        inputProps={{ min: 8, max: 60 }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Controller
+                    name="signos_vitales.saturacion_oxigeno"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="SatO2 (%)"
+                        inputProps={{ min: 50, max: 100 }}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+              </Grid>
             </Grid>
           </Grid>
         </TabPanel>
@@ -654,7 +642,7 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
               Cancelar
             </Button>
             <Button
-              onClick={handleSubmit}
+              onClick={handleSubmit(onSubmit)}
               variant="contained"
               disabled={loading}
               startIcon={<AssignmentIcon />}

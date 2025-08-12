@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired, validateDateRange } = require('../middleware/validation.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { generateInvoiceNumber } = require('../utils/helpers');
 
 // ==============================================
@@ -79,7 +81,7 @@ router.get('/invoices', validatePagination, validateDateRange, async (req, res) 
 });
 
 // POST /invoices - Crear factura
-router.post('/invoices', validateRequired(['cuentaId']), async (req, res) => {
+router.post('/invoices', authenticateToken, auditMiddleware('facturacion'), validateRequired(['cuentaId']), async (req, res) => {
   try {
     const { cuentaId, observaciones } = req.body;
 
@@ -252,7 +254,7 @@ router.get('/invoices/:id/payments', async (req, res) => {
 });
 
 // POST /invoices/:id/payments - Registrar pago para una factura
-router.post('/invoices/:id/payments', validateRequired(['monto', 'metodoPago']), async (req, res) => {
+router.post('/invoices/:id/payments', authenticateToken, auditMiddleware('facturacion'), validateRequired(['monto', 'metodoPago']), async (req, res) => {
   try {
     const facturaId = parseInt(req.params.id);
     const { monto, metodoPago, referencia, autorizacion, observaciones, cajeroId } = req.body;

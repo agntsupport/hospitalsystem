@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { prisma, calcularEdad, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { generateExpediente, sanitizeSearch, isValidEmail, isValidCURP } = require('../utils/helpers');
 
 // ==============================================
@@ -215,7 +217,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // POST / - Crear nuevo paciente
-router.post('/', validateRequired(['nombre', 'apellidoPaterno', 'fechaNacimiento']), async (req, res) => {
+router.post('/', authenticateToken, auditMiddleware('pacientes'), validateRequired(['nombre', 'apellidoPaterno', 'fechaNacimiento']), async (req, res) => {
   try {
     const {
       nombre,
@@ -397,7 +399,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /:id - Actualizar paciente
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, auditMiddleware('pacientes'), captureOriginalData('paciente'), async (req, res) => {
   try {
     const { id } = req.params;
     const pacienteId = parseInt(id);
@@ -524,7 +526,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /:id - Eliminar paciente (soft delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, auditMiddleware('pacientes'), criticalOperationAudit, captureOriginalData('paciente'), async (req, res) => {
   try {
     const { id } = req.params;
     const pacienteId = parseInt(id);

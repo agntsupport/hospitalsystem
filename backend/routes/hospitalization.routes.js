@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 
 // ==============================================
 // ENDPOINTS DE HOSPITALIZACIÓN
@@ -103,7 +105,7 @@ router.get('/admissions', validatePagination, async (req, res) => {
 });
 
 // POST /admissions - Crear nueva admisión
-router.post('/admissions', validateRequired(['pacienteId', 'habitacionId', 'diagnosticoIngreso', 'motivoIngreso']), async (req, res) => {
+router.post('/admissions', authenticateToken, auditMiddleware('hospitalizacion'), validateRequired(['pacienteId', 'habitacionId', 'diagnosticoIngreso', 'motivoIngreso']), async (req, res) => {
   try {
     const {
       pacienteId,
@@ -220,7 +222,7 @@ router.post('/admissions', validateRequired(['pacienteId', 'habitacionId', 'diag
 });
 
 // PUT /:id/discharge - Dar de alta
-router.put('/:id/discharge', async (req, res) => {
+router.put('/:id/discharge', authenticateToken, auditMiddleware('hospitalizacion'), criticalOperationAudit, captureOriginalData('hospitalizacion'), async (req, res) => {
   try {
     const { id } = req.params;
     const { 
@@ -478,7 +480,7 @@ router.get('/admissions/:id/notes', async (req, res) => {
 });
 
 // POST /:id/notes - Crear nueva nota médica
-router.post('/admissions/:id/notes', validateRequired(['tipoNota', 'turno']), async (req, res) => {
+router.post('/admissions/:id/notes', authenticateToken, auditMiddleware('hospitalizacion'), validateRequired(['tipoNota', 'turno']), async (req, res) => {
   try {
     const { id } = req.params;
     const {

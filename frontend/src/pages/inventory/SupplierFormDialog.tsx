@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Dialog,
   DialogTitle,
@@ -24,7 +26,8 @@ import {
 } from '@mui/icons-material';
 
 import { inventoryService } from '@/services/inventoryService';
-import { CreateSupplierRequest, PAYMENT_TERMS } from '@/types/inventory.types';
+import { PAYMENT_TERMS } from '@/types/inventory.types';
+import { supplierFormSchema, SupplierFormValues } from '@/schemas/inventory.schemas';
 import { toast } from 'react-toastify';
 
 interface SupplierFormDialogProps {
@@ -38,39 +41,17 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
   onClose,
   onSupplierCreated,
 }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Form data
-  const [formData, setFormData] = useState<CreateSupplierRequest>({
-    razonSocial: '',
-    nombreComercial: '',
-    rfc: '',
-    telefono: '',
-    email: '',
-    direccion: '',
-    ciudad: '',
-    estado: '',
-    codigoPostal: '',
-    contacto: {
-      nombre: '',
-      cargo: '',
-      telefono: '',
-      email: ''
-    },
-    condicionesPago: 'Contado',
-    diasCredito: 0
-  });
-
-  useEffect(() => {
-    if (open) {
-      resetForm();
-    }
-  }, [open]);
-
-  const resetForm = () => {
-    setError(null);
-    setFormData({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    watch,
+    setError: setFormError,
+    clearErrors
+  } = useForm<SupplierFormValues>({
+    resolver: yupResolver(supplierFormSchema),
+    defaultValues: {
       razonSocial: '',
       nombreComercial: '',
       rfc: '',
@@ -88,83 +69,24 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
       },
       condicionesPago: 'Contado',
       diasCredito: 0
-    });
-  };
-
-  const handleInputChange = (field: string, value: any) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof CreateSupplierRequest],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
     }
-  };
+  });
 
-  const validateForm = (): boolean => {
-    if (!formData.razonSocial.trim()) {
-      setError('La razón social es requerida');
-      return false;
+  const condicionesPago = watch('condicionesPago');
+
+  useEffect(() => {
+    if (open) {
+      reset();
+      clearErrors();
     }
+  }, [open, reset, clearErrors]);
 
-    if (!formData.rfc.trim()) {
-      setError('El RFC es requerido');
-      return false;
-    }
-
-    // Validar formato de RFC (básico)
-    const rfcRegex = /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/;
-    if (!rfcRegex.test(formData.rfc.toUpperCase())) {
-      setError('El formato del RFC no es válido');
-      return false;
-    }
-
-    // Validar email si se proporciona
-    if (formData.email && formData.email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        setError('El formato del email no es válido');
-        return false;
-      }
-    }
-
-    // Validar email de contacto si se proporciona
-    if (formData.contacto?.email && formData.contacto.email.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.contacto.email)) {
-        setError('El formato del email de contacto no es válido');
-        return false;
-      }
-    }
-
-    // Validar días de crédito
-    if (formData.condicionesPago !== 'Contado' && (!formData.diasCredito || formData.diasCredito <= 0)) {
-      setError('Los días de crédito deben ser mayor a 0 para condiciones de pago a crédito');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
+  const onSubmit = async (data: SupplierFormValues) => {
+    clearErrors();
 
     try {
-      // Limpiar campos vacíos
-      const cleanFormData = { ...formData };
+      // Limpiar y preparar datos para envío
+      const cleanFormData = { ...data };
       
       // Formatear RFC a mayúsculas
       cleanFormData.rfc = cleanFormData.rfc.toUpperCase();
@@ -191,10 +113,8 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
     } catch (error: any) {
       console.error('Error creating supplier:', error);
       const errorMessage = error?.message || error?.error || 'Error al crear proveedor';
-      setError(errorMessage);
+      setFormError('root', { message: errorMessage });
       toast.error(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -207,219 +127,334 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
         </Box>
       </DialogTitle>
       
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent>
+          {errors.root && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {errors.root.message}
+            </Alert>
+          )}
 
-        <Grid container spacing={3} sx={{ mt: 1 }}>
-          {/* Información Básica */}
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>
-              Información Básica
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={8}>
-            <TextField
-              fullWidth
-              label="Razón Social *"
-              value={formData.razonSocial}
-              onChange={(e) => handleInputChange('razonSocial', e.target.value)}
-              required
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="RFC *"
-              value={formData.rfc}
-              onChange={(e) => handleInputChange('rfc', e.target.value.toUpperCase())}
-              required
-              inputProps={{ style: { textTransform: 'uppercase' } }}
-              placeholder="ABC123456789"
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Nombre Comercial"
-              value={formData.nombreComercial}
-              onChange={(e) => handleInputChange('nombreComercial', e.target.value)}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Teléfono"
-              value={formData.telefono}
-              onChange={(e) => handleInputChange('telefono', e.target.value)}
-              placeholder="5551234567"
-            />
-          </Grid>
-          
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="contacto@proveedor.com"
-            />
-          </Grid>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            {/* Información Básica */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Información Básica
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={8}>
+              <Controller
+                name="razonSocial"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Razón Social *"
+                    required
+                    error={!!errors.razonSocial}
+                    helperText={errors.razonSocial?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="rfc"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="RFC *"
+                    required
+                    error={!!errors.rfc}
+                    helperText={errors.rfc?.message}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                    placeholder="ABC123456789"
+                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="nombreComercial"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Nombre Comercial"
+                    error={!!errors.nombreComercial}
+                    helperText={errors.nombreComercial?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="telefono"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Teléfono"
+                    placeholder="5551234567"
+                    error={!!errors.telefono}
+                    helperText={errors.telefono?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Email"
+                    type="email"
+                    placeholder="contacto@proveedor.com"
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                  />
+                )}
+              />
+            </Grid>
 
-          {/* Dirección */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Dirección
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Dirección"
-              value={formData.direccion}
-              onChange={(e) => handleInputChange('direccion', e.target.value)}
-              placeholder="Calle, número, colonia"
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Ciudad"
-              value={formData.ciudad}
-              onChange={(e) => handleInputChange('ciudad', e.target.value)}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Estado"
-              value={formData.estado}
-              onChange={(e) => handleInputChange('estado', e.target.value)}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              label="Código Postal"
-              value={formData.codigoPostal}
-              onChange={(e) => handleInputChange('codigoPostal', e.target.value)}
-              placeholder="12345"
-            />
-          </Grid>
+            {/* Dirección */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Dirección
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Controller
+                name="direccion"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Dirección"
+                    placeholder="Calle, número, colonia"
+                    error={!!errors.direccion}
+                    helperText={errors.direccion?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="ciudad"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Ciudad"
+                    error={!!errors.ciudad}
+                    helperText={errors.ciudad?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="estado"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Estado"
+                    error={!!errors.estado}
+                    helperText={errors.estado?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Controller
+                name="codigoPostal"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Código Postal"
+                    placeholder="12345"
+                    error={!!errors.codigoPostal}
+                    helperText={errors.codigoPostal?.message}
+                  />
+                )}
+              />
+            </Grid>
 
-          {/* Contacto */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Contacto Principal (Opcional)
-            </Typography>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Nombre del Contacto"
-              value={formData.contacto?.nombre || ''}
-              onChange={(e) => handleInputChange('contacto.nombre', e.target.value)}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Cargo"
-              value={formData.contacto?.cargo || ''}
-              onChange={(e) => handleInputChange('contacto.cargo', e.target.value)}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Teléfono del Contacto"
-              value={formData.contacto?.telefono || ''}
-              onChange={(e) => handleInputChange('contacto.telefono', e.target.value)}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Email del Contacto"
-              type="email"
-              value={formData.contacto?.email || ''}
-              onChange={(e) => handleInputChange('contacto.email', e.target.value)}
-            />
-          </Grid>
+            {/* Contacto */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Contacto Principal (Opcional)
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="contacto.nombre"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Nombre del Contacto"
+                    error={!!errors.contacto?.nombre}
+                    helperText={errors.contacto?.nombre?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="contacto.cargo"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Cargo"
+                    error={!!errors.contacto?.cargo}
+                    helperText={errors.contacto?.cargo?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="contacto.telefono"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Teléfono del Contacto"
+                    error={!!errors.contacto?.telefono}
+                    helperText={errors.contacto?.telefono?.message}
+                  />
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="contacto.email"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Email del Contacto"
+                    type="email"
+                    error={!!errors.contacto?.email}
+                    helperText={errors.contacto?.email?.message}
+                  />
+                )}
+              />
+            </Grid>
 
-          {/* Condiciones de Pago */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              Condiciones de Pago
-            </Typography>
+            {/* Condiciones de Pago */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Condiciones de Pago
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="condicionesPago"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.condicionesPago}>
+                    <InputLabel>Condiciones de Pago</InputLabel>
+                    <Select
+                      {...field}
+                      label="Condiciones de Pago"
+                    >
+                      {PAYMENT_TERMS.map((term) => (
+                        <MenuItem key={term} value={term}>
+                          {term}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.condicionesPago && (
+                      <Typography variant="caption" color="error" sx={{ mt: 1, ml: 2 }}>
+                        {errors.condicionesPago.message}
+                      </Typography>
+                    )}
+                  </FormControl>
+                )}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="diasCredito"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Días de Crédito"
+                    type="number"
+                    inputProps={{ min: 0, max: 365 }}
+                    disabled={condicionesPago === 'Contado'}
+                    helperText={
+                      condicionesPago === 'Contado' 
+                        ? 'No aplica para pagos de contado' 
+                        : errors.diasCredito?.message
+                    }
+                    error={!!errors.diasCredito}
+                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                  />
+                )}
+              />
+            </Grid>
           </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Condiciones de Pago</InputLabel>
-              <Select
-                value={formData.condicionesPago || 'Contado'}
-                label="Condiciones de Pago"
-                onChange={(e) => handleInputChange('condicionesPago', e.target.value)}
-              >
-                {PAYMENT_TERMS.map((term) => (
-                  <MenuItem key={term} value={term}>
-                    {term}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Días de Crédito"
-              type="number"
-              value={formData.diasCredito || 0}
-              onChange={(e) => handleInputChange('diasCredito', parseInt(e.target.value) || 0)}
-              inputProps={{ min: 0, max: 365 }}
-              disabled={formData.condicionesPago === 'Contado'}
-              helperText={formData.condicionesPago === 'Contado' ? 'No aplica para pagos de contado' : ''}
-            />
-          </Grid>
-        </Grid>
-      </DialogContent>
+        </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          <CancelIcon sx={{ mr: 1 }} />
-          Cancelar
-        </Button>
-        
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
-        >
-          {loading ? 'Guardando...' : 'Guardar Proveedor'}
-        </Button>
-      </DialogActions>
+        <DialogActions>
+          <Button onClick={onClose} disabled={isSubmitting}>
+            <CancelIcon sx={{ mr: 1 }} />
+            Cancelar
+          </Button>
+          
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={isSubmitting}
+            startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
+          >
+            {isSubmitting ? 'Guardando...' : 'Guardar Proveedor'}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 };

@@ -38,12 +38,14 @@ import {
   LocalHospital as MedicIcon,
   School as ResidentIcon,
   MedicalServices as NurseIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { useDebounce } from '@/hooks/useDebounce';
 import { employeeService } from '@/services/employeeService';
 import { Employee, EmployeeStats, EmployeeType } from '@/types/employee.types';
 import { EMPLOYEE_TYPE_LABELS } from '@/utils/constants';
 import EmployeeFormDialog from './EmployeeFormDialog';
+import AuditTrail from '@/components/common/AuditTrail';
 import { toast } from 'react-toastify';
 
 const EmployeesPage: React.FC = () => {
@@ -67,6 +69,8 @@ const EmployeesPage: React.FC = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deleteEmployeeOpen, setDeleteEmployeeOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [auditTrailOpen, setAuditTrailOpen] = useState(false);
+  const [auditEntityId, setAuditEntityId] = useState<number>(0);
   
   const debouncedSearch = useDebounce(search, 500);
 
@@ -180,6 +184,16 @@ const EmployeesPage: React.FC = () => {
     setSelectedEmployee(null);
     setDeleteEmployeeOpen(false);
     setEmployeeToDelete(null);
+  };
+
+  const handleOpenAuditTrail = (employee: Employee) => {
+    setAuditEntityId(employee.id);
+    setAuditTrailOpen(true);
+  };
+
+  const handleCloseAuditTrail = () => {
+    setAuditTrailOpen(false);
+    setAuditEntityId(0);
   };
 
   const getEmployeeTypeColor = (tipo: EmployeeType) => {
@@ -517,6 +531,14 @@ const EmployeesPage: React.FC = () => {
                           >
                             <DeleteIcon />
                           </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenAuditTrail(employee)}
+                            title="Historial de cambios"
+                            color="info"
+                          >
+                            <HistoryIcon />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -711,6 +733,15 @@ const EmployeesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Audit Trail Dialog */}
+      <AuditTrail
+        open={auditTrailOpen}
+        onClose={handleCloseAuditTrail}
+        entityType="empleado"
+        entityId={auditEntityId}
+        title="Historial de Cambios - Empleado"
+      />
     </Box>
   );
 };

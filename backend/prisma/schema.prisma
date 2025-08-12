@@ -26,6 +26,9 @@ model Usuario {
   aplicacionMedicamentos AplicacionMedicamento[]
   ventasRapidas        VentaRapida[]
   pagosFactura         PagoFactura[]
+  auditorias           AuditoriaOperacion[]
+  cancelaciones        Cancelacion[]          @relation("UsuarioCancelacion")
+  autorizaciones       Cancelacion[]          @relation("UsuarioAutoriza")
 
   @@map("usuarios")
 }
@@ -103,6 +106,7 @@ model Paciente {
   citas            CitaMedica[]
   historiales      HistorialMedico[]
   facturas         Factura[]
+  cirugias         CirugiaQuirofano[]
 
   @@map("pacientes")
 }
@@ -144,6 +148,8 @@ model Empleado {
   hospitalizaciones Hospitalizacion[]
   ordenesMedicas    OrdenMedica[]
   notasHospitalizacion NotaHospitalizacion[]
+  cancelaciones     Cancelacion[]
+  cirugiasMedico    CirugiaQuirofano[]
 
   @@map("empleados")
 }
@@ -211,6 +217,77 @@ enum TipoConsultorio {
   especialidad
   urgencias
   cirugia
+}
+
+model Quirofano {
+  id              Int                @id @default(autoincrement())
+  numero          String             @unique
+  tipo            TipoQuirofano      @default(cirugia_general)
+  especialidad    String?
+  estado          EstadoQuirofano    @default(disponible)
+  descripcion     String?
+  equipamiento    String?            // Descripción del equipamiento especializado
+  capacidadEquipo Int                @default(6) @map("capacidad_equipo") // Número máximo de personas en el quirófano
+  precioHora      Decimal?           @map("precio_hora") @db.Decimal(8, 2)
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  // Relaciones
+  citas           CitaMedica[]
+  cirugias        CirugiaQuirofano[]
+
+  @@map("quirofanos")
+}
+
+enum TipoQuirofano {
+  cirugia_general
+  cirugia_cardiaca
+  cirugia_neurologica
+  cirugia_ortopedica
+  cirugia_plastica
+  cirugia_pediatrica
+  cirugia_traumatologia
+  cirugia_ambulatoria
+}
+
+enum EstadoQuirofano {
+  disponible
+  ocupado
+  mantenimiento
+  limpieza
+  preparacion
+  fuera_de_servicio
+}
+
+// Modelo para gestionar cirugías programadas en quirófanos
+model CirugiaQuirofano {
+  id              Int         @id @default(autoincrement())
+  quirofanoId     Int         @map("quirofano_id")
+  pacienteId      Int         @map("paciente_id")
+  medicoId        Int         @map("medico_id")
+  tipoIntervencion String     @map("tipo_intervencion")
+  fechaInicio     DateTime    @map("fecha_inicio")
+  fechaFin        DateTime?   @map("fecha_fin")
+  estado          EstadoCirugia @default(programada)
+  observaciones   String?
+  equipoMedico    Json?       @map("equipo_medico") // Array de IDs de empleados del equipo
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relaciones
+  quirofano       Quirofano   @relation(fields: [quirofanoId], references: [id])
+  paciente        Paciente    @relation(fields: [pacienteId], references: [id])
+  medico          Empleado    @relation(fields: [medicoId], references: [id])
+
+  @@map("cirugias_quirofano")
+}
+
+enum EstadoCirugia {
+  programada
+  en_progreso
+  completada
+  cancelada
+  reprogramada
 }
 
 model Proveedor {
@@ -326,6 +403,7 @@ model CuentaPaciente {
   movimientos        MovimientoInventario[]
   hospitalizacion    Hospitalizacion?
   facturas           Factura[]
+  cancelaciones      Cancelacion[]
 
   @@map("cuentas_pacientes")
 }
@@ -550,6 +628,7 @@ model CitaMedica {
   pacienteId                 Int              @map("paciente_id")
   medicoId                   Int              @map("medico_id")
   consultorioId              Int?             @map("consultorio_id")
+  quirofanoId                Int?             @map("quirofano_id")
   fechaCita                  DateTime         @map("fecha_cita")
   tipoCita                   TipoCita         @map("tipo_cita")
   estado                     EstadoCita       @default(programada)
@@ -563,6 +642,7 @@ model CitaMedica {
   paciente                   Paciente         @relation(fields: [pacienteId], references: [id])
   medico                     Empleado         @relation(fields: [medicoId], references: [id])
   consultorio                Consultorio?     @relation(fields: [consultorioId], references: [id])
+  quirofano                  Quirofano?       @relation(fields: [quirofanoId], references: [id])
 
   @@map("citas_medicas")
 }
@@ -775,4 +855,78 @@ enum MetodoPagoFactura {
   transfer    // Transferencia
   check       // Cheque
   insurance   // Seguro médico
+}
+
+// ============================================
+// MODELOS PARA AUDITORÍA Y TRAZABILIDAD
+// ============================================
+
+model AuditoriaOperacion {
+  id                  Int       @id @default(autoincrement())
+  modulo              String    @db.VarChar(50)
+  tipoOperacion       String    @map("tipo_operacion") @db.VarChar(50)
+  entidadTipo         String    @map("entidad_tipo") @db.VarChar(50)
+  entidadId           Int       @map("entidad_id")
+  usuarioId           Int       @map("usuario_id")
+  usuarioNombre       String    @map("usuario_nombre") @db.VarChar(100)
+  rolUsuario          String    @map("rol_usuario") @db.VarChar(50)
+  datosAnteriores     Json?     @map("datos_anteriores")
+  datosNuevos         Json?     @map("datos_nuevos")
+  motivo              String?
+  causaCancelacionId  Int?      @map("causa_cancelacion_id")
+  ipAddress           String?   @map("ip_address") @db.VarChar(45)
+  userAgent           String?   @map("user_agent")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  // Relaciones
+  usuario            Usuario    @relation(fields: [usuarioId], references: [id])
+  causaCancelacion   CausaCancelacion? @relation(fields: [causaCancelacionId], references: [id])
+
+  @@index([modulo])
+  @@index([usuarioId])
+  @@index([createdAt])
+  @@index([entidadTipo, entidadId])
+  @@map("auditoria_operaciones")
+}
+
+model CausaCancelacion {
+  id                    Int      @id @default(autoincrement())
+  codigo                String   @unique @db.VarChar(50)
+  descripcion           String   @db.VarChar(200)
+  categoria             String   @db.VarChar(50)
+  requiereNota          Boolean  @default(false) @map("requiere_nota")
+  requiereAutorizacion  Boolean  @default(true) @map("requiere_autorizacion")
+  activo                Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  auditorias            AuditoriaOperacion[]
+  cancelaciones         Cancelacion[]
+
+  @@map("causas_cancelacion")
+}
+
+model Cancelacion {
+  id                Int      @id @default(autoincrement())
+  modulo            String   @db.VarChar(50)
+  tipoEntidad       String   @map("tipo_entidad") @db.VarChar(50)
+  entidadId         Int      @map("entidad_id")
+  cuentaId          Int?     @map("cuenta_id")
+  causaId           Int      @map("causa_id")
+  usuarioId         Int      @map("usuario_id")
+  usuarioAutorizaId Int?     @map("usuario_autoriza_id")
+  medicoId          Int?     @map("medico_id")
+  notas             String?
+  montoAfectado     Decimal  @map("monto_afectado") @db.Decimal(10, 2)
+  datosOriginales   Json?    @map("datos_originales")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relaciones
+  causa             CausaCancelacion @relation(fields: [causaId], references: [id])
+  usuario           Usuario @relation("UsuarioCancelacion", fields: [usuarioId], references: [id])
+  usuarioAutoriza   Usuario? @relation("UsuarioAutoriza", fields: [usuarioAutorizaId], references: [id])
+  cuenta            CuentaPaciente? @relation(fields: [cuentaId], references: [id])
+  medico            Empleado? @relation(fields: [medicoId], references: [id])
+
+  @@map("cancelaciones")
 }

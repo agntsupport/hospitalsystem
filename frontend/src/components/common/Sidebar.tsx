@@ -26,6 +26,7 @@ import {
   Person,
   MedicalServices,
   Receipt,
+  ContentCut,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -72,6 +73,20 @@ const menuItems: MenuItem[] = [
     icon: <Hotel />,
     path: '/rooms',
     roles: ['cajero', 'enfermero', 'almacenista', 'medico_residente', 'medico_especialista', 'administrador'],
+  },
+  {
+    id: 'quirofanos',
+    text: 'Quirófanos',
+    icon: <ContentCut />,
+    path: '/quirofanos',
+    roles: ['enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
+  },
+  {
+    id: 'cirugias',
+    text: 'Cirugías',
+    icon: <LocalHospital />,
+    path: '/cirugias',
+    roles: ['enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
     divider: true,
   },
   {
@@ -144,7 +159,7 @@ const Sidebar: React.FC = () => {
       <Toolbar>
         <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <Typography variant="h6" noWrap component="div" color="primary">
-            Sistema Hospitalario
+            Sistema Hospitalario agnt_
           </Typography>
           {user && (
             <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>

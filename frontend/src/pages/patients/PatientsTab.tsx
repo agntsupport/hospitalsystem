@@ -45,12 +45,14 @@ import {
   Male as MaleIcon,
   Female as FemaleIcon,
   FilterList as FilterIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 
 import { patientsService } from '@/services/patientsService';
 import { Patient, PatientFilters, GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPES } from '@/types/patients.types';
 import { toast } from 'react-toastify';
 import PatientFormDialog from './PatientFormDialog';
+import AuditTrail from '@/components/common/AuditTrail';
 
 interface PatientsTabProps {
   onStatsChange: () => void;
@@ -67,6 +69,8 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [auditTrailOpen, setAuditTrailOpen] = useState(false);
+  const [auditEntityId, setAuditEntityId] = useState<number>(0);
   
   // Pagination
   const [page, setPage] = useState(0);
@@ -172,6 +176,16 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
     onStatsChange();
     onPatientCreated(); // Notify parent to refresh
     handleCloseEditDialog();
+  };
+
+  const handleOpenAuditTrail = (patient: Patient) => {
+    setAuditEntityId(patient.id);
+    setAuditTrailOpen(true);
+  };
+
+  const handleCloseAuditTrail = () => {
+    setAuditTrailOpen(false);
+    setAuditEntityId(0);
   };
 
   const handleChangePage = (_event: unknown, newPage: number) => {
@@ -501,6 +515,15 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
+                      <Tooltip title="Historial de cambios">
+                        <IconButton
+                          size="small"
+                          color="info"
+                          onClick={() => handleOpenAuditTrail(patient)}
+                        >
+                          <HistoryIcon />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -639,6 +662,15 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
         onClose={handleCloseEditDialog}
         onPatientCreated={handlePatientUpdated}
         editingPatient={selectedPatient}
+      />
+
+      {/* Audit Trail Dialog */}
+      <AuditTrail
+        open={auditTrailOpen}
+        onClose={handleCloseAuditTrail}
+        entityType="paciente"
+        entityId={auditEntityId}
+        title="Historial de Cambios - Paciente"
       />
     </Box>
   );

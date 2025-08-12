@@ -1,4 +1,7 @@
-# Hospital Management System - Guía de Desarrollo
+# Sistema de Gestión Hospitalaria Integral
+**Desarrollado por:** Alfredo Manuel Reyes  
+**Empresa:** agnt_ - Software Development Company  
+**Tecnología:** Arquitectura Full-Stack con PostgreSQL + React + Node.js
 
 ## 🚀 Inicio Rápido
 
@@ -96,7 +99,8 @@ VITE_API_URL=http://localhost:3001
 7. ✅ **Facturación** - Facturas, pagos, cuentas por cobrar
 8. ✅ **Reportes** - Financieros, operativos, ejecutivos
 9. ✅ **Hospitalización** - Ingresos, altas, notas SOAP
-10. ✅ **Testing** - 26 tests frontend + backend
+10. ✅ **Quirófanos** - Gestión completa y cirugías programadas con auditoría
+11. ✅ **Testing** - 26 tests frontend + backend
 
 ## 🔐 Sistema de Roles
 
@@ -142,6 +146,20 @@ VITE_API_URL=http://localhost:3001
 - `PUT /api/hospitalization/admissions/:id/discharge` - Alta
 - `POST /api/hospitalization/admissions/:id/notes` - Notas médicas
 
+### Quirófanos y Cirugías
+- `GET /api/quirofanos` - Lista de quirófanos con filtros
+- `POST /api/quirofanos` - Crear quirófano
+- `PUT /api/quirofanos/:id` - Actualizar quirófano
+- `PUT /api/quirofanos/:id/estado` - Cambiar estado del quirófano
+- `DELETE /api/quirofanos/:id` - Soft delete de quirófano
+- `GET /api/quirofanos/stats` - Estadísticas de quirófanos
+- `GET /api/quirofanos/disponibles/horario` - Quirófanos disponibles por horario
+- `POST /api/quirofanos/cirugias` - Programar cirugía
+- `GET /api/quirofanos/cirugias` - Lista de cirugías
+- `GET /api/quirofanos/cirugias/:id` - Detalle de cirugía
+- `PUT /api/quirofanos/cirugias/:id/estado` - Actualizar estado de cirugía
+- `DELETE /api/quirofanos/cirugias/:id` - Cancelar cirugía
+
 ## 👤 Credenciales de Desarrollo
 
 ```bash
@@ -177,11 +195,11 @@ npm run dev
 
 ## 🎯 Próximos Pasos
 
-1. **Sistema de Citas Médicas** - Calendarios y horarios
-2. **Dashboard Tiempo Real** - WebSockets
-3. **Expediente Médico Completo** - Historia clínica
-4. **Tests End-to-End** - Cypress
-5. **Containerización** - Docker + nginx
+1. **Sistema de Citas Médicas** - Calendarios y horarios integrados
+2. **Dashboard Tiempo Real** - WebSockets para actualizaciones en vivo
+3. **Expediente Médico Completo** - Historia clínica digitalizada
+4. **Tests End-to-End** - Cypress para flujos completos
+5. **Containerización** - Docker + nginx para producción
 
 ## 🔧 Solución de Problemas Comunes
 
@@ -216,5 +234,11 @@ psql -d hospital_management -c "SELECT 1;"
 - **Visual**: Sistema con overflow protection, tooltips y responsive design
 
 ---
-**Estado del Sistema**: ✅ 100% Funcional y Optimizado
-**Última actualización**: 11 de agosto de 2025
+**🏥 Sistema de Gestión Hospitalaria Integral**  
+**👨‍💻 Desarrollado por:** Alfredo Manuel Reyes  
+**🏢 Empresa:** agnt_ - Software Development Company  
+**📅 Última actualización:** 12 de agosto de 2025  
+**✅ Estado:** Sistema 100% Funcional y Optimizado  
+
+---
+*© 2025 agnt_ Software Development Company. Todos los derechos reservados.*

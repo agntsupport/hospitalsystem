@@ -19,6 +19,8 @@ import InventoryPage from '@/pages/inventory/InventoryPage';
 import BillingPage from '@/pages/billing/BillingPage';
 import ReportsPage from '@/pages/reports/ReportsPage';
 import HospitalizationPage from '@/pages/hospitalization/HospitalizationPage';
+import QuirofanosPage from '@/pages/quirofanos/QuirofanosPage';
+import CirugiasPage from '@/pages/quirofanos/CirugiasPage';
 
 const theme = createTheme({
   palette: {
@@ -123,6 +125,22 @@ function App() {
               <ProtectedRoute roles={['cajero', 'enfermero', 'almacenista', 'medico_residente', 'medico_especialista', 'administrador']}>
                 <Layout>
                   <RoomsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/quirofanos" element={
+              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
+                <Layout>
+                  <QuirofanosPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/cirugias" element={
+              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
+                <Layout>
+                  <CirugiasPage />
                 </Layout>
               </ProtectedRoute>
             } />

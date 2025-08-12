@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 
 const prisma = new PrismaClient();
 
@@ -9,7 +11,7 @@ const prisma = new PrismaClient();
 // ==============================================
 
 // GET /services - Obtener servicios disponibles para POS
-router.get('/services', async (req, res) => {
+router.get('/services', authenticateToken, async (req, res) => {
   try {
     const servicios = await prisma.servicio.findMany({
       where: { activo: true },
@@ -49,9 +51,21 @@ router.get('/services', async (req, res) => {
 });
 
 // POST /quick-sale - Procesar venta rápida
-router.post('/quick-sale', async (req, res) => {
+router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req, res) => {
   try {
-    const { items, metodoPago, montoRecibido, observaciones, cajeroId = 16 } = req.body;
+    // Verificar que el usuario está autenticado
+    if (!req.user || !req.user.id) {
+      console.error('Usuario no autenticado correctamente:', req.user);
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado correctamente'
+      });
+    }
+    
+    // Obtener el ID del usuario autenticado desde el token
+    const cajeroId = req.user.id;
+    console.log('Usuario autenticado - ID:', cajeroId, 'Username:', req.user.username, 'Rol:', req.user.rol);
+    const { items, metodoPago, montoRecibido, observaciones } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -103,6 +117,11 @@ router.post('/quick-sale', async (req, res) => {
           });
 
           // Registrar movimiento de inventario
+          console.log('Creando movimiento de inventario con usuarioId:', cajeroId, 'tipo:', typeof cajeroId);
+          if (!cajeroId || typeof cajeroId !== 'number') {
+            throw new Error(`ID de usuario inválido para movimiento de inventario: ${cajeroId}`);
+          }
+          
           await tx.movimientoInventario.create({
             data: {
               productoId: item.itemId,
@@ -110,7 +129,7 @@ router.post('/quick-sale', async (req, res) => {
               cantidad: item.cantidad,
               precioUnitario: item.precioUnitario,
               motivo: 'venta_rapida',
-              usuarioId: cajeroId,
+              usuarioId: parseInt(cajeroId),  // Asegurar que es un número
               observaciones: `Venta rápida - ${producto.nombre}`
             }
           });

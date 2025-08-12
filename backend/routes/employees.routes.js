@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { prisma, handlePrismaError } = require('../utils/database');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 
 // ==============================================
 // ENDPOINTS DE EMPLEADOS
@@ -202,7 +204,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST / - Crear nuevo empleado
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, res) => {
   try {
     const {
       nombre,
@@ -283,7 +285,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /:id - Actualizar empleado
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, auditMiddleware('empleados'), captureOriginalData('empleado'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -379,7 +381,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /:id - Eliminar empleado (soft delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, auditMiddleware('empleados'), criticalOperationAudit, captureOriginalData('empleado'), async (req, res) => {
   try {
     const { id } = req.params;
     

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 
 // ==============================================
 // ENDPOINTS DE HABITACIONES
@@ -48,7 +50,7 @@ router.get('/', validatePagination, async (req, res) => {
 });
 
 // POST / - Crear habitación
-router.post('/', validateRequired(['numero', 'tipo', 'precioPorDia']), async (req, res) => {
+router.post('/', authenticateToken, auditMiddleware('habitaciones'), validateRequired(['numero', 'tipo', 'precioPorDia']), async (req, res) => {
   try {
     const { numero, tipo, precioPorDia, descripcion } = req.body;
 
@@ -75,7 +77,7 @@ router.post('/', validateRequired(['numero', 'tipo', 'precioPorDia']), async (re
 });
 
 // PUT /:id/assign - Asignar habitación
-router.put('/:id/assign', async (req, res) => {
+router.put('/:id/assign', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), async (req, res) => {
   try {
     const { id } = req.params;
     const { pacienteId } = req.body;

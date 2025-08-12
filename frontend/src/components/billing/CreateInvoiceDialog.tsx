@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Dialog,
   DialogTitle,
@@ -23,7 +25,8 @@ import {
   TableHead,
   TableRow,
   Chip,
-  Divider
+  Divider,
+  FormHelperText,
 } from '@mui/material';
 import {
   Receipt as InvoiceIcon,
@@ -33,6 +36,7 @@ import {
 import { billingService } from '@/services/billingService';
 import { posService } from '@/services/posService';
 import { CreateInvoiceRequest, PAYMENT_TERMS } from '@/types/billing.types';
+import { createInvoiceFromAccountSchema, CreateInvoiceFromAccountFormValues } from '@/schemas/billing.schemas';
 
 interface CreateInvoiceDialogProps {
   open: boolean;
@@ -45,19 +49,32 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
   onClose,
   onSuccess
 }) => {
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CreateInvoiceFromAccountFormValues>({
+    resolver: yupResolver(createInvoiceFromAccountSchema),
+    defaultValues: {
+      cuentaPacienteId: 0,
+      fechaVencimiento: '',
+      terminosPago: '30 días',
+      observaciones: '',
+      descuentoGlobal: 0,
+    },
+  });
+
+  const watchedValues = watch();
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closedAccounts, setClosedAccounts] = useState<any[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<any | null>(null);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
-  
-  const [formData, setFormData] = useState<CreateInvoiceRequest>({
-    cuentaPacienteId: 0,
-    fechaVencimiento: '',
-    terminosPago: '30 días',
-    observaciones: '',
-    descuentoGlobal: 0
-  });
 
   const loadClosedAccounts = async () => {
     try {
@@ -81,25 +98,25 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
   useEffect(() => {
     if (open) {
       loadClosedAccounts();
-      setFormData({
+      reset({
         cuentaPacienteId: 0,
         fechaVencimiento: '',
         terminosPago: '30 días',
         observaciones: '',
-        descuentoGlobal: 0
+        descuentoGlobal: 0,
       });
       setSelectedAccount(null);
       setError(null);
     }
-  }, [open]);
+  }, [open, reset]);
 
   const handleClose = () => {
-    setFormData({
+    reset({
       cuentaPacienteId: 0,
       fechaVencimiento: '',
       terminosPago: '30 días',
       observaciones: '',
-      descuentoGlobal: 0
+      descuentoGlobal: 0,
     });
     setSelectedAccount(null);
     setError(null);
@@ -109,15 +126,10 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
   const handleAccountSelect = (accountId: number) => {
     const account = closedAccounts.find(acc => acc.id === accountId);
     setSelectedAccount(account);
-    setFormData(prev => ({
-      ...prev,
-      cuentaPacienteId: accountId
-    }));
+    setValue('cuentaPacienteId', accountId);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const onSubmit = async (data: CreateInvoiceFromAccountFormValues) => {
     if (!selectedAccount) {
       setError('Debe seleccionar una cuenta POS');
       return;
@@ -127,17 +139,19 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
     setError(null);
 
     try {
-      // Validar datos
-      const validation = billingService.validateInvoiceData(formData);
-      if (!validation.valid) {
-        setError(validation.errors.join(', '));
-        return;
-      }
+      const invoiceRequest: CreateInvoiceRequest = {
+        cuentaPacienteId: data.cuentaPacienteId,
+        fechaVencimiento: data.fechaVencimiento || '',
+        terminosPago: data.terminosPago,
+        observaciones: data.observaciones || '',
+        descuentoGlobal: data.descuentoGlobal || 0,
+      };
 
-      const response = await billingService.createInvoice(formData);
+      const response = await billingService.createInvoice(invoiceRequest);
 
       if (response.success) {
         onSuccess();
+        handleClose();
       } else {
         setError(response.message || 'Error al crear factura');
       }
@@ -149,13 +163,6 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
     }
   };
 
-  const handleFieldChange = (field: keyof CreateInvoiceRequest, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
   const calculateDueDate = (terms: string) => {
     const today = new Date();
     const days = PAYMENT_TERMS.find(t => t.label === terms)?.days || 30;
@@ -164,9 +171,9 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
   };
 
   const handleTermsChange = (terms: string) => {
-    handleFieldChange('terminosPago', terms);
-    if (!formData.fechaVencimiento) {
-      handleFieldChange('fechaVencimiento', calculateDueDate(terms));
+    setValue('terminosPago', terms);
+    if (!watchedValues.fechaVencimiento) {
+      setValue('fechaVencimiento', calculateDueDate(terms));
     }
   };
 
@@ -177,7 +184,7 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
         Crear Nueva Factura
       </DialogTitle>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -201,21 +208,33 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                   No hay cuentas POS cerradas disponibles para facturar
                 </Alert>
               ) : (
-                <FormControl fullWidth required>
-                  <InputLabel>Cuenta POS</InputLabel>
-                  <Select
-                    value={formData.cuentaPacienteId}
-                    label="Cuenta POS"
-                    onChange={(e) => handleAccountSelect(Number(e.target.value))}
-                  >
-                    {closedAccounts.map((account) => (
-                      <MenuItem key={account.id} value={account.id}>
-                        #{account.id} - {account.paciente.nombre} {account.paciente.apellidoPaterno} 
-                        ({billingService.formatCurrency(account.total)})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Controller
+                  name="cuentaPacienteId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <FormControl fullWidth required error={!!fieldState.error}>
+                      <InputLabel>Cuenta POS</InputLabel>
+                      <Select
+                        {...field}
+                        label="Cuenta POS"
+                        onChange={(e) => {
+                          field.onChange(Number(e.target.value));
+                          handleAccountSelect(Number(e.target.value));
+                        }}
+                      >
+                        {closedAccounts.map((account) => (
+                          <MenuItem key={account.id} value={account.id}>
+                            #{account.id} - {account.paciente.nombre} {account.paciente.apellidoPaterno} 
+                            ({billingService.formatCurrency(account.total)})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {fieldState.error && (
+                        <FormHelperText>{fieldState.error.message}</FormHelperText>
+                      )}
+                    </FormControl>
+                  )}
+                />
               )}
 
               {/* Detalles de la cuenta seleccionada */}
@@ -299,55 +318,86 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
 
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>Términos de Pago</InputLabel>
-                    <Select
-                      value={formData.terminosPago}
-                      label="Términos de Pago"
-                      onChange={(e) => handleTermsChange(e.target.value)}
-                    >
-                      {PAYMENT_TERMS.map((term) => (
-                        <MenuItem key={term.value} value={term.label}>
-                          {term.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Fecha de Vencimiento"
-                    type="date"
-                    value={formData.fechaVencimiento}
-                    onChange={(e) => handleFieldChange('fechaVencimiento', e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    helperText="Dejar vacío para calcular automáticamente según términos de pago"
+                  <Controller
+                    name="terminosPago"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <FormControl fullWidth error={!!fieldState.error}>
+                        <InputLabel>Términos de Pago</InputLabel>
+                        <Select
+                          {...field}
+                          label="Términos de Pago"
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                            handleTermsChange(e.target.value);
+                          }}
+                        >
+                          {PAYMENT_TERMS.map((term) => (
+                            <MenuItem key={term.value} value={term.label}>
+                              {term.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {fieldState.error && (
+                          <FormHelperText>{fieldState.error.message}</FormHelperText>
+                        )}
+                      </FormControl>
+                    )}
                   />
                 </Grid>
 
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Descuento Global (%)"
-                    type="number"
-                    value={formData.descuentoGlobal}
-                    onChange={(e) => handleFieldChange('descuentoGlobal', parseFloat(e.target.value) || 0)}
-                    inputProps={{ min: 0, max: 100, step: 0.1 }}
-                    helperText="Descuento adicional sobre el total de la cuenta"
+                  <Controller
+                    name="fechaVencimiento"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Fecha de Vencimiento"
+                        type="date"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message || "Dejar vacío para calcular automáticamente según términos de pago"}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    )}
                   />
                 </Grid>
 
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Observaciones"
-                    multiline
-                    rows={4}
-                    value={formData.observaciones}
-                    onChange={(e) => handleFieldChange('observaciones', e.target.value)}
-                    placeholder="Observaciones adicionales para la factura..."
+                  <Controller
+                    name="descuentoGlobal"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Descuento Global (%)"
+                        type="number"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message || "Descuento adicional sobre el total de la cuenta"}
+                        inputProps={{ min: 0, max: 100, step: 0.1 }}
+                      />
+                    )}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Controller
+                    name="observaciones"
+                    control={control}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Observaciones"
+                        multiline
+                        rows={4}
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                        placeholder="Observaciones adicionales para la factura..."
+                      />
+                    )}
                   />
                 </Grid>
               </Grid>
@@ -368,14 +418,14 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                           {billingService.formatCurrency(selectedAccount.total)}
                         </Typography>
                       </Grid>
-                      {formData.descuentoGlobal > 0 && (
+                      {watchedValues.descuentoGlobal > 0 && (
                         <>
                           <Grid item xs={6}>
-                            <Typography variant="body2">Descuento ({formData.descuentoGlobal}%):</Typography>
+                            <Typography variant="body2">Descuento ({watchedValues.descuentoGlobal}%):</Typography>
                           </Grid>
                           <Grid item xs={6} sx={{ textAlign: 'right' }}>
                             <Typography variant="body2" color="success.main">
-                              -{billingService.formatCurrency(selectedAccount.total * formData.descuentoGlobal / 100)}
+                              -{billingService.formatCurrency(selectedAccount.total * watchedValues.descuentoGlobal / 100)}
                             </Typography>
                           </Grid>
                         </>
@@ -386,7 +436,7 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                       <Grid item xs={6} sx={{ textAlign: 'right' }}>
                         <Typography variant="body2">
                           {billingService.formatCurrency(
-                            (selectedAccount.total * (1 - formData.descuentoGlobal / 100)) * 0.16
+                            (selectedAccount.total * (1 - (watchedValues.descuentoGlobal || 0) / 100)) * 0.16
                           )}
                         </Typography>
                       </Grid>
@@ -397,7 +447,7 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
                       <Grid item xs={6} sx={{ textAlign: 'right' }}>
                         <Typography variant="subtitle1" fontWeight="bold" color="primary">
                           {billingService.formatCurrency(
-                            (selectedAccount.total * (1 - formData.descuentoGlobal / 100)) * 1.16
+                            (selectedAccount.total * (1 - (watchedValues.descuentoGlobal || 0) / 100)) * 1.16
                           )}
                         </Typography>
                       </Grid>
@@ -409,22 +459,22 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
           </Grid>
         </DialogContent>
 
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleClose} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={loading || !selectedAccount}
-            startIcon={<InvoiceIcon />}
-          >
-            {loading ? 'Creando...' : 'Crear Factura'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
-  );
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={handleClose} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading || !selectedAccount}
+              startIcon={<InvoiceIcon />}
+            >
+              {loading ? 'Creando...' : 'Crear Factura'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    );
 };
 
 export default CreateInvoiceDialog;

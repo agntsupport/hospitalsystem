@@ -1,7 +1,7 @@
 {
   "name": "hospital-management-system",
   "version": "1.0.0",
-  "description": "Sistema de gestión hospitalaria completo",
+  "description": "Sistema de Gestión Hospitalaria Integral - Desarrollado por agnt_",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
@@ -18,8 +18,9 @@
     "docker:down": "docker-compose down",
     "deploy": "chmod +x deployment/scripts/deploy.sh && ./deployment/scripts/deploy.sh"
   },
-  "keywords": ["hospital", "management", "healthcare", "pos", "inventory"],
-  "author": "Hospital Management Team",
+  "keywords": ["hospital", "management", "healthcare", "pos", "inventory", "agnt", "postgresql", "react", "nodejs"],
+  "author": "Alfredo Manuel Reyes <alfredo@agnt.dev>",
+  "company": "agnt_ - Software Development Company",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.0"

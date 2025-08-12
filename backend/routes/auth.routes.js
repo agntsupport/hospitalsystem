@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { prisma, handlePrismaError } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
+const { auditMiddleware } = require('../middleware/audit.middleware');
 
 // ==============================================
 // ENDPOINTS DE AUTENTICACIÓN
 // ==============================================
 
-// POST /login - Iniciar sesión
+// POST /login - Iniciar sesión con JWT real
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -44,36 +47,70 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // En un entorno real, aquí verificarías el hash de la contraseña
-    // Para este ejemplo, asumimos que las contraseñas coinciden
-    if (password === 'admin123' || password === 'cajero123' || password === 'enfermero123' || 
-        password === 'medico123' || password === 'residente123' || password === 'almacen123' || 
-        password === 'socio123') {
-      
-      // Generar token mock (en producción usar JWT real)
-      const token = `jwt_token_${user.id}_${Date.now()}`;
-
-      const userResponse = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        rol: user.rol,
-        activo: user.activo,
-        fechaRegistro: user.createdAt,
-        fechaActualizacion: user.updatedAt
-      };
-
-      res.json({ 
-        success: true, 
-        message: 'Login exitoso',
-        data: { user: userResponse, token }
-      });
+    // Verificar contraseña con bcrypt
+    let passwordValid = false;
+    
+    // Si el password hash empieza con $2, es bcrypt
+    if (user.passwordHash && user.passwordHash.startsWith('$2')) {
+      passwordValid = await bcrypt.compare(password, user.passwordHash);
     } else {
-      res.status(401).json({ 
+      // Para migración gradual: verificar contraseñas conocidas y actualizar a bcrypt
+      const knownPasswords = {
+        'admin123': user.username === 'admin',
+        'cajero123': user.username === 'cajero1',
+        'enfermero123': user.username === 'enfermero1',
+        'medico123': user.username === 'especialista1',
+        'residente123': user.username === 'residente1',
+        'almacen123': user.username === 'almacen1',
+        'socio123': user.username === 'socio1'
+      };
+      
+      if (knownPasswords[password]) {
+        passwordValid = true;
+        // Actualizar a bcrypt hash
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await prisma.usuario.update({
+          where: { id: user.id },
+          data: { passwordHash: hashedPassword }
+        });
+      }
+    }
+
+    if (!passwordValid) {
+      return res.status(401).json({ 
         success: false, 
         message: 'Credenciales inválidas' 
       });
     }
+
+    // Generar JWT real
+    const tokenPayload = {
+      userId: user.id,
+      username: user.username,
+      rol: user.rol
+    };
+
+    const token = jwt.sign(
+      tokenPayload, 
+      process.env.JWT_SECRET || 'super_secure_jwt_secret_key_for_hospital_system_2024',
+      { expiresIn: '24h' }
+    );
+
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      rol: user.rol,
+      activo: user.activo,
+      fechaRegistro: user.createdAt,
+      fechaActualizacion: user.updatedAt
+    };
+
+    res.json({ 
+      success: true, 
+      message: 'Login exitoso',
+      data: { user: userResponse, token }
+    });
 
   } catch (error) {
     console.error('Error en login:', error);
@@ -82,7 +119,7 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /logout - Cerrar sesión
-router.post('/logout', (req, res) => {
+router.post('/logout', authenticateToken, auditMiddleware('autenticacion'), (req, res) => {
   // En este servidor simple, el logout es solo del lado del cliente
   // En producción aquí se invalidaría el token en una blacklist
   res.json({

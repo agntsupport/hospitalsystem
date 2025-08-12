@@ -39,6 +39,12 @@ app.get('/health', (req, res) => {
 });
 
 // ==============================================
+// MIDDLEWARE DE AUDITORÍA
+// ==============================================
+
+const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('./middleware/audit.middleware');
+
+// ==============================================
 // RUTAS MODULARES
 // ==============================================
 
@@ -49,22 +55,49 @@ const employeesRoutes = require('./routes/employees.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const roomsRoutes = require('./routes/rooms.routes');
 const officesRoutes = require('./routes/offices.routes');
+const quirofanosRoutes = require('./routes/quirofanos.routes');
 const billingRoutes = require('./routes/billing.routes');
 const hospitalizationRoutes = require('./routes/hospitalization.routes');
 const posRoutes = require('./routes/pos.routes');
 const reportsRoutes = require('./routes/reports.routes');
+const auditRoutes = require('./routes/audit.routes');
 
-// Configurar rutas con prefijos
+// Configurar rutas con prefijos y auditoría
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientsRoutes);
 app.use('/api/employees', employeesRoutes);
+
+// Rutas con auditoría completa (módulos críticos)
 app.use('/api/inventory', inventoryRoutes);
+
+app.use('/api/pos',
+  criticalOperationAudit,
+  auditMiddleware('pos'),
+  captureOriginalData('cuenta'),
+  posRoutes
+);
+
+app.use('/api/hospitalization',
+  criticalOperationAudit,
+  auditMiddleware('hospitalizacion'),
+  captureOriginalData('hospitalizacion'),
+  hospitalizationRoutes
+);
+
+app.use('/api/billing',
+  criticalOperationAudit,
+  auditMiddleware('facturacion'),
+  billingRoutes
+);
+
+// Rutas sin auditoría crítica
 app.use('/api/rooms', roomsRoutes);
 app.use('/api/offices', officesRoutes);
-app.use('/api/billing', billingRoutes);
-app.use('/api/hospitalization', hospitalizationRoutes);
-app.use('/api/pos', posRoutes);
+app.use('/api/quirofanos', quirofanosRoutes);
 app.use('/api/reports', reportsRoutes);
+
+// Ruta de consulta de auditoría
+app.use('/api/audit', auditRoutes);
 
 // ==============================================
 // ENDPOINTS LEGACY (COMPATIBILIDAD)

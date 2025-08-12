@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Dialog,
   DialogTitle,
@@ -20,6 +22,7 @@ import {
   CircularProgress,
   Divider,
   Chip,
+  FormHelperText,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -32,6 +35,7 @@ import {
 
 import { patientsService } from '@/services/patientsService';
 import { Patient, CreatePatientRequest, GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPES, RELATIONSHIP_OPTIONS, RELATIONSHIP_LABELS } from '@/types/patients.types';
+import { patientFormSchema, PatientFormValues } from '@/schemas/patients.schemas';
 import { toast } from 'react-toastify';
 import PostalCodeAutocomplete from '@/components/common/PostalCodeAutocomplete';
 
@@ -52,9 +56,9 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useAddressAutocomplete, setUseAddressAutocomplete] = useState(true);
-  
-  // Form data
-  const [formData, setFormData] = useState<CreatePatientRequest>({
+
+  // Default form values
+  const defaultValues: PatientFormValues = {
     nombre: '',
     apellidoPaterno: '',
     apellidoMaterno: '',
@@ -76,7 +80,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     antecedentesFamiliares: '',
     contactoEmergencia: {
       nombre: '',
-      relacion: '',
+      relacion: 'padre',
       telefono: ''
     },
     seguroMedico: {
@@ -84,7 +88,24 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
       numeroPoliza: '',
       vigencia: ''
     }
+  };
+
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors, isValid }
+  } = useForm<PatientFormValues>({
+    resolver: yupResolver(patientFormSchema),
+    defaultValues,
+    mode: 'onChange'
   });
+
+  const watchedValues = watch();
 
   const steps = [
     'Datos Personales',
@@ -96,7 +117,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     if (open) {
       if (editingPatient) {
         // Llenar formulario con datos del paciente a editar
-        setFormData({
+        const editingData: PatientFormValues = {
           nombre: editingPatient.nombre || '',
           apellidoPaterno: editingPatient.apellidoPaterno || '',
           apellidoMaterno: editingPatient.apellidoMaterno || '',
@@ -120,7 +141,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
           antecedentesFamiliares: editingPatient.antecedentesFamiliares || '',
           contactoEmergencia: editingPatient.contactoEmergencia || {
             nombre: '',
-            relacion: '',
+            relacion: 'padre',
             telefono: ''
           },
           seguroMedico: editingPatient.seguroMedico || {
@@ -128,67 +149,22 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             numeroPoliza: '',
             vigencia: ''
           }
-        });
+        };
+        
+        reset(editingData);
         // Si hay código postal, no usar autocompletado por defecto para permitir edición manual
         setUseAddressAutocomplete(false);
       } else {
         resetForm();
       }
     }
-  }, [open, editingPatient]);
+  }, [open, editingPatient, reset]);
 
   const resetForm = () => {
     setActiveStep(0);
     setError(null);
-    setFormData({
-      nombre: '',
-      apellidoPaterno: '',
-      apellidoMaterno: '',
-      fechaNacimiento: '',
-      genero: 'M',
-      tipoSangre: '',
-      telefono: '',
-      email: '',
-      direccion: '',
-      ciudad: '',
-      estado: '',
-      codigoPostal: '',
-      ocupacion: '',
-      estadoCivil: 'soltero',
-      religion: '',
-      alergias: '',
-      medicamentosActuales: '',
-      antecedentesPatologicos: '',
-      antecedentesFamiliares: '',
-      contactoEmergencia: {
-        nombre: '',
-        relacion: '',
-        telefono: ''
-      },
-      seguroMedico: {
-        aseguradora: '',
-        numeroPoliza: '',
-        vigencia: ''
-      }
-    });
-  };
-
-  const handleInputChange = (field: string, value: any) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof CreatePatientRequest],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+    setUseAddressAutocomplete(true);
+    reset(defaultValues);
   };
 
   const handleAddressSelected = (addressInfo: {
@@ -198,37 +174,43 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     municipio: string;
     colonia?: string;
   }) => {
-    setFormData(prev => ({
-      ...prev,
-      codigoPostal: addressInfo.codigoPostal,
-      estado: addressInfo.estado,
-      ciudad: addressInfo.ciudad,
-      // Si hay colonia seleccionada, incluirla en la dirección
-      direccion: addressInfo.colonia 
-        ? `${addressInfo.colonia}, ${addressInfo.municipio}`
-        : prev.direccion
-    }));
-  };
-
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 0:
-        return !!(formData.nombre && formData.apellidoPaterno && formData.fechaNacimiento && formData.genero);
-      case 1:
-        return true; // Optional fields
-      case 2:
-        return true; // Optional fields
-      default:
-        return true;
+    setValue('codigoPostal', addressInfo.codigoPostal);
+    setValue('estado', addressInfo.estado);
+    setValue('ciudad', addressInfo.ciudad);
+    
+    // Si hay colonia seleccionada, incluirla en la dirección
+    if (addressInfo.colonia) {
+      const currentDireccion = watchedValues.direccion;
+      setValue('direccion', `${addressInfo.colonia}, ${addressInfo.municipio}`);
     }
   };
 
-  const handleNext = () => {
-    if (validateStep(activeStep)) {
+  const validateStep = async (step: number): Promise<boolean> => {
+    const fieldsToValidate = getFieldsForStep(step);
+    const result = await trigger(fieldsToValidate);
+    return result;
+  };
+
+  const getFieldsForStep = (step: number): (keyof PatientFormValues)[] => {
+    switch (step) {
+      case 0:
+        return ['nombre', 'apellidoPaterno', 'fechaNacimiento', 'genero'];
+      case 1:
+        return []; // Todos los campos de contacto son opcionales
+      case 2:
+        return []; // Todos los campos médicos son opcionales
+      default:
+        return [];
+    }
+  };
+
+  const handleNext = async () => {
+    const isStepValid = await validateStep(activeStep);
+    if (isStepValid) {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
       setError(null);
     } else {
-      setError('Por favor complete los campos requeridos');
+      setError('Por favor complete los campos requeridos y corrija los errores');
     }
   };
 
@@ -237,18 +219,13 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     setError(null);
   };
 
-  const handleSubmit = async () => {
-    if (!validateStep(activeStep)) {
-      setError('Por favor complete los campos requeridos');
-      return;
-    }
-
+  const onFormSubmit = async (data: PatientFormValues) => {
     setLoading(true);
     setError(null);
 
     try {
       // Clean up empty fields
-      const cleanFormData = { ...formData };
+      const cleanFormData = { ...data };
       
       // Remove empty contact emergency if no data
       if (!cleanFormData.contactoEmergencia?.nombre) {
@@ -298,97 +275,171 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Nombre *"
-                value={formData.nombre}
-                onChange={(e) => handleInputChange('nombre', e.target.value)}
-                required
+              <Controller
+                name="nombre"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Nombre *"
+                    required
+                    error={!!errors.nombre}
+                    helperText={errors.nombre?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Apellido Paterno *"
-                value={formData.apellidoPaterno}
-                onChange={(e) => handleInputChange('apellidoPaterno', e.target.value)}
-                required
+              <Controller
+                name="apellidoPaterno"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Apellido Paterno *"
+                    required
+                    error={!!errors.apellidoPaterno}
+                    helperText={errors.apellidoPaterno?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Apellido Materno"
-                value={formData.apellidoMaterno}
-                onChange={(e) => handleInputChange('apellidoMaterno', e.target.value)}
+              <Controller
+                name="apellidoMaterno"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Apellido Materno"
+                    error={!!errors.apellidoMaterno}
+                    helperText={errors.apellidoMaterno?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Fecha de Nacimiento *"
-                type="date"
-                value={formData.fechaNacimiento}
-                onChange={(e) => handleInputChange('fechaNacimiento', e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                required
+              <Controller
+                name="fechaNacimiento"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Fecha de Nacimiento *"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    required
+                    error={!!errors.fechaNacimiento}
+                    helperText={errors.fechaNacimiento?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
-                <InputLabel>Género</InputLabel>
-                <Select
-                  value={formData.genero}
-                  label="Género *"
-                  onChange={(e) => handleInputChange('genero', e.target.value)}
-                >
-                  {Object.entries(GENDER_OPTIONS).map(([key, label]) => (
-                    <MenuItem key={key} value={key}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Controller
+                name="genero"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth required error={!!errors.genero}>
+                    <InputLabel>Género *</InputLabel>
+                    <Select
+                      {...field}
+                      label="Género *"
+                    >
+                      {Object.entries(GENDER_OPTIONS).map(([key, label]) => (
+                        <MenuItem key={key} value={key}>
+                          {label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.genero && (
+                      <FormHelperText>{errors.genero.message}</FormHelperText>
+                    )}
+                  </FormControl>
+                )}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Tipo de Sangre</InputLabel>
-                <Select
-                  value={formData.tipoSangre || ''}
-                  label="Tipo de Sangre"
-                  onChange={(e) => handleInputChange('tipoSangre', e.target.value)}
-                >
-                  <MenuItem value="">No especificado</MenuItem>
-                  {BLOOD_TYPES.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Controller
+                name="tipoSangre"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.tipoSangre}>
+                    <InputLabel>Tipo de Sangre</InputLabel>
+                    <Select
+                      {...field}
+                      label="Tipo de Sangre"
+                    >
+                      <MenuItem value="">No especificado</MenuItem>
+                      {BLOOD_TYPES.map((type) => (
+                        <MenuItem key={type} value={type}>
+                          {type}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.tipoSangre && (
+                      <FormHelperText>{errors.tipoSangre.message}</FormHelperText>
+                    )}
+                  </FormControl>
+                )}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Estado Civil</InputLabel>
-                <Select
-                  value={formData.estadoCivil || 'soltero'}
-                  label="Estado Civil"
-                  onChange={(e) => handleInputChange('estadoCivil', e.target.value)}
-                >
-                  {Object.entries(CIVIL_STATUS_OPTIONS).map(([key, label]) => (
-                    <MenuItem key={key} value={key}>
-                      {label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Controller
+                name="estadoCivil"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.estadoCivil}>
+                    <InputLabel>Estado Civil</InputLabel>
+                    <Select
+                      {...field}
+                      label="Estado Civil"
+                    >
+                      {Object.entries(CIVIL_STATUS_OPTIONS).map(([key, label]) => (
+                        <MenuItem key={key} value={key}>
+                          {label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {errors.estadoCivil && (
+                      <FormHelperText>{errors.estadoCivil.message}</FormHelperText>
+                    )}
+                  </FormControl>
+                )}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Ocupación"
-                value={formData.ocupacion}
-                onChange={(e) => handleInputChange('ocupacion', e.target.value)}
+              <Controller
+                name="ocupacion"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Ocupación"
+                    error={!!errors.ocupacion}
+                    helperText={errors.ocupacion?.message}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Controller
+                name="religion"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Religión"
+                    error={!!errors.religion}
+                    helperText={errors.religion?.message}
+                  />
+                )}
               />
             </Grid>
           </Grid>
@@ -404,20 +455,34 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Teléfono"
-                value={formData.telefono}
-                onChange={(e) => handleInputChange('telefono', e.target.value)}
+              <Controller
+                name="telefono"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Teléfono"
+                    error={!!errors.telefono}
+                    helperText={errors.telefono?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
+              <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Email"
+                    type="email"
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                  />
+                )}
               />
             </Grid>
 
@@ -444,7 +509,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               <Grid item xs={12}>
                 <PostalCodeAutocomplete
                   onAddressSelected={handleAddressSelected}
-                  initialPostalCode={formData.codigoPostal}
+                  initialPostalCode={watchedValues.codigoPostal}
                   disabled={loading}
                 />
               </Grid>
@@ -452,47 +517,77 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               // Campos manuales
               <>
                 <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Código Postal"
-                    value={formData.codigoPostal}
-                    onChange={(e) => handleInputChange('codigoPostal', e.target.value)}
-                    placeholder="5 dígitos"
-                    inputProps={{ maxLength: 5 }}
+                  <Controller
+                    name="codigoPostal"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Código Postal"
+                        placeholder="5 dígitos"
+                        inputProps={{ maxLength: 5 }}
+                        error={!!errors.codigoPostal}
+                        helperText={errors.codigoPostal?.message}
+                      />
+                    )}
                   />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Ciudad"
-                    value={formData.ciudad}
-                    onChange={(e) => handleInputChange('ciudad', e.target.value)}
+                  <Controller
+                    name="ciudad"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Ciudad"
+                        error={!!errors.ciudad}
+                        helperText={errors.ciudad?.message}
+                      />
+                    )}
                   />
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Estado"
-                    value={formData.estado}
-                    onChange={(e) => handleInputChange('estado', e.target.value)}
+                  <Controller
+                    name="estado"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="Estado"
+                        error={!!errors.estado}
+                        helperText={errors.estado?.message}
+                      />
+                    )}
                   />
                 </Grid>
               </>
             )}
 
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Dirección Completa"
-                value={formData.direccion}
-                onChange={(e) => handleInputChange('direccion', e.target.value)}
-                placeholder="Calle, número, colonia..."
-                multiline
-                rows={2}
-                helperText={useAddressAutocomplete 
-                  ? "La colonia se completará automáticamente. Agrega calle y número."
-                  : "Ingresa la dirección completa: calle, número, colonia"
-                }
+              <Controller
+                name="direccion"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Dirección Completa"
+                    placeholder="Calle, número, colonia..."
+                    multiline
+                    rows={2}
+                    error={!!errors.direccion}
+                    helperText={
+                      errors.direccion?.message ||
+                      (useAddressAutocomplete 
+                        ? "La colonia se completará automáticamente. Agrega calle y número."
+                        : "Ingresa la dirección completa: calle, número, colonia"
+                      )
+                    }
+                  />
+                )}
               />
             </Grid>
 
@@ -503,28 +598,67 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Nombre del Contacto"
-                value={formData.contactoEmergencia?.nombre || ''}
-                onChange={(e) => handleInputChange('contactoEmergencia.nombre', e.target.value)}
+              <Controller
+                name="contactoEmergencia.nombre"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Nombre del Contacto"
+                    error={!!errors.contactoEmergencia?.nombre}
+                    helperText={errors.contactoEmergencia?.nombre?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Teléfono del Contacto"
-                value={formData.contactoEmergencia?.telefono || ''}
-                onChange={(e) => handleInputChange('contactoEmergencia.telefono', e.target.value)}
+              <Controller
+                name="contactoEmergencia.telefono"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Teléfono del Contacto"
+                    error={!!errors.contactoEmergencia?.telefono}
+                    helperText={errors.contactoEmergencia?.telefono?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Relación"
-                value={formData.contactoEmergencia?.relacion || ''}
-                onChange={(e) => handleInputChange('contactoEmergencia.relacion', e.target.value)}
-                placeholder="ej. padre, madre, cónyuge, hermano, etc."
+              <Controller
+                name="contactoEmergencia.relacion"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth error={!!errors.contactoEmergencia?.relacion}>
+                    <InputLabel>Relación</InputLabel>
+                    <Select
+                      {...field}
+                      label="Relación"
+                    >
+                      <MenuItem value="padre">Padre</MenuItem>
+                      <MenuItem value="madre">Madre</MenuItem>
+                      <MenuItem value="hijo">Hijo</MenuItem>
+                      <MenuItem value="hija">Hija</MenuItem>
+                      <MenuItem value="conyuge">Cónyuge</MenuItem>
+                      <MenuItem value="hermano">Hermano</MenuItem>
+                      <MenuItem value="hermana">Hermana</MenuItem>
+                      <MenuItem value="abuelo">Abuelo</MenuItem>
+                      <MenuItem value="abuela">Abuela</MenuItem>
+                      <MenuItem value="tio">Tío</MenuItem>
+                      <MenuItem value="tia">Tía</MenuItem>
+                      <MenuItem value="primo">Primo</MenuItem>
+                      <MenuItem value="prima">Prima</MenuItem>
+                      <MenuItem value="amigo">Amigo</MenuItem>
+                      <MenuItem value="otro">Otro</MenuItem>
+                    </Select>
+                    {errors.contactoEmergencia?.relacion && (
+                      <FormHelperText>{errors.contactoEmergencia.relacion.message}</FormHelperText>
+                    )}
+                  </FormControl>
+                )}
               />
             </Grid>
           </Grid>
@@ -540,47 +674,75 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               </Typography>
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Alergias"
-                multiline
-                rows={2}
-                value={formData.alergias}
-                onChange={(e) => handleInputChange('alergias', e.target.value)}
-                placeholder="Describa las alergias conocidas..."
+              <Controller
+                name="alergias"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Alergias"
+                    multiline
+                    rows={2}
+                    placeholder="Describa las alergias conocidas..."
+                    error={!!errors.alergias}
+                    helperText={errors.alergias?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Medicamentos Actuales"
-                multiline
-                rows={2}
-                value={formData.medicamentosActuales}
-                onChange={(e) => handleInputChange('medicamentosActuales', e.target.value)}
-                placeholder="Liste los medicamentos que toma actualmente..."
+              <Controller
+                name="medicamentosActuales"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Medicamentos Actuales"
+                    multiline
+                    rows={2}
+                    placeholder="Liste los medicamentos que toma actualmente..."
+                    error={!!errors.medicamentosActuales}
+                    helperText={errors.medicamentosActuales?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Antecedentes Patológicos"
-                multiline
-                rows={3}
-                value={formData.antecedentesPatologicos}
-                onChange={(e) => handleInputChange('antecedentesPatologicos', e.target.value)}
-                placeholder="Enfermedades o cirugías previas..."
+              <Controller
+                name="antecedentesPatologicos"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Antecedentes Patológicos"
+                    multiline
+                    rows={3}
+                    placeholder="Enfermedades o cirugías previas..."
+                    error={!!errors.antecedentesPatologicos}
+                    helperText={errors.antecedentesPatologicos?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Antecedentes Familiares"
-                multiline
-                rows={3}
-                value={formData.antecedentesFamiliares}
-                onChange={(e) => handleInputChange('antecedentesFamiliares', e.target.value)}
-                placeholder="Enfermedades hereditarias en la familia..."
+              <Controller
+                name="antecedentesFamiliares"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Antecedentes Familiares"
+                    multiline
+                    rows={3}
+                    placeholder="Enfermedades hereditarias en la familia..."
+                    error={!!errors.antecedentesFamiliares}
+                    helperText={errors.antecedentesFamiliares?.message}
+                  />
+                )}
               />
             </Grid>
 
@@ -591,29 +753,50 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               </Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Aseguradora"
-                value={formData.seguroMedico?.aseguradora || ''}
-                onChange={(e) => handleInputChange('seguroMedico.aseguradora', e.target.value)}
+              <Controller
+                name="seguroMedico.aseguradora"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Aseguradora"
+                    error={!!errors.seguroMedico?.aseguradora}
+                    helperText={errors.seguroMedico?.aseguradora?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Número de Póliza"
-                value={formData.seguroMedico?.numeroPoliza || ''}
-                onChange={(e) => handleInputChange('seguroMedico.numeroPoliza', e.target.value)}
+              <Controller
+                name="seguroMedico.numeroPoliza"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Número de Póliza"
+                    error={!!errors.seguroMedico?.numeroPoliza}
+                    helperText={errors.seguroMedico?.numeroPoliza?.message}
+                  />
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Vigencia"
-                type="date"
-                value={formData.seguroMedico?.vigencia || ''}
-                onChange={(e) => handleInputChange('seguroMedico.vigencia', e.target.value)}
-                InputLabelProps={{ shrink: true }}
+              <Controller
+                name="seguroMedico.vigencia"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Vigencia"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    error={!!errors.seguroMedico?.vigencia}
+                    helperText={errors.seguroMedico?.vigencia?.message}
+                  />
+                )}
               />
             </Grid>
           </Grid>
@@ -665,7 +848,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
         {activeStep === steps.length - 1 ? (
           <Button
             variant="contained"
-            onClick={handleSubmit}
+            onClick={handleSubmit(onFormSubmit)}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
           >

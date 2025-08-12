@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Dialog,
   DialogTitle,
@@ -16,6 +18,7 @@ import {
   Box,
   Alert,
   CircularProgress,
+  FormHelperText,
 } from '@mui/material';
 import { PersonAdd as PersonAddIcon } from '@mui/icons-material';
 
@@ -25,6 +28,7 @@ import { patientService } from '@/services/patientService';
 import { AttentionType, PatientAccountFormData } from '@/types/pos.types';
 import { Patient } from '@/types/patient.types';
 import { Employee } from '@/types/employee.types';
+import { newAccountSchema, NewAccountFormValues } from '@/schemas/pos.schemas';
 
 interface NewAccountDialogProps {
   open: boolean;
@@ -37,12 +41,23 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
   onClose,
   onAccountCreated,
 }) => {
-  const [formData, setFormData] = useState<PatientAccountFormData>({
-    pacienteId: 0,
-    tipoAtencion: 'consulta_general',
-    anticipo: 0,
-    medicoTratanteId: undefined,
-    observaciones: '',
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<NewAccountFormValues>({
+    resolver: yupResolver(newAccountSchema),
+    defaultValues: {
+      pacienteId: 0,
+      tipoAtencion: 'consulta_general',
+      anticipo: 0,
+      medicoTratanteId: undefined,
+      observaciones: '',
+    },
   });
   
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -93,7 +108,7 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     }
   };
 
-  const handleSubmit = async () => {
+  const onSubmit = async (data: NewAccountFormValues) => {
     if (!selectedPatient) {
       setError('Debe seleccionar un paciente');
       return;
@@ -104,9 +119,11 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
 
     try {
       const accountData: PatientAccountFormData = {
-        ...formData,
         pacienteId: selectedPatient.id,
+        tipoAtencion: data.tipoAtencion,
+        anticipo: data.anticipo || 0,
         medicoTratanteId: selectedDoctor?.id,
+        observaciones: data.observaciones || '',
       };
 
       const response = await posService.createPatientAccount(accountData);
@@ -122,8 +139,26 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     }
   };
 
+  const handlePatientSelect = (patient: Patient | null) => {
+    setSelectedPatient(patient);
+    if (patient) {
+      setValue('pacienteId', patient.id);
+    } else {
+      setValue('pacienteId', 0);
+    }
+  };
+
+  const handleDoctorSelect = (doctor: Employee | null) => {
+    setSelectedDoctor(doctor);
+    if (doctor) {
+      setValue('medicoTratanteId', doctor.id);
+    } else {
+      setValue('medicoTratanteId', undefined);
+    }
+  };
+
   const handleClose = () => {
-    setFormData({
+    reset({
       pacienteId: 0,
       tipoAtencion: 'consulta_general',
       anticipo: 0,
@@ -143,98 +178,120 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
         Nueva Cuenta de Paciente
       </DialogTitle>
       
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
 
-        <Grid container spacing={3} sx={{ mt: 1 }}>
-          {/* Selección de Paciente */}
-          <Grid item xs={12}>
-            <Typography variant="subtitle2" gutterBottom>
-              Paciente *
-            </Typography>
-            <Autocomplete
-              options={patients}
-              getOptionLabel={(option) => 
-                `${option.nombre} ${option.apellidoPaterno} ${option.apellidoMaterno || ''}`
-              }
-              value={selectedPatient}
-              onChange={(_, newValue) => setSelectedPatient(newValue)}
-              onInputChange={(_, newInputValue) => {
-                searchPatients(newInputValue);
-              }}
-              loading={searchLoading}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Buscar paciente por nombre..."
-                  fullWidth
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {searchLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                        {params.InputProps.endAdornment}
-                      </>
-                    ),
-                  }}
-                />
-              )}
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            {/* Selección de Paciente */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>
+                Paciente *
+              </Typography>
+              <Controller
+                name="pacienteId"
+                control={control}
+                render={({ field, fieldState }) => (
                   <Box>
-                    <Typography variant="body2">
-                      {option.nombre} {option.apellidoPaterno} {option.apellidoMaterno}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {option.telefono} | {option.email || 'Sin email'}
-                    </Typography>
+                    <Autocomplete
+                      options={patients}
+                      getOptionLabel={(option) => 
+                        `${option.nombre} ${option.apellidoPaterno} ${option.apellidoMaterno || ''}`
+                      }
+                      value={selectedPatient}
+                      onChange={(_, newValue) => handlePatientSelect(newValue)}
+                      onInputChange={(_, newInputValue) => {
+                        searchPatients(newInputValue);
+                      }}
+                      loading={searchLoading}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Buscar paciente por nombre..."
+                          fullWidth
+                          error={!!fieldState.error}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {searchLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props}>
+                          <Box>
+                            <Typography variant="body2">
+                              {option.nombre} {option.apellidoPaterno} {option.apellidoMaterno}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {option.telefono} | {option.email || 'Sin email'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+                      noOptionsText="No se encontraron pacientes"
+                    />
+                    {fieldState.error && (
+                      <FormHelperText error>{fieldState.error.message}</FormHelperText>
+                    )}
                   </Box>
-                </Box>
-              )}
-              noOptionsText="No se encontraron pacientes"
-            />
-          </Grid>
+                )}
+              />
+            </Grid>
 
           {/* Tipo de Atención */}
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Tipo de Atención *</InputLabel>
-              <Select
-                value={formData.tipoAtencion}
-                label="Tipo de Atención *"
-                onChange={(e) => setFormData({
-                  ...formData,
-                  tipoAtencion: e.target.value as AttentionType
-                })}
-              >
-                {attentionTypes.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Controller
+              name="tipoAtencion"
+              control={control}
+              render={({ field, fieldState }) => (
+                <FormControl fullWidth error={!!fieldState.error}>
+                  <InputLabel>Tipo de Atención *</InputLabel>
+                  <Select
+                    {...field}
+                    label="Tipo de Atención *"
+                  >
+                    {attentionTypes.map((type) => (
+                      <MenuItem key={type.value} value={type.value}>
+                        {type.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {fieldState.error && (
+                    <FormHelperText>{fieldState.error.message}</FormHelperText>
+                  )}
+                </FormControl>
+              )}
+            />
           </Grid>
 
           {/* Anticipo */}
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Anticipo"
-              type="number"
-              value={formData.anticipo}
-              onChange={(e) => setFormData({
-                ...formData,
-                anticipo: parseFloat(e.target.value) || 0
-              })}
-              inputProps={{
-                min: 0,
-                step: 0.01
-              }}
+            <Controller
+              name="anticipo"
+              control={control}
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Anticipo"
+                  type="number"
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  inputProps={{
+                    min: 0,
+                    step: 0.01
+                  }}
+                />
+              )}
             />
           </Grid>
 
@@ -243,70 +300,87 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
             <Typography variant="subtitle2" gutterBottom>
               Médico Tratante
             </Typography>
-            <Autocomplete
-              options={doctors}
-              getOptionLabel={(option) => 
-                `Dr(a). ${option.nombre} ${option.apellidoPaterno} - ${option.especialidad || 'Sin especialidad'}`
-              }
-              value={selectedDoctor}
-              onChange={(_, newValue) => setSelectedDoctor(newValue)}
-              onInputChange={(_, newInputValue) => {
-                searchDoctors(newInputValue);
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Buscar médico..."
-                  fullWidth
-                />
-              )}
-              renderOption={(props, option) => (
-                <Box component="li" {...props}>
-                  <Box>
-                    <Typography variant="body2">
-                      Dr(a). {option.nombre} {option.apellidoPaterno}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {option.especialidad || 'Sin especialidad'} | {option.tipoEmpleado}
-                    </Typography>
-                  </Box>
+            <Controller
+              name="medicoTratanteId"
+              control={control}
+              render={({ field, fieldState }) => (
+                <Box>
+                  <Autocomplete
+                    options={doctors}
+                    getOptionLabel={(option) => 
+                      `Dr(a). ${option.nombre} ${option.apellidoPaterno} - ${option.especialidad || 'Sin especialidad'}`
+                    }
+                    value={selectedDoctor}
+                    onChange={(_, newValue) => handleDoctorSelect(newValue)}
+                    onInputChange={(_, newInputValue) => {
+                      searchDoctors(newInputValue);
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Buscar médico..."
+                        fullWidth
+                        error={!!fieldState.error}
+                      />
+                    )}
+                    renderOption={(props, option) => (
+                      <Box component="li" {...props}>
+                        <Box>
+                          <Typography variant="body2">
+                            Dr(a). {option.nombre} {option.apellidoPaterno}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {option.especialidad || 'Sin especialidad'} | {option.tipoEmpleado}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
+                    noOptionsText="No se encontraron médicos"
+                  />
+                  {fieldState.error && (
+                    <FormHelperText error>{fieldState.error.message}</FormHelperText>
+                  )}
                 </Box>
               )}
-              noOptionsText="No se encontraron médicos"
             />
           </Grid>
 
           {/* Observaciones */}
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Observaciones"
-              multiline
-              rows={3}
-              value={formData.observaciones}
-              onChange={(e) => setFormData({
-                ...formData,
-                observaciones: e.target.value
-              })}
-              placeholder="Observaciones adicionales sobre la cuenta..."
+            <Controller
+              name="observaciones"
+              control={control}
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  label="Observaciones"
+                  multiline
+                  rows={3}
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  placeholder="Observaciones adicionales sobre la cuenta..."
+                />
+              )}
             />
           </Grid>
         </Grid>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={handleClose}>
-          Cancelar
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={loading || !selectedPatient}
-          startIcon={loading ? <CircularProgress size={20} /> : null}
-        >
-          {loading ? 'Creando...' : 'Crear Cuenta'}
-        </Button>
-      </DialogActions>
+        <DialogActions>
+          <Button onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading || !selectedPatient}
+            startIcon={loading ? <CircularProgress size={20} /> : null}
+          >
+            {loading ? 'Creando...' : 'Crear Cuenta'}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 };

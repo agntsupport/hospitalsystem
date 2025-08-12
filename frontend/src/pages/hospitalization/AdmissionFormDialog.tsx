@@ -19,6 +19,8 @@ import {
   Chip,
   FormHelperText,
 } from '@mui/material';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   LocalHospital,
   Person,
@@ -27,6 +29,7 @@ import {
   AttachMoney,
   Warning,
 } from '@mui/icons-material';
+import { FormControlLabel, Checkbox } from '@mui/material';
 import { useAuth } from '@/hooks/useAuth';
 import { patientsService } from '@/services/patientsService';
 import { roomsService } from '@/services/roomsService';
@@ -36,6 +39,7 @@ import { toast } from 'react-toastify';
 import { Patient } from '@/types/patients.types';
 import { Room } from '@/types/rooms.types';
 import { Employee } from '@/types/employee.types';
+import { admissionFormSchema, AdmissionFormValues } from '@/schemas/hospitalization.schemas';
 
 interface AdmissionFormDialogProps {
   open: boolean;
@@ -43,52 +47,37 @@ interface AdmissionFormDialogProps {
   onSuccess: () => void;
 }
 
-interface FormData {
-  pacienteId: number | null;
-  habitacionId: number | null;
-  medicoTratanteId: number | null;
-  motivoIngreso: string;
-  diagnosticoIngreso: string;
-  tipoHospitalizacion: 'programada' | 'urgencia' | 'emergencia';
-  especialidad: string;
-  estadoGeneral: 'estable' | 'critico' | 'grave' | 'regular';
-  observacionesIngreso: string;
-  aseguradora: string;
-  numeroPoliza: string;
-  autorizacion: string;
-  restriccionesDieteticas: string[];
-  cuidadosEspeciales: string[];
-}
-
-const initialFormData: FormData = {
-  pacienteId: null,
-  habitacionId: null,
-  medicoTratanteId: null,
-  motivoIngreso: '',
+// Default values matching the schema
+const defaultValues: AdmissionFormValues = {
+  pacienteId: 0,
+  habitacionId: 0,
+  medicoResponsableId: 0,
+  tipoIngreso: 'programado',
   diagnosticoIngreso: '',
-  tipoHospitalizacion: 'programada',
-  especialidad: '',
-  estadoGeneral: 'estable',
-  observacionesIngreso: '',
-  aseguradora: '',
-  numeroPoliza: '',
-  autorizacion: '',
-  restriccionesDieteticas: [],
-  cuidadosEspeciales: [],
+  motivoIngreso: '',
+  observaciones: '',
+  requiereAislamiento: false,
+  nivelCuidado: 'basico',
+  autorizacionSeguro: '',
+  contactoEmergencia: {
+    nombre: '',
+    telefono: '',
+    relacion: ''
+  }
 };
 
-const tiposHospitalizacion = [
-  { value: 'programada', label: 'Programada' },
+const tiposIngreso = [
+  { value: 'programado', label: 'Programado' },
   { value: 'urgencia', label: 'Urgencia' },
-  { value: 'emergencia', label: 'Emergencia' },
+  { value: 'traslado', label: 'Traslado' },
 ];
 
-const estadosGenerales = [
-  { value: 'estable', label: 'Estable', color: 'success' },
-  { value: 'regular', label: 'Regular', color: 'info' },
-  { value: 'grave', label: 'Grave', color: 'warning' },
-  { value: 'critico', label: 'Crítico', color: 'error' },
+const nivelesCuidado = [
+  { value: 'basico', label: 'Básico' },
+  { value: 'intermedio', label: 'Intermedio' },
+  { value: 'intensivo', label: 'Intensivo' },
 ];
+
 
 const especialidades = [
   'Medicina Interna',
@@ -108,13 +97,25 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
   onSuccess,
 }) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<FormData>(initialFormData);
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [doctors, setDoctors] = useState<Employee[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<AdmissionFormValues>({
+    resolver: yupResolver(admissionFormSchema),
+    defaultValues,
+  });
+
+  const watchedValues = watch();
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -123,12 +124,12 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
     }
   }, [open]);
 
-  // Cargar habitaciones disponibles según el tipo
+  // Cargar habitaciones disponibles según el nivel de cuidado
   useEffect(() => {
-    if (formData.especialidad === 'UCI' || formData.cuidadosEspeciales.includes('aislamiento')) {
+    if (watchedValues.nivelCuidado === 'intensivo' || watchedValues.requiereAislamiento) {
       loadAvailableRooms();
     }
-  }, [formData.especialidad, formData.cuidadosEspeciales]);
+  }, [watchedValues.nivelCuidado, watchedValues.requiereAislamiento]);
 
   const loadInitialData = async () => {
     try {
@@ -168,14 +169,14 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       if (roomsResponse.success) {
         let filteredRooms = roomsResponse.data?.rooms || [];
 
-        // Filtrar por tipo si es necesario
-        if (formData.cuidadosEspeciales.includes('aislamiento')) {
+        // Filtrar por tipo según nivel de cuidado
+        if (watchedValues.requiereAislamiento) {
           filteredRooms = filteredRooms.filter((room: Room) => 
             room.tipo === 'individual' || room.tipo === 'aislamiento'
           );
         }
 
-        if (formData.especialidad === 'UCI') {
+        if (watchedValues.nivelCuidado === 'intensivo') {
           filteredRooms = filteredRooms.filter((room: Room) => 
             room.tipo === 'terapia_intensiva'
           );
@@ -189,84 +190,34 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
     }
   };
 
-  const handleInputChange = (field: keyof FormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Limpiar error del campo
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: '',
-      }));
-    }
-  };
 
   const handlePatientSelect = (patient: Patient | null) => {
     if (patient) {
       setSelectedPatient(patient);
-      handleInputChange('pacienteId', patient.id);
+      setValue('pacienteId', patient.id);
     } else {
       setSelectedPatient(null);
-      handleInputChange('pacienteId', null);
+      setValue('pacienteId', 0);
     }
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
 
-    if (!formData.pacienteId) {
-      newErrors.pacienteId = 'Debe seleccionar un paciente';
-    }
-
-    if (!formData.habitacionId) {
-      newErrors.habitacionId = 'Debe seleccionar una habitación';
-    }
-
-    if (!formData.medicoTratanteId) {
-      newErrors.medicoTratanteId = 'Debe seleccionar un médico tratante';
-    }
-
-    if (!formData.motivoIngreso.trim()) {
-      newErrors.motivoIngreso = 'El motivo de ingreso es requerido';
-    }
-
-    if (!formData.diagnosticoIngreso.trim()) {
-      newErrors.diagnosticoIngreso = 'El diagnóstico es requerido';
-    }
-
-    if (!formData.especialidad) {
-      newErrors.especialidad = 'Debe seleccionar una especialidad';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data: AdmissionFormValues) => {
     setLoading(true);
     try {
+      // Transform data to match the API expectations
       await hospitalizationService.createAdmission({
-        pacienteId: formData.pacienteId!,
-        habitacionId: formData.habitacionId!,
-        medicoTratanteId: formData.medicoTratanteId!,
-        motivoIngreso: formData.motivoIngreso,
-        diagnosticoIngreso: formData.diagnosticoIngreso,
-        tipoHospitalizacion: formData.tipoHospitalizacion,
-        especialidad: formData.especialidad,
-        estadoGeneral: formData.estadoGeneral,
-        observacionesIngreso: formData.observacionesIngreso,
-        aseguradora: formData.aseguradora,
-        numeroPoliza: formData.numeroPoliza,
-        autorizacion: formData.autorizacion,
-        restriccionesDieteticas: formData.restriccionesDieteticas,
-        cuidadosEspeciales: formData.cuidadosEspeciales,
+        pacienteId: data.pacienteId,
+        habitacionId: data.habitacionId,
+        medicoTratanteId: data.medicoResponsableId,
+        motivoIngreso: data.motivoIngreso,
+        diagnosticoIngreso: data.diagnosticoIngreso,
+        tipoHospitalizacion: data.tipoIngreso,
+        nivelCuidado: data.nivelCuidado,
+        requiereAislamiento: data.requiereAislamiento,
+        observacionesIngreso: data.observaciones,
+        autorizacion: data.autorizacionSeguro,
+        contactoEmergencia: data.contactoEmergencia,
       });
 
       toast.success('Ingreso hospitalario registrado exitosamente');
@@ -280,16 +231,11 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
   };
 
   const handleClose = () => {
-    setFormData(initialFormData);
-    setErrors({});
+    reset();
     setSelectedPatient(null);
     onClose();
   };
 
-  const getEstadoColor = (estado: string) => {
-    const estadoInfo = estadosGenerales.find(e => e.value === estado);
-    return estadoInfo?.color || 'default';
-  };
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
@@ -311,20 +257,29 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
             
             <Grid container spacing={2}>
               <Grid item xs={12}>
-                <Autocomplete
-                  options={patients}
-                  getOptionLabel={(option) => 
-                    `${option.numeroExpediente} - ${option.nombre} ${option.apellidoPaterno} ${option.apellidoMaterno}`
-                  }
-                  value={selectedPatient}
-                  onChange={(_, newValue) => handlePatientSelect(newValue)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Buscar Paciente"
-                      required
-                      error={!!errors.pacienteId}
-                      helperText={errors.pacienteId}
+                <Controller
+                  name="pacienteId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <Autocomplete
+                      options={patients}
+                      getOptionLabel={(option) => 
+                        `${option.numeroExpediente} - ${option.nombre} ${option.apellidoPaterno} ${option.apellidoMaterno}`
+                      }
+                      value={selectedPatient}
+                      onChange={(_, newValue) => {
+                        handlePatientSelect(newValue);
+                        field.onChange(newValue?.id || 0);
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Buscar Paciente"
+                          required
+                          error={!!fieldState.error}
+                          helperText={fieldState.error?.message}
+                        />
+                      )}
                     />
                   )}
                 />
@@ -353,101 +308,124 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Tipo de Hospitalización</InputLabel>
-                  <Select
-                    value={formData.tipoHospitalizacion}
-                    onChange={(e) => handleInputChange('tipoHospitalizacion', e.target.value)}
-                    label="Tipo de Hospitalización"
-                  >
-                    {tiposHospitalizacion.map((tipo) => (
-                      <MenuItem key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required error={!!errors.especialidad}>
-                  <InputLabel>Especialidad</InputLabel>
-                  <Select
-                    value={formData.especialidad}
-                    onChange={(e) => handleInputChange('especialidad', e.target.value)}
-                    label="Especialidad"
-                  >
-                    {especialidades.map((esp) => (
-                      <MenuItem key={esp} value={esp}>
-                        {esp}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.especialidad && (
-                    <FormHelperText>{errors.especialidad}</FormHelperText>
+                <Controller
+                  name="tipoIngreso"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <FormControl fullWidth required error={!!fieldState.error}>
+                      <InputLabel>Tipo de Ingreso</InputLabel>
+                      <Select
+                        {...field}
+                        label="Tipo de Ingreso"
+                      >
+                        {tiposIngreso.map((tipo) => (
+                          <MenuItem key={tipo.value} value={tipo.value}>
+                            {tipo.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {fieldState.error && (
+                        <FormHelperText>{fieldState.error.message}</FormHelperText>
+                      )}
+                    </FormControl>
                   )}
-                </FormControl>
+                />
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Estado General del Paciente</InputLabel>
-                  <Select
-                    value={formData.estadoGeneral}
-                    onChange={(e) => handleInputChange('estadoGeneral', e.target.value)}
-                    label="Estado General del Paciente"
-                  >
-                    {estadosGenerales.map((estado) => (
-                      <MenuItem key={estado.value} value={estado.value}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Chip 
-                            label={estado.label} 
-                            size="small" 
-                            color={estado.color as any}
-                          />
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Controller
+                  name="nivelCuidado"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <FormControl fullWidth required error={!!fieldState.error}>
+                      <InputLabel>Nivel de Cuidado</InputLabel>
+                      <Select
+                        {...field}
+                        label="Nivel de Cuidado"
+                      >
+                        {nivelesCuidado.map((nivel) => (
+                          <MenuItem key={nivel.value} value={nivel.value}>
+                            {nivel.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {fieldState.error && (
+                        <FormHelperText>{fieldState.error.message}</FormHelperText>
+                      )}
+                    </FormControl>
+                  )}
+                />
               </Grid>
 
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Motivo de Ingreso"
-                  multiline
-                  rows={2}
-                  value={formData.motivoIngreso}
-                  onChange={(e) => handleInputChange('motivoIngreso', e.target.value)}
-                  error={!!errors.motivoIngreso}
-                  helperText={errors.motivoIngreso}
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="requiereAislamiento"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          {...field}
+                          checked={field.value}
+                        />
+                      }
+                      label="Requiere Aislamiento"
+                    />
+                  )}
                 />
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Diagnóstico de Ingreso"
-                  multiline
-                  rows={2}
-                  value={formData.diagnosticoIngreso}
-                  onChange={(e) => handleInputChange('diagnosticoIngreso', e.target.value)}
-                  error={!!errors.diagnosticoIngreso}
-                  helperText={errors.diagnosticoIngreso}
+                <Controller
+                  name="motivoIngreso"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      required
+                      label="Motivo de Ingreso"
+                      multiline
+                      rows={2}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                    />
+                  )}
                 />
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Observaciones de Ingreso"
-                  multiline
-                  rows={2}
-                  value={formData.observacionesIngreso}
-                  onChange={(e) => handleInputChange('observacionesIngreso', e.target.value)}
+                <Controller
+                  name="diagnosticoIngreso"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      required
+                      label="Diagnóstico de Ingreso"
+                      multiline
+                      rows={2}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Controller
+                  name="observaciones"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Observaciones de Ingreso"
+                      multiline
+                      rows={2}
+                    />
+                  )}
                 />
               </Grid>
             </Grid>
@@ -462,89 +440,68 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required error={!!errors.habitacionId}>
-                  <InputLabel>Habitación</InputLabel>
-                  <Select
-                    value={formData.habitacionId || ''}
-                    onChange={(e) => handleInputChange('habitacionId', e.target.value)}
-                    label="Habitación"
-                  >
-                    {availableRooms.map((room) => (
-                      <MenuItem key={room.id} value={room.id}>
-                        {room.numero} - {room.tipo} - Piso {room.piso}
-                        {room.caracteristicas && (
-                          <Chip 
-                            label={room.caracteristicas} 
-                            size="small" 
-                            sx={{ ml: 1 }}
-                          />
-                        )}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.habitacionId && (
-                    <FormHelperText>{errors.habitacionId}</FormHelperText>
+                <Controller
+                  name="habitacionId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <FormControl fullWidth required error={!!fieldState.error}>
+                      <InputLabel>Habitación</InputLabel>
+                      <Select
+                        {...field}
+                        value={field.value || ''}
+                        label="Habitación"
+                      >
+                        {availableRooms.map((room) => (
+                          <MenuItem key={room.id} value={room.id}>
+                            {room.numero} - {room.tipo} - Piso {room.piso}
+                            {room.caracteristicas && (
+                              <Chip 
+                                label={room.caracteristicas} 
+                                size="small" 
+                                sx={{ ml: 1 }}
+                              />
+                            )}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {fieldState.error && (
+                        <FormHelperText>{fieldState.error.message}</FormHelperText>
+                      )}
+                    </FormControl>
                   )}
-                </FormControl>
+                />
               </Grid>
 
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth required error={!!errors.medicoTratanteId}>
-                  <InputLabel>Médico Tratante</InputLabel>
-                  <Select
-                    value={formData.medicoTratanteId || ''}
-                    onChange={(e) => handleInputChange('medicoTratanteId', e.target.value)}
-                    label="Médico Tratante"
-                  >
-                    {doctors.map((doctor) => (
-                      <MenuItem key={doctor.id} value={doctor.id}>
-                        Dr(a). {doctor.nombre} {doctor.apellidoPaterno} - {doctor.especialidad}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.medicoTratanteId && (
-                    <FormHelperText>{errors.medicoTratanteId}</FormHelperText>
+                <Controller
+                  name="medicoResponsableId"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <FormControl fullWidth required error={!!fieldState.error}>
+                      <InputLabel>Médico Responsable</InputLabel>
+                      <Select
+                        {...field}
+                        value={field.value || ''}
+                        label="Médico Responsable"
+                      >
+                        {doctors.map((doctor) => (
+                          <MenuItem key={doctor.id} value={doctor.id}>
+                            Dr(a). {doctor.nombre} {doctor.apellidoPaterno} - {doctor.especialidad}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {fieldState.error && (
+                        <FormHelperText>{fieldState.error.message}</FormHelperText>
+                      )}
+                    </FormControl>
                   )}
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Cuidados Especiales"
-                  multiline
-                  rows={2}
-                  value={formData.cuidadosEspeciales.join(', ')}
-                  onChange={(e) => {
-                    const cuidados = e.target.value
-                      .split(',')
-                      .map(c => c.trim())
-                      .filter(c => c.length > 0);
-                    handleInputChange('cuidadosEspeciales', cuidados);
-                  }}
-                  helperText="Separe con comas (ej: aislamiento, UCI, monitoreo cardiaco)"
                 />
               </Grid>
 
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Restricciones Dietéticas"
-                  value={formData.restriccionesDieteticas.join(', ')}
-                  onChange={(e) => {
-                    const restricciones = e.target.value
-                      .split(',')
-                      .map(r => r.trim())
-                      .filter(r => r.length > 0);
-                    handleInputChange('restriccionesDieteticas', restricciones);
-                  }}
-                  helperText="Separe con comas (ej: sin sal, sin azúcar, ayuno)"
-                />
-              </Grid>
             </Grid>
           </Box>
 
-          {/* Sección: Información Administrativa */}
+          {/* Sección: Información Administrativa y Contacto de Emergencia */}
           <Box>
             <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <AttachMoney /> Información Administrativa
@@ -552,45 +509,91 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
             <Divider sx={{ mb: 2 }} />
 
             <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="autorizacionSeguro"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Número de Autorización del Seguro"
+                    />
+                  )}
+                />
+              </Grid>
+
+              {/* Contacto de Emergencia */}
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" gutterBottom sx={{ mt: 2 }}>
+                  Contacto de Emergencia
+                </Typography>
+              </Grid>
+              
               <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Aseguradora"
-                  value={formData.aseguradora}
-                  onChange={(e) => handleInputChange('aseguradora', e.target.value)}
+                <Controller
+                  name="contactoEmergencia.nombre"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      required
+                      label="Nombre del Contacto"
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                    />
+                  )}
                 />
               </Grid>
 
               <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Número de Póliza"
-                  value={formData.numeroPoliza}
-                  onChange={(e) => handleInputChange('numeroPoliza', e.target.value)}
+                <Controller
+                  name="contactoEmergencia.telefono"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      required
+                      label="Teléfono"
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                    />
+                  )}
                 />
               </Grid>
 
               <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Número de Autorización"
-                  value={formData.autorizacion}
-                  onChange={(e) => handleInputChange('autorizacion', e.target.value)}
+                <Controller
+                  name="contactoEmergencia.relacion"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      required
+                      label="Relación"
+                      placeholder="ej: Esposo(a), Hijo(a), Padre, etc."
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                    />
+                  )}
                 />
               </Grid>
             </Grid>
           </Box>
 
-          {formData.estadoGeneral === 'critico' && (
+          {watchedValues.nivelCuidado === 'intensivo' && (
             <Alert severity="error" sx={{ mt: 2 }}>
-              <strong>Atención:</strong> Paciente en estado crítico. Asegurar disponibilidad 
+              <strong>Atención:</strong> Paciente requiere cuidados intensivos. Asegurar disponibilidad 
               de recursos y personal especializado.
             </Alert>
           )}
 
-          {formData.estadoGeneral === 'grave' && (
+          {watchedValues.requiereAislamiento && (
             <Alert severity="warning" sx={{ mt: 2 }}>
-              <strong>Precaución:</strong> Paciente en estado grave. Requiere monitoreo constante.
+              <strong>Precaución:</strong> Paciente requiere aislamiento. Verificar disponibilidad de habitación apropiada.
             </Alert>
           )}
         </Box>
@@ -601,7 +604,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
           Cancelar
         </Button>
         <Button
-          onClick={handleSubmit}
+          onClick={handleSubmit(onSubmit)}
           variant="contained"
           disabled={loading}
           startIcon={<LocalHospital />}

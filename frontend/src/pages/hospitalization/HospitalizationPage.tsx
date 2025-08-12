@@ -42,13 +42,15 @@ import {
   Hotel as HotelIcon,
   Assignment as AssignmentIcon,
   CalendarToday as CalendarIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 
 import hospitalizationService from '@/services/hospitalizationService';
 import AdmissionFormDialog from './AdmissionFormDialog';
 import MedicalNotesDialog from './MedicalNotesDialog';
 import DischargeDialog from './DischargeDialog';
+import AuditTrail from '@/components/common/AuditTrail';
 import { toast } from 'react-toastify';
 import {
   HospitalAdmission,
@@ -84,6 +86,8 @@ const HospitalizationPage: React.FC = () => {
   const [selectedAdmissionForNotes, setSelectedAdmissionForNotes] = useState<HospitalAdmission | null>(null);
   const [dischargeDialogOpen, setDischargeDialogOpen] = useState(false);
   const [selectedAdmissionForDischarge, setSelectedAdmissionForDischarge] = useState<HospitalAdmission | null>(null);
+  const [auditTrailOpen, setAuditTrailOpen] = useState(false);
+  const [auditEntityId, setAuditEntityId] = useState<number>(0);
 
   useEffect(() => {
     loadData();
@@ -156,6 +160,16 @@ const HospitalizationPage: React.FC = () => {
   const handleOpenDischarge = (admission: HospitalAdmission) => {
     setSelectedAdmissionForDischarge(admission);
     setDischargeDialogOpen(true);
+  };
+
+  const handleOpenAuditTrail = (admission: HospitalAdmission) => {
+    setAuditEntityId(admission.id);
+    setAuditTrailOpen(true);
+  };
+
+  const handleCloseAuditTrail = () => {
+    setAuditTrailOpen(false);
+    setAuditEntityId(0);
   };
 
   const getStatusChip = (status: string) => (
@@ -515,6 +529,16 @@ const HospitalizationPage: React.FC = () => {
                               </Tooltip>
                             </>
                           )}
+                          
+                          <Tooltip title="Historial de cambios">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() => handleOpenAuditTrail(admission)}
+                            >
+                              <HistoryIcon />
+                            </IconButton>
+                          </Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -678,6 +702,15 @@ const HospitalizationPage: React.FC = () => {
           setSelectedAdmissionForDischarge(null);
           loadData(); // Recargar lista y estadísticas después del alta
         }}
+      />
+
+      {/* Audit Trail Dialog */}
+      <AuditTrail
+        open={auditTrailOpen}
+        onClose={handleCloseAuditTrail}
+        entityType="hospitalizacion"
+        entityId={auditEntityId}
+        title="Historial de Cambios - Hospitalización"
       />
     </Box>
   );

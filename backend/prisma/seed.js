@@ -10,6 +10,20 @@ async function main() {
     // Limpiar datos existentes (opcional en desarrollo)
     if (process.env.NODE_ENV === 'development') {
       console.log('🧹 Limpiando datos existentes...');
+      
+      // Limpiar en orden inverso de dependencias para evitar violaciones de foreign key
+      await prisma.auditoriaOperacion.deleteMany({});
+      await prisma.cancelacion.deleteMany({});
+      await prisma.causaCancelacion.deleteMany({});
+      
+      // Limpiar tablas de ventas y transacciones
+      await prisma.itemVentaRapida.deleteMany({});
+      await prisma.ventaRapida.deleteMany({});
+      await prisma.pagoFactura.deleteMany({});
+      await prisma.detalleFactura.deleteMany({});
+      await prisma.factura.deleteMany({});
+      
+      // Limpiar otros datos transaccionales
       await prisma.movimientoInventario.deleteMany({});
       await prisma.transaccionCuenta.deleteMany({});
       await prisma.aplicacionMedicamento.deleteMany({});
@@ -20,10 +34,13 @@ async function main() {
       await prisma.historialMedico.deleteMany({});
       await prisma.citaMedica.deleteMany({});
       await prisma.cuentaPaciente.deleteMany({});
+      
+      // Limpiar datos maestros
       await prisma.producto.deleteMany({});
       await prisma.servicio.deleteMany({});
       await prisma.proveedor.deleteMany({});
       await prisma.consultorio.deleteMany({});
+      await prisma.quirofano.deleteMany({});
       await prisma.habitacion.deleteMany({});
       await prisma.empleado.deleteMany({});
       await prisma.paciente.deleteMany({});
@@ -211,6 +228,35 @@ async function main() {
     }
 
     console.log('🏢 Consultorios creados exitosamente');
+
+    // Crear quirófanos
+    console.log('🏥 Creando quirófanos...');
+    const quirofanos = [];
+    const tiposQuirofano = [
+      { tipo: 'cirugia_general', especialidad: 'Cirugía General', equipamiento: 'Mesa quirúrgica universal, lámpara cialítica, monitor multiparámetros', precio: 1500.00 },
+      { tipo: 'cirugia_cardiaca', especialidad: 'Cirugía Cardiovascular', equipamiento: 'Bomba de circulación extracorpórea, monitor cardíaco avanzado, desfibrilador', precio: 3000.00 },
+      { tipo: 'cirugia_neurologica', especialidad: 'Neurocirugía', equipamiento: 'Microscopio quirúrgico, navegador estereotáctico, monitor neurológico', precio: 4000.00 },
+      { tipo: 'cirugia_ortopedica', especialidad: 'Cirugía Ortopédica', equipamiento: 'Mesa de tracción, intensificador de imágenes, instrumental ortopédico', precio: 2000.00 },
+      { tipo: 'cirugia_ambulatoria', especialidad: 'Cirugía Ambulatoria', equipamiento: 'Mesa quirúrgica básica, lámpara cialítica, monitor básico', precio: 800.00 }
+    ];
+    
+    for (let i = 1; i <= 5; i++) {
+      const quirofanoData = tiposQuirofano[i - 1];
+      const quirofano = await prisma.quirofano.create({
+        data: {
+          numero: `Q${i}`,
+          tipo: quirofanoData.tipo,
+          especialidad: quirofanoData.especialidad,
+          estado: 'disponible',
+          descripcion: `Quirófano ${i} - ${quirofanoData.especialidad}`,
+          equipamiento: quirofanoData.equipamiento,
+          capacidadEquipo: i === 1 ? 8 : i === 2 ? 10 : 6, // Más capacidad para los quirófanos más especializados
+          precioHora: quirofanoData.precio
+        }
+      });
+      quirofanos.push(quirofano);
+    }
+    console.log('🏥 Quirófanos creados exitosamente');
 
     // Crear proveedores
     console.log('🏭 Creando proveedores...');
@@ -411,6 +457,88 @@ async function main() {
     });
 
     console.log('👤 Pacientes creados exitosamente');
+
+    // ==============================================
+    // CAUSAS DE CANCELACIÓN
+    // ==============================================
+    console.log('🚫 Creando causas de cancelación...');
+
+    const causasCancelacion = await Promise.all([
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'ERROR_CAPTURA',
+          descripcion: 'Error en la captura de datos',
+          categoria: 'OPERATIVO',
+          requiereNota: false,
+          requiereAutorizacion: false
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'ORDEN_MEDICA',
+          descripcion: 'Cancelación por orden médica',
+          categoria: 'MEDICO',
+          requiereNota: true,
+          requiereAutorizacion: true
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'PACIENTE_SOLICITA',
+          descripcion: 'Solicitud del paciente',
+          categoria: 'VOLUNTARIO',
+          requiereNota: false,
+          requiereAutorizacion: false
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'DUPLICADO',
+          descripcion: 'Registro duplicado',
+          categoria: 'OPERATIVO',
+          requiereNota: false,
+          requiereAutorizacion: false
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'DEVOLUCION',
+          descripcion: 'Devolución de producto',
+          categoria: 'COMERCIAL',
+          requiereNota: true,
+          requiereAutorizacion: true
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'NO_DEDUCIBLE',
+          descripcion: 'Producto no deducible',
+          categoria: 'COMERCIAL',
+          requiereNota: true,
+          requiereAutorizacion: true
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'FALTA_STOCK',
+          descripcion: 'Producto agotado o sin stock',
+          categoria: 'OPERATIVO',
+          requiereNota: false,
+          requiereAutorizacion: false
+        }
+      }),
+      prisma.causaCancelacion.create({
+        data: {
+          codigo: 'CAMBIO_TRATAMIENTO',
+          descripcion: 'Cambio en el plan de tratamiento',
+          categoria: 'MEDICO',
+          requiereNota: true,
+          requiereAutorizacion: true
+        }
+      })
+    ]);
+
+    console.log(`🚫 ${causasCancelacion.length} causas de cancelación creadas`);
 
     console.log('✅ Seed completado exitosamente');
     console.log('\n📋 CREDENCIALES DE ACCESO:');

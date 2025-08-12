@@ -35,12 +35,14 @@ import {
   Clear as ClearIcon,
   DateRange as DateIcon,
   Person as UserIcon,
-  Receipt as DocumentIcon
+  Receipt as DocumentIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 // Removed date-fns imports - using built-in formatting instead
 
 import { inventoryService } from '@/services/inventoryService';
 import { StockMovement, StockMovementFilters, MOVEMENT_TYPES } from '@/types/inventory.types';
+import AuditTrail from '@/components/common/AuditTrail';
 
 interface StockMovementsTabProps {
   onDataChange: () => void;
@@ -48,6 +50,8 @@ interface StockMovementsTabProps {
 
 const StockMovementsTab: React.FC<StockMovementsTabProps> = ({ onDataChange }) => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [auditDialogOpen, setAuditDialogOpen] = useState(false);
+  const [selectedMovementId, setSelectedMovementId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -287,18 +291,19 @@ const StockMovementsTab: React.FC<StockMovementsTabProps> = ({ onDataChange }) =
               <TableCell>Usuario</TableCell>
               <TableCell>Documento</TableCell>
               <TableCell align="right">Costo</TableCell>
+              <TableCell align="center">Trazabilidad</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                   Cargando movimientos...
                 </TableCell>
               </TableRow>
             ) : movements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                   No se encontraron movimientos
                 </TableCell>
               </TableRow>
@@ -406,6 +411,26 @@ const StockMovementsTab: React.FC<StockMovementsTabProps> = ({ onDataChange }) =
                       {formatCurrency(movement.costo || 0)}
                     </Typography>
                   </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="Ver historial de cambios">
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setSelectedMovementId(movement.id);
+                          setAuditDialogOpen(true);
+                        }}
+                        sx={{
+                          color: 'primary.main',
+                          '&:hover': {
+                            backgroundColor: 'primary.light',
+                            color: 'white'
+                          }
+                        }}
+                      >
+                        <HistoryIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -424,6 +449,18 @@ const StockMovementsTab: React.FC<StockMovementsTabProps> = ({ onDataChange }) =
           labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
         />
       </TableContainer>
+
+      {/* Dialog de Auditoría */}
+      <AuditTrail
+        open={auditDialogOpen}
+        onClose={() => {
+          setAuditDialogOpen(false);
+          setSelectedMovementId(null);
+        }}
+        entityType="movimiento"
+        entityId={selectedMovementId || 0}
+        title="Historial del Movimiento de Inventario"
+      />
     </Box>
   );
 };

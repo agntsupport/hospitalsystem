@@ -53,7 +53,7 @@ export const posService = {
     if (params.stockMinimo !== undefined) queryParams.append('stockMinimo', params.stockMinimo.toString());
 
     // Usar endpoint de inventario que tiene información de stock actualizada
-    const url = `/api/inventory/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const url = `/inventory/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return api.get(url);
   },
 
@@ -62,7 +62,7 @@ export const posService = {
     if (limit) params.append('limit', limit.toString());
     
     // Usar endpoint de inventario para búsqueda también
-    return api.get(`/api/inventory/products?${params.toString()}`);
+    return api.get(`/inventory/products?${params.toString()}`);
   },
 
   // Cuentas de pacientes
