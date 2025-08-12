@@ -25,7 +25,7 @@ import { es } from 'date-fns/locale';
 import { addHours, isBefore, isAfter } from 'date-fns';
 import quirofanosService, { CirugiaQuirofano, Quirofano } from '@/services/quirofanosService';
 import patientsService from '@/services/patientsService';
-import employeesService from '@/services/employeesService';
+import { employeeService } from '@/services/employeeService';
 
 interface CirugiaFormDialogProps {
   open: boolean;
@@ -116,7 +116,7 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
       const [quirofanosRes, pacientesRes, empleadosRes] = await Promise.all([
         quirofanosService.getQuirofanos({ estado: 'disponible', limit: 100 }),
         patientsService.getPatients({ limit: 100 }),
-        employeesService.getEmployees({ limit: 100 })
+        employeeService.getEmployees({ limit: 100 })
       ]);
 
       if (quirofanosRes.success) {
