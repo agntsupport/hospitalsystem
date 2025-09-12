@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 
 import { inventoryService } from '@/services/inventoryService';
-import { PAYMENT_TERMS } from '@/types/inventory.types';
+import { PAYMENT_TERMS, Supplier } from '@/types/inventory.types';
 import { supplierFormSchema, SupplierFormValues } from '@/schemas/inventory.schemas';
 import { toast } from 'react-toastify';
 
@@ -34,13 +34,16 @@ interface SupplierFormDialogProps {
   open: boolean;
   onClose: () => void;
   onSupplierCreated: () => void;
+  editingSupplier?: Supplier | null;
 }
 
 const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
   open,
   onClose,
   onSupplierCreated,
+  editingSupplier
 }) => {
+  const isEditing = !!editingSupplier;
   const {
     control,
     handleSubmit,
@@ -76,10 +79,52 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
 
   useEffect(() => {
     if (open) {
-      reset();
+      if (editingSupplier) {
+        // Llenar formulario con datos del proveedor a editar
+        reset({
+          razonSocial: editingSupplier.razonSocial || '',
+          nombreComercial: editingSupplier.nombreComercial || '',
+          rfc: editingSupplier.rfc || '',
+          telefono: editingSupplier.telefono || '',
+          email: editingSupplier.email || '',
+          direccion: editingSupplier.direccion || '',
+          ciudad: editingSupplier.ciudad || '',
+          estado: editingSupplier.estado || '',
+          codigoPostal: editingSupplier.codigoPostal || '',
+          contacto: {
+            nombre: editingSupplier.contacto?.nombre || '',
+            cargo: editingSupplier.contacto?.cargo || '',
+            telefono: editingSupplier.contacto?.telefono || '',
+            email: editingSupplier.contacto?.email || ''
+          },
+          condicionesPago: editingSupplier.condicionesPago || 'Contado',
+          diasCredito: editingSupplier.diasCredito || 0
+        });
+      } else {
+        // Reset formulario para nuevo proveedor
+        reset({
+          razonSocial: '',
+          nombreComercial: '',
+          rfc: '',
+          telefono: '',
+          email: '',
+          direccion: '',
+          ciudad: '',
+          estado: '',
+          codigoPostal: '',
+          contacto: {
+            nombre: '',
+            cargo: '',
+            telefono: '',
+            email: ''
+          },
+          condicionesPago: 'Contado',
+          diasCredito: 0
+        });
+      }
       clearErrors();
     }
-  }, [open, reset, clearErrors]);
+  }, [open, editingSupplier, reset, clearErrors]);
 
   const onSubmit = async (data: SupplierFormValues) => {
     clearErrors();
@@ -101,18 +146,23 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
         cleanFormData.diasCredito = 0;
       }
 
-      const response = await inventoryService.createSupplier(cleanFormData);
+      let response;
+      if (isEditing) {
+        response = await inventoryService.updateSupplier(editingSupplier!.id, cleanFormData);
+      } else {
+        response = await inventoryService.createSupplier(cleanFormData);
+      }
 
       if (response.success) {
-        toast.success('Proveedor creado exitosamente');
+        toast.success(`Proveedor ${isEditing ? 'actualizado' : 'creado'} exitosamente`);
         onSupplierCreated();
         onClose();
       } else {
         throw new Error(response.message);
       }
     } catch (error: any) {
-      console.error('Error creating supplier:', error);
-      const errorMessage = error?.message || error?.error || 'Error al crear proveedor';
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} supplier:`, error);
+      const errorMessage = error?.message || error?.error || `Error al ${isEditing ? 'actualizar' : 'crear'} proveedor`;
       setFormError('root', { message: errorMessage });
       toast.error(errorMessage);
     }
@@ -123,7 +173,7 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <BusinessIcon />
-          Registrar Nuevo Proveedor
+          {isEditing ? 'Editar Proveedor' : 'Registrar Nuevo Proveedor'}
         </Box>
       </DialogTitle>
       
@@ -451,7 +501,7 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
             disabled={isSubmitting}
             startIcon={isSubmitting ? <CircularProgress size={20} /> : <SaveIcon />}
           >
-            {isSubmitting ? 'Guardando...' : 'Guardar Proveedor'}
+            {isSubmitting ? 'Guardando...' : (isEditing ? 'Actualizar Proveedor' : 'Guardar Proveedor')}
           </Button>
         </DialogActions>
       </form>

@@ -51,7 +51,7 @@ interface AdmissionFormDialogProps {
 const defaultValues: AdmissionFormValues = {
   pacienteId: 0,
   habitacionId: 0,
-  medicoResponsableId: 0,
+  medicoTratanteId: 0,
   tipoIngreso: 'programado',
   diagnosticoIngreso: '',
   motivoIngreso: '',
@@ -206,13 +206,17 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
     setLoading(true);
     try {
       // Transform data to match the API expectations
+      // Buscar especialidad del médico seleccionado
+      const medicoSeleccionado = doctors.find(doc => doc.id === data.medicoTratanteId);
+      
       await hospitalizationService.createAdmission({
         pacienteId: data.pacienteId,
         habitacionId: data.habitacionId,
-        medicoTratanteId: data.medicoResponsableId,
+        medicoTratanteId: data.medicoTratanteId,
         motivoIngreso: data.motivoIngreso,
         diagnosticoIngreso: data.diagnosticoIngreso,
         tipoHospitalizacion: data.tipoIngreso,
+        especialidad: medicoSeleccionado?.especialidad || 'Medicina General',
         nivelCuidado: data.nivelCuidado,
         requiereAislamiento: data.requiereAislamiento,
         observacionesIngreso: data.observaciones,
@@ -238,7 +242,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth closeAfterTransition={false}>
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
           <LocalHospital color="primary" />
@@ -474,7 +478,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="medicoResponsableId"
+                  name="medicoTratanteId"
                   control={control}
                   render={({ field, fieldState }) => (
                     <FormControl fullWidth required error={!!fieldState.error}>

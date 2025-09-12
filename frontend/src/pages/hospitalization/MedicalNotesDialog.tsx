@@ -234,6 +234,7 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
       onClose={handleClose} 
       maxWidth="lg" 
       fullWidth
+      closeAfterTransition={false}
       PaperProps={{
         sx: { height: '90vh' }
       }}

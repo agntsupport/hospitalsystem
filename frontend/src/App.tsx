@@ -21,6 +21,8 @@ import ReportsPage from '@/pages/reports/ReportsPage';
 import HospitalizationPage from '@/pages/hospitalization/HospitalizationPage';
 import QuirofanosPage from '@/pages/quirofanos/QuirofanosPage';
 import CirugiasPage from '@/pages/quirofanos/CirugiasPage';
+import UsersPage from '@/pages/users/UsersPage';
+import SolicitudesPage from '@/pages/solicitudes/SolicitudesPage';
 
 const theme = createTheme({
   palette: {
@@ -161,6 +163,14 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/solicitudes" element={
+              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'almacenista', 'administrador']}>
+                <Layout>
+                  <SolicitudesPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/billing" element={
               <ProtectedRoute roles={['cajero', 'administrador', 'socio']}>
                 <Layout>
@@ -170,7 +180,7 @@ function App() {
             } />
             
             <Route path="/hospitalization" element={
-              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
+              <ProtectedRoute roles={['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
                 <Layout>
                   <HospitalizationPage />
                 </Layout>
@@ -181,6 +191,14 @@ function App() {
               <ProtectedRoute roles={['administrador', 'socio', 'almacenista']}>
                 <Layout>
                   <ReportsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/users" element={
+              <ProtectedRoute roles={['administrador']}>
+                <Layout>
+                  <UsersPage />
                 </Layout>
               </ProtectedRoute>
             } />

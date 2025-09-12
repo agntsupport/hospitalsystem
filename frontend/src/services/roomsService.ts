@@ -113,8 +113,8 @@ export const roomsService = {
     return api.put(`/rooms/${id}`, roomData);
   },
 
-  async deleteRoom(id: number): Promise<{ success: boolean; message: string }> {
-    return api.delete(`/rooms/${id}`);
+  async deleteRoom(id: number, motivo: string = 'Eliminación de habitación desde panel administrativo'): Promise<{ success: boolean; message: string }> {
+    return api.delete(`/rooms/${id}`, { data: { motivo } });
   },
 
   // Room assignment operations

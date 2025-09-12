@@ -69,7 +69,7 @@ export interface HospitalAdmission extends BaseHospitalizationEntity {
   especialidad: string;
   
   // Estado actual
-  estado: 'activa' | 'alta' | 'traslado' | 'defuncion' | 'fuga';
+  estado: 'en_observacion' | 'estable' | 'critico' | 'alta_medica' | 'alta_voluntaria';
   
   // Datos administrativos
   aseguradora?: string;
@@ -453,7 +453,7 @@ export interface HospitalizationFilters {
   fechaAltaHasta?: string;
 
   // Filtros de estado
-  estado?: ('activa' | 'alta' | 'traslado' | 'defuncion')[];
+  estado?: ('en_observacion' | 'estable' | 'critico' | 'alta_medica' | 'alta_voluntaria')[];
   tipoHospitalizacion?: ('programada' | 'urgencia' | 'emergencia')[];
   
   // Filtros médicos
@@ -497,11 +497,11 @@ export interface HospitalizationListResponse<T> extends HospitalizationResponse<
 // ====================== CONSTANTES ======================
 
 export const HOSPITALIZATION_STATUSES = {
-  ACTIVA: 'activa',
-  ALTA: 'alta',
-  TRASLADO: 'traslado',
-  DEFUNCION: 'defuncion',
-  FUGA: 'fuga'
+  EN_OBSERVACION: 'en_observacion',
+  ESTABLE: 'estable',
+  CRITICO: 'critico',
+  ALTA_MEDICA: 'alta_medica',
+  ALTA_VOLUNTARIA: 'alta_voluntaria'
 } as const;
 
 export const ADMISSION_TYPES = {

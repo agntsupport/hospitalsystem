@@ -100,7 +100,7 @@ const captureOriginalData = (entityType) => {
     if (req.method === 'PUT' || req.method === 'PATCH') {
       try {
         const entityId = req.params.id;
-        if (entityId) {
+        if (entityId && !isNaN(parseInt(entityId))) {
           let originalData = null;
           
           switch (entityType) {

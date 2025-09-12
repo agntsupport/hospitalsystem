@@ -547,7 +547,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
       </TableContainer>
 
       {/* View Patient Dialog */}
-      <Dialog open={viewDialogOpen} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>
+      <Dialog open={viewDialogOpen} onClose={handleCloseViewDialog} maxWidth="md" fullWidth closeAfterTransition={false}>
         <DialogTitle>
           Detalles del Paciente
         </DialogTitle>
@@ -629,7 +629,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} closeAfterTransition={false}>
         <DialogTitle>
           Eliminar Paciente
         </DialogTitle>

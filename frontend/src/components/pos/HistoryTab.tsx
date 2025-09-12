@@ -138,8 +138,8 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
       });
       
       if (response.success) {
-        setClosedAccounts(response.data.items || []);
-        setTotalPages(Math.ceil((response.data.total || 0) / ITEMS_PER_PAGE));
+        setClosedAccounts(response.data.accounts || []);
+        setTotalPages(Math.ceil((response.data.accounts?.length || 0) / ITEMS_PER_PAGE));
       }
     } catch (error) {
       console.error('Error loading closed accounts:', error);
@@ -310,7 +310,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
 
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Tooltip title="Actualizar">
-              <IconButton onClick={loadClosedAccounts} size="small">
+              <IconButton onClick={historyTab === 0 ? loadClosedAccounts : loadQuickSales} size="small">
                 <RefreshIcon />
               </IconButton>
             </Tooltip>

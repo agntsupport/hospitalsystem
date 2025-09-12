@@ -198,6 +198,17 @@ class QuirofanosService {
     }
   }
 
+  // Obtener números disponibles y sugerencias
+  async getAvailableNumbers() {
+    try {
+      const response = await api.get('/quirofanos/available-numbers');
+      return response;
+    } catch (error: any) {
+      console.error('Error al obtener números disponibles:', error);
+      throw new Error(error.response?.data?.message || 'Error al obtener números disponibles');
+    }
+  }
+
   // Obtener quirófanos disponibles para una fecha/hora
   async getQuirofanosDisponibles(fecha: string, horaInicio: string, horaFin: string, tipo?: string) {
     try {

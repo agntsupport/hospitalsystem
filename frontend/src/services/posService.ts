@@ -130,5 +130,50 @@ export const posService = {
 
     const url = `/pos/sales-history${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return api.get(url);
+  },
+
+  // Obtener transacciones de una cuenta específica
+  async getAccountTransactions(accountId: number, filters: {
+    page?: number;
+    limit?: number;
+    tipo?: string;
+  } = {}): Promise<ApiResponse<{
+    transacciones: Array<{
+      id: number;
+      tipo: string;
+      concepto: string;
+      cantidad: number;
+      precioUnitario: number;
+      subtotal: number;
+      fecha: string;
+      producto?: {
+        codigo: string;
+        nombre: string;
+        unidadMedida: string;
+      };
+      servicio?: {
+        codigo: string;
+        nombre: string;
+        tipo: string;
+      };
+    }>;
+    pagination: {
+      total: number;
+      totalPages: number;
+      currentPage: number;
+      pageSize: number;
+    };
+  }>> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters.page) queryParams.append('page', filters.page.toString());
+    if (filters.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters.tipo) queryParams.append('tipo', filters.tipo);
+
+    const url = `/pos/cuenta/${accountId}/transacciones${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return api.get(url);
   }
 };
+
+// Export default para compatibilidad
+export default posService;

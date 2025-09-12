@@ -3,8 +3,13 @@ export interface Employee {
   nombre: string;
   apellidoPaterno: string;
   apellidoMaterno?: string;
+  nombreCompleto?: string;
+  fechaNacimiento?: string;
+  genero?: 'M' | 'F' | 'Otro';
+  direccion?: string;
+  turno?: 'matutino' | 'vespertino' | 'nocturno' | 'mixto';
   tipoEmpleado: EmployeeType;
-  cedulaProfesional: string;
+  cedulaProfesional?: string;
   especialidad?: string;
   telefono?: string;
   email?: string;
@@ -15,20 +20,28 @@ export interface Employee {
   updatedAt?: string;
 }
 
-export type EmployeeType = 'enfermero' | 'medico_residente' | 'medico_especialista';
+export type EmployeeType = 'cajero' | 'enfermero' | 'almacenista' | 'administrador' | 'socio' | 'medico_residente' | 'medico_especialista';
 
 export interface EmployeeFormData {
   nombre: string;
   apellidoPaterno: string;
   apellidoMaterno?: string;
+  fechaNacimiento?: string;
+  genero?: 'M' | 'F' | 'Otro';
+  direccion?: string;
+  turno?: 'matutino' | 'vespertino' | 'nocturno' | 'mixto';
   tipoEmpleado: EmployeeType;
-  cedulaProfesional: string;
+  cedulaProfesional?: string;
   especialidad?: string;
   telefono?: string;
   email?: string;
   salario?: number;
   fechaIngreso: string;
   activo?: boolean;
+  // Campos para crear usuario (solo nuevos empleados)
+  username?: string;
+  password?: string;
+  rol?: string;
 }
 
 export interface EmployeeStats {
@@ -36,7 +49,11 @@ export interface EmployeeStats {
   empleadosActivos: number;
   empleadosInactivos: number;
   empleadosPorTipo: {
+    cajero?: number;
     enfermero?: number;
+    almacenista?: number;
+    administrador?: number;
+    socio?: number;
     medico_residente?: number;
     medico_especialista?: number;
   };

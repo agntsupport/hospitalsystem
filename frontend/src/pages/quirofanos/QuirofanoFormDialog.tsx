@@ -44,6 +44,11 @@ const QuirofanoFormDialog: React.FC<Props> = ({
   quirofano
 }) => {
   const isEditing = !!quirofano;
+  const [availableNumbers, setAvailableNumbers] = React.useState<{
+    existingNumbers: string[];
+    suggestions: string[];
+    pattern?: string;
+  }>({ existingNumbers: [], suggestions: [] });
 
   const {
     control,
@@ -62,6 +67,23 @@ const QuirofanoFormDialog: React.FC<Props> = ({
       precioHora: 0
     }
   });
+
+  // Cargar números disponibles cuando se abre el formulario para nuevo quirófano
+  useEffect(() => {
+    if (open && !isEditing) {
+      const fetchAvailableNumbers = async () => {
+        try {
+          const response = await quirofanosService.getAvailableNumbers();
+          if (response.success) {
+            setAvailableNumbers(response.data);
+          }
+        } catch (error) {
+          console.error('Error al obtener números disponibles:', error);
+        }
+      };
+      fetchAvailableNumbers();
+    }
+  }, [open, isEditing]);
 
   useEffect(() => {
     if (open) {
@@ -122,9 +144,7 @@ const QuirofanoFormDialog: React.FC<Props> = ({
       fullWidth
     >
       <DialogTitle>
-        <Typography variant="h5">
-          {isEditing ? '✏️ Editar Quirófano' : '➕ Nuevo Quirófano'}
-        </Typography>
+        {isEditing ? '✏️ Editar Quirófano' : '➕ Nuevo Quirófano'}
       </DialogTitle>
 
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -146,9 +166,16 @@ const QuirofanoFormDialog: React.FC<Props> = ({
                     {...field}
                     fullWidth
                     label="Número del Quirófano"
-                    placeholder="Ej: Q1, Q2, 01, 02"
+                    placeholder={!isEditing && availableNumbers.suggestions.length > 0 
+                      ? `Sugerencia: ${availableNumbers.suggestions[0]}` 
+                      : "Ej: Q6, Q7, Q8..."}
                     error={!!errors.numero}
-                    helperText={errors.numero?.message}
+                    helperText={
+                      errors.numero?.message || 
+                      (!isEditing && availableNumbers.existingNumbers.length > 0 
+                        ? `Ocupados: ${availableNumbers.existingNumbers.join(', ')}` 
+                        : 'Patrón: Q1, Q2, Q3...')
+                    }
                     disabled={isSubmitting}
                     InputProps={{
                       startAdornment: (

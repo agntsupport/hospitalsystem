@@ -83,6 +83,15 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Actualizar último acceso
+    await prisma.usuario.update({
+      where: { id: user.id },
+      data: { 
+        ultimoAcceso: new Date(),
+        intentosFallidos: 0 // Resetear intentos fallidos en login exitoso
+      }
+    });
+
     // Generar JWT real
     const tokenPayload = {
       userId: user.id,
@@ -103,7 +112,8 @@ router.post('/login', async (req, res) => {
       rol: user.rol,
       activo: user.activo,
       fechaRegistro: user.createdAt,
-      fechaActualizacion: user.updatedAt
+      fechaActualizacion: user.updatedAt,
+      ultimoAcceso: new Date()
     };
 
     res.json({ 

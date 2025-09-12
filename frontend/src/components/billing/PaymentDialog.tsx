@@ -141,7 +141,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
   if (!invoice) return null;
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth closeAfterTransition={false}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <PaymentIcon color="primary" />
         Registrar Pago

@@ -16,7 +16,12 @@ import {
   StockMovementsResponse,
   InventoryStats,
   ProductCategory,
-  ApiResponse
+  ApiResponse,
+  Service,
+  CreateServiceRequest,
+  UpdateServiceRequest,
+  ServiceFilters,
+  ServicesResponse
 } from '@/types/inventory.types';
 
 class InventoryService {
@@ -31,22 +36,48 @@ class InventoryService {
       }
     });
 
-    const response = await api.get(`/suppliers?${params.toString()}`);
+    const response = await api.get(`/inventory/suppliers?${params.toString()}`);
     return response;
   }
 
   async createSupplier(supplierData: CreateSupplierRequest) {
-    const response = await api.post('/suppliers', supplierData);
+    // Transform frontend data to backend expected format
+    const backendData = {
+      nombreEmpresa: supplierData.razonSocial,
+      nombreComercial: supplierData.nombreComercial,
+      rfc: supplierData.rfc,
+      contactoNombre: supplierData.contacto?.nombre || '',
+      contactoTelefono: supplierData.contacto?.telefono,
+      contactoEmail: supplierData.contacto?.email,
+      direccion: supplierData.direccion,
+      condicionesPago: supplierData.condicionesPago || 'Contado'
+    };
+    
+    const response = await api.post('/inventory/suppliers', backendData);
     return response;
   }
 
   async updateSupplier(id: number, supplierData: UpdateSupplierRequest) {
-    const response = await api.put(`/suppliers/${id}`, supplierData);
+    // Transform frontend data to backend expected format
+    const backendData = {
+      nombreEmpresa: supplierData.razonSocial,
+      nombreComercial: supplierData.nombreComercial,
+      rfc: supplierData.rfc,
+      contactoNombre: supplierData.contacto?.nombre,
+      contactoTelefono: supplierData.contacto?.telefono,
+      contactoEmail: supplierData.contacto?.email,
+      direccion: supplierData.direccion,
+      condicionesPago: supplierData.condicionesPago
+    };
+    
+    const response = await api.put(`/inventory/suppliers/${id}`, backendData);
     return response;
   }
 
-  async deleteSupplier(id: number) {
-    const response = await api.delete(`/suppliers/${id}`);
+  async deleteSupplier(id: number, motivo: string) {
+    const response = await api.delete(`/inventory/suppliers/${id}`, { 
+      data: { motivo } 
+    });
     return response;
   }
 
@@ -140,6 +171,36 @@ class InventoryService {
       new Date(product.fechaCaducidad) <= thresholdDate &&
       new Date(product.fechaCaducidad) >= new Date()
     );
+  }
+
+  // ========== SERVICIOS ==========
+  
+  async getServices(filters: ServiceFilters = {}): Promise<ServicesResponse> {
+    const params = new URLSearchParams();
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, value.toString());
+      }
+    });
+
+    const response = await api.get(`/inventory/services?${params.toString()}`);
+    return response;
+  }
+
+  async createService(serviceData: CreateServiceRequest) {
+    const response = await api.post('/inventory/services', serviceData);
+    return response;
+  }
+
+  async updateService(id: number, serviceData: UpdateServiceRequest) {
+    const response = await api.put(`/inventory/services/${id}`, serviceData);
+    return response;
+  }
+
+  async deleteService(id: number) {
+    const response = await api.delete(`/inventory/services/${id}`);
+    return response;
   }
 
   /**

@@ -2,8 +2,166 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
-const { authenticateToken } = require('../middleware/auth.middleware');
+const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
+
+// ==============================================
+// FUNCIONES HELPER PARA CARGOS AUTOMÁTICOS
+// ==============================================
+
+/**
+ * Calcula los días de estancia desde el ingreso hasta hoy
+ */
+function calcularDiasEstancia(fechaIngreso) {
+  const ingreso = new Date(fechaIngreso);
+  const hoy = new Date();
+  const diffTime = Math.abs(hoy - ingreso);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+/**
+ * Genera cargos diarios de habitación para una hospitalización
+ */
+async function generarCargosHabitacion(cuentaId, habitacionId, fechaIngreso, empleadoId, tx = prisma) {
+  try {
+    // Obtener datos de la habitación
+    const habitacion = await tx.habitacion.findUnique({
+      where: { id: parseInt(habitacionId) }
+    });
+
+    if (!habitacion) {
+      throw new Error('Habitación no encontrada');
+    }
+
+    // Buscar el servicio de habitación
+    let servicio = await tx.servicio.findFirst({
+      where: {
+        codigo: `HAB-${habitacion.numero}`
+      }
+    });
+    
+    if (!servicio) {
+      // Si no existe el servicio, crearlo automáticamente
+      servicio = await tx.servicio.create({
+        data: {
+          codigo: `HAB-${habitacion.numero}`,
+          nombre: `Habitación ${habitacion.numero} - ${habitacion.tipo} (por día)`,
+          descripcion: `Servicio de hospedaje en habitación ${habitacion.numero} tipo ${habitacion.tipo}`,
+          precio: habitacion.precioPorDia,
+          categoria: 'hospedaje',
+          activo: true
+        }
+      });
+    }
+
+    // Calcular días de estancia
+    const diasEstancia = calcularDiasEstancia(fechaIngreso);
+    
+    // Verificar si ya existen cargos de habitación para esta cuenta
+    const cargosExistentes = await tx.transaccionCuenta.count({
+      where: {
+        cuentaId: parseInt(cuentaId),
+        tipo: 'servicio',
+        servicioId: servicio.id
+      }
+    });
+
+    // Solo generar los cargos que faltan
+    const cargosAGenerar = diasEstancia - cargosExistentes;
+    
+    if (cargosAGenerar > 0) {
+      // Crear transacciones por cada día de estancia faltante
+      for (let dia = cargosExistentes + 1; dia <= diasEstancia; dia++) {
+        const fechaCargo = new Date(fechaIngreso);
+        fechaCargo.setDate(fechaCargo.getDate() + (dia - 1));
+        
+        await tx.transaccionCuenta.create({
+          data: {
+            cuentaId: parseInt(cuentaId),
+            tipo: 'servicio',
+            concepto: `Día ${dia} - Habitación ${habitacion.numero} (${habitacion.tipo})`,
+            cantidad: 1,
+            precioUnitario: servicio.precio,
+            subtotal: servicio.precio,
+            servicioId: servicio.id,
+            empleadoCargoId: parseInt(empleadoId),
+            fechaTransaccion: fechaCargo,
+            observaciones: `Cargo automático día ${dia} de hospitalización`
+          }
+        });
+      }
+      
+      // Actualizar totales de la cuenta
+      await actualizarTotalesCuenta(cuentaId, tx);
+      
+      console.log(`✅ Generados ${cargosAGenerar} cargos de habitación para cuenta ${cuentaId}`);
+      return cargosAGenerar;
+    } else {
+      console.log(`ℹ️  No hay cargos pendientes para cuenta ${cuentaId} (${diasEstancia} días, ${cargosExistentes} cargos)`);
+      return 0;
+    }
+
+  } catch (error) {
+    console.error('Error generando cargos de habitación:', error);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza los totales de una cuenta basándose en las transacciones
+ */
+async function actualizarTotalesCuenta(cuentaId, tx = prisma) {
+  try {
+    // Obtener todas las transacciones de la cuenta
+    const transacciones = await tx.transaccionCuenta.findMany({
+      where: { cuentaId: parseInt(cuentaId) }
+    });
+
+    // Calcular totales
+    let anticipo = 0;
+    let totalServicios = 0;
+    let totalProductos = 0;
+
+    transacciones.forEach(transaccion => {
+      const subtotal = parseFloat(transaccion.subtotal.toString());
+      
+      switch (transaccion.tipo) {
+        case 'anticipo':
+          anticipo += subtotal;
+          break;
+        case 'servicio':
+          totalServicios += subtotal;
+          break;
+        case 'producto':
+          totalProductos += subtotal;
+          break;
+      }
+    });
+
+    const totalCuenta = totalServicios + totalProductos;
+    const saldoPendiente = totalCuenta - anticipo;
+
+    // Actualizar la cuenta
+    await tx.cuentaPaciente.update({
+      where: { id: parseInt(cuentaId) },
+      data: {
+        anticipo,
+        totalServicios,
+        totalProductos,
+        totalCuenta,
+        saldoPendiente
+      }
+    });
+
+    console.log(`💰 Totales actualizados para cuenta ${cuentaId}: Servicios: $${totalServicios}, Total: $${totalCuenta}, Saldo: $${saldoPendiente}`);
+    return { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente };
+
+  } catch (error) {
+    console.error('Error actualizando totales de cuenta:', error);
+    throw error;
+  }
+}
 
 // ==============================================
 // ENDPOINTS DE HOSPITALIZACIÓN
@@ -16,7 +174,16 @@ router.get('/admissions', validatePagination, async (req, res) => {
     const { estado, especialidad, search } = req.query;
 
     const where = {};
-    if (estado) where.estado = estado;
+    
+    // Manejar filtros de estado (puede ser string o array)
+    if (estado) {
+      if (Array.isArray(estado)) {
+        where.estado = { in: estado };
+      } else {
+        where.estado = estado;
+      }
+    }
+    
     if (especialidad) where.especialidad = especialidad;
     
     if (search) {
@@ -79,9 +246,16 @@ router.get('/admissions', validatePagination, async (req, res) => {
     const admisionesFormatted = admisiones.map(admision => ({
       id: admision.id,
       numeroIngreso: `ING-${admision.id}`,
+      cuentaPacienteId: admision.cuentaPacienteId, // INCLUIR ID DE CUENTA
       paciente: admision.cuentaPaciente?.paciente ? {
         ...admision.cuentaPaciente.paciente,
         nombreCompleto: `${admision.cuentaPaciente.paciente.nombre} ${admision.cuentaPaciente.paciente.apellidoPaterno} ${admision.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim()
+      } : null,
+      cuentaPaciente: admision.cuentaPaciente ? {
+        id: admision.cuentaPaciente.id,
+        tipoAtencion: admision.cuentaPaciente.tipoAtencion,
+        estado: admision.cuentaPaciente.estado,
+        fechaApertura: admision.cuentaPaciente.fechaApertura
       } : null,
       fechaIngreso: admision.fechaIngreso,
       fechaAlta: admision.fechaAlta,
@@ -105,7 +279,7 @@ router.get('/admissions', validatePagination, async (req, res) => {
 });
 
 // POST /admissions - Crear nueva admisión
-router.post('/admissions', authenticateToken, auditMiddleware('hospitalizacion'), validateRequired(['pacienteId', 'habitacionId', 'diagnosticoIngreso', 'motivoIngreso']), async (req, res) => {
+router.post('/admissions', authenticateToken, authorizeRoles(['administrador', 'cajero', 'medico_residente', 'medico_especialista']), auditMiddleware('hospitalizacion'), validateRequired(['pacienteId', 'habitacionId', 'diagnosticoIngreso', 'motivoIngreso', 'medicoTratanteId']), async (req, res) => {
   try {
     const {
       pacienteId,
@@ -134,7 +308,7 @@ router.post('/admissions', authenticateToken, auditMiddleware('hospitalizacion')
           pacienteId: parseInt(pacienteId),
           tipoAtencion: 'hospitalizacion',
           estado: 'abierta',
-          cajeroAperturaId: 16, // Cajero por defecto
+          cajeroAperturaId: req.user.id, // Usuario actual que crea la cuenta
           habitacionId: parseInt(habitacionId),
           medicoTratanteId: medicoTratanteId ? parseInt(medicoTratanteId) : null,
           observaciones
@@ -147,12 +321,35 @@ router.post('/admissions', authenticateToken, auditMiddleware('hospitalizacion')
         data: { estado: 'ocupada' }
       });
 
-      // 3. Crear hospitalización
+      // 3. Crear transacción de anticipo automático de $10,000 MXN
+      await tx.transaccionCuenta.create({
+        data: {
+          cuentaId: cuentaPaciente.id,
+          tipo: 'anticipo',
+          concepto: 'Anticipo por hospitalización',
+          cantidad: 1,
+          precioUnitario: 10000.00,
+          subtotal: 10000.00,
+          empleadoCargoId: req.user.id,
+          observaciones: 'Anticipo automático por ingreso hospitalario'
+        }
+      });
+
+      // 4. Generar cargo inicial de habitación (día 1)
+      await generarCargosHabitacion(
+        cuentaPaciente.id, 
+        parseInt(habitacionId), 
+        new Date(), // Fecha de ingreso es hoy
+        req.user.id,
+        tx
+      );
+
+      // 5. Crear hospitalización
       const hospitalizacion = await tx.hospitalizacion.create({
         data: {
           cuentaPacienteId: cuentaPaciente.id,
           habitacionId: parseInt(habitacionId),
-          medicoEspecialistaId: medicoTratanteId ? parseInt(medicoTratanteId) : 11, // Dr. Carlos por defecto
+          medicoEspecialistaId: parseInt(medicoTratanteId),
           motivoHospitalizacion: motivoIngreso,
           diagnosticoIngreso,
           estado: 'en_observacion',
@@ -222,7 +419,7 @@ router.post('/admissions', authenticateToken, auditMiddleware('hospitalizacion')
 });
 
 // PUT /:id/discharge - Dar de alta
-router.put('/:id/discharge', authenticateToken, auditMiddleware('hospitalizacion'), criticalOperationAudit, captureOriginalData('hospitalizacion'), async (req, res) => {
+router.put('/:id/discharge', authenticateToken, authorizeRoles(['enfermero', 'medico_residente', 'medico_especialista', 'administrador']), auditMiddleware('hospitalizacion'), criticalOperationAudit, captureOriginalData('hospitalizacion'), async (req, res) => {
   try {
     const { id } = req.params;
     const { 
@@ -301,8 +498,14 @@ router.get('/stats', async (req, res) => {
       // Camas disponibles
       prisma.habitacion.count({ where: { estado: 'disponible' } }),
       
-      // Pacientes hospitalizados actualmente
-      prisma.hospitalizacion.count({ where: { estado: 'en_observacion' } }),
+      // Pacientes hospitalizados actualmente (todos excepto dados de alta)
+      prisma.hospitalizacion.count({ 
+        where: { 
+          estado: { 
+            notIn: ['alta_medica', 'alta_voluntaria'] 
+          } 
+        } 
+      }),
       
       // Ingresos de hoy
       prisma.hospitalizacion.count({
@@ -328,7 +531,11 @@ router.get('/stats', async (req, res) => {
       prisma.hospitalizacion.groupBy({
         by: ['estado'],
         _count: { estado: true },
-        where: { estado: 'en_observacion' }
+        where: { 
+          estado: { 
+            notIn: ['alta_medica', 'alta_voluntaria'] 
+          } 
+        }
       }),
       
       // Estancia promedio (últimos 30 ingresos)
@@ -413,8 +620,8 @@ router.get('/stats', async (req, res) => {
 // ENDPOINTS PARA NOTAS MÉDICAS
 // ==============================================
 
-// GET /:id/notes - Obtener notas médicas de una admisión
-router.get('/admissions/:id/notes', async (req, res) => {
+// GET /:id/notes - Obtener notas médicas de una admisión (solo personal médico y enfermería)
+router.get('/admissions/:id/notes', authenticateToken, authorizeRoles(['administrador', 'enfermero', 'medico_residente', 'medico_especialista']), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -479,8 +686,115 @@ router.get('/admissions/:id/notes', async (req, res) => {
   }
 });
 
+// GET /:id/patient-status - Obtener estado básico del paciente (para cajeros)
+router.get('/admissions/:id/patient-status', authenticateToken, authorizeRoles(['administrador', 'cajero', 'enfermero', 'medico_residente', 'medico_especialista']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const hospitalizacion = await prisma.hospitalizacion.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        cuentaPaciente: {
+          include: {
+            paciente: {
+              select: {
+                id: true,
+                numeroExpediente: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true,
+                fechaNacimiento: true,
+                genero: true,
+                tipoSangre: true,
+                contactoEmergenciaNombre: true,
+                contactoEmergenciaTelefono: true,
+                contactoEmergenciaRelacion: true
+              }
+            }
+          }
+        },
+        habitacion: {
+          select: {
+            id: true,
+            numero: true,
+            tipo: true
+          }
+        },
+        medicoEspecialista: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            especialidad: true
+          }
+        }
+      }
+    });
+
+    if (!hospitalizacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hospitalización no encontrada'
+      });
+    }
+
+    // Solo información básica del estado del paciente
+    const estadoPaciente = {
+      hospitalizacion: {
+        id: hospitalizacion.id,
+        numeroIngreso: `ING-${hospitalizacion.id}`,
+        fechaIngreso: hospitalizacion.fechaIngreso,
+        fechaAlta: hospitalizacion.fechaAlta,
+        estado: hospitalizacion.estado,
+        diagnosticoIngreso: hospitalizacion.diagnosticoIngreso,
+        diagnosticoAlta: hospitalizacion.diagnosticoAlta
+      },
+      paciente: {
+        id: hospitalizacion.cuentaPaciente.paciente.id,
+        nombreCompleto: `${hospitalizacion.cuentaPaciente.paciente.nombre} ${hospitalizacion.cuentaPaciente.paciente.apellidoPaterno} ${hospitalizacion.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim(),
+        numeroExpediente: hospitalizacion.cuentaPaciente.paciente.numeroExpediente,
+        edad: hospitalizacion.cuentaPaciente.paciente.fechaNacimiento ? 
+          Math.floor((new Date() - new Date(hospitalizacion.cuentaPaciente.paciente.fechaNacimiento)) / (365.25 * 24 * 60 * 60 * 1000)) : null,
+        genero: hospitalizacion.cuentaPaciente.paciente.genero,
+        tipoSangre: hospitalizacion.cuentaPaciente.paciente.tipoSangre,
+        contactoEmergencia: {
+          nombre: hospitalizacion.cuentaPaciente.paciente.contactoEmergenciaNombre,
+          telefono: hospitalizacion.cuentaPaciente.paciente.contactoEmergenciaTelefono,
+          relacion: hospitalizacion.cuentaPaciente.paciente.contactoEmergenciaRelacion
+        }
+      },
+      habitacion: hospitalizacion.habitacion ? {
+        numero: hospitalizacion.habitacion.numero,
+        tipo: hospitalizacion.habitacion.tipo
+      } : null,
+      medicoTratante: hospitalizacion.medicoEspecialista ? {
+        nombre: `${hospitalizacion.medicoEspecialista.nombre} ${hospitalizacion.medicoEspecialista.apellidoPaterno} ${hospitalizacion.medicoEspecialista.apellidoMaterno || ''}`.trim(),
+        especialidad: hospitalizacion.medicoEspecialista.especialidad
+      } : null,
+      cuenta: {
+        estado: hospitalizacion.cuentaPaciente.estado,
+        tipoAtencion: hospitalizacion.cuentaPaciente.tipoAtencion
+      }
+    };
+
+    res.json({
+      success: true,
+      data: estadoPaciente,
+      message: 'Estado del paciente obtenido correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo estado del paciente:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
 // POST /:id/notes - Crear nueva nota médica
-router.post('/admissions/:id/notes', authenticateToken, auditMiddleware('hospitalizacion'), validateRequired(['tipoNota', 'turno']), async (req, res) => {
+router.post('/admissions/:id/notes', authenticateToken, authorizeRoles(['enfermero', 'medico_residente', 'medico_especialista', 'administrador']), auditMiddleware('hospitalizacion'), validateRequired(['tipoNota', 'turno']), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -574,6 +888,177 @@ router.post('/admissions/:id/notes', authenticateToken, auditMiddleware('hospita
   } catch (error) {
     console.error('Error creando nota médica:', error);
     handlePrismaError(error, res);
+  }
+});
+
+// ==============================================
+// ENDPOINT PARA CARGOS AUTOMÁTICOS
+// ==============================================
+
+// POST /update-room-charges - Actualizar cargos de habitación para todas las hospitalizaciones activas
+router.post('/update-room-charges', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
+  try {
+    console.log('🔄 Iniciando actualización de cargos de habitación...');
+    
+    // Obtener todas las hospitalizaciones activas (que no tengan alta)
+    const hospitalizacionesActivas = await prisma.hospitalizacion.findMany({
+      where: {
+        estado: {
+          notIn: ['alta_medica', 'alta_voluntaria']
+        }
+      },
+      include: {
+        cuentaPaciente: true
+      }
+    });
+
+    console.log(`📊 Encontradas ${hospitalizacionesActivas.length} hospitalizaciones activas`);
+
+    let totalCargosGenerados = 0;
+    const resultados = [];
+
+    // Procesar cada hospitalización en una transacción
+    for (const hospitalizacion of hospitalizacionesActivas) {
+      try {
+        const cargosGenerados = await prisma.$transaction(async (tx) => {
+          return await generarCargosHabitacion(
+            hospitalizacion.cuentaPacienteId,
+            hospitalizacion.habitacionId,
+            hospitalizacion.fechaIngreso,
+            req.user.id,
+            tx
+          );
+        });
+
+        totalCargosGenerados += cargosGenerados;
+        resultados.push({
+          hospitalizacionId: hospitalizacion.id,
+          cuentaId: hospitalizacion.cuentaPacienteId,
+          cargosGenerados,
+          estado: 'success'
+        });
+
+      } catch (error) {
+        console.error(`❌ Error procesando hospitalización ${hospitalizacion.id}:`, error);
+        resultados.push({
+          hospitalizacionId: hospitalizacion.id,
+          cuentaId: hospitalizacion.cuentaPacienteId,
+          cargosGenerados: 0,
+          estado: 'error',
+          mensaje: error.message
+        });
+      }
+    }
+
+    console.log(`✅ Proceso completado: ${totalCargosGenerados} cargos generados`);
+
+    res.json({
+      success: true,
+      message: `Actualización completada: ${totalCargosGenerados} cargos generados en ${hospitalizacionesActivas.length} hospitalizaciones`,
+      data: {
+        totalCargosGenerados,
+        hospitalizacionesProcesadas: hospitalizacionesActivas.length,
+        resultados
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en actualización masiva de cargos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar cargos de habitación',
+      error: error.message
+    });
+  }
+});
+
+// POST /admissions/:id/update-charges - Actualizar cargos de una hospitalización específica
+router.post('/admissions/:id/update-charges', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🔄 Actualizando cargos para hospitalización ${id}...`);
+
+    // Buscar la hospitalización
+    const hospitalizacion = await prisma.hospitalizacion.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        cuentaPaciente: true
+      }
+    });
+
+    if (!hospitalizacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Hospitalización no encontrada'
+      });
+    }
+
+    if (['alta_medica', 'alta_voluntaria'].includes(hospitalizacion.estado)) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se pueden generar cargos para pacientes dados de alta'
+      });
+    }
+
+    // Generar los cargos faltantes
+    const cargosGenerados = await prisma.$transaction(async (tx) => {
+      return await generarCargosHabitacion(
+        hospitalizacion.cuentaPacienteId,
+        hospitalizacion.habitacionId,
+        hospitalizacion.fechaIngreso,
+        req.user.id,
+        tx
+      );
+    });
+
+    res.json({
+      success: true,
+      message: `Cargos actualizados: ${cargosGenerados} cargos generados`,
+      data: {
+        hospitalizacionId: parseInt(id),
+        cuentaId: hospitalizacion.cuentaPacienteId,
+        cargosGenerados
+      }
+    });
+
+  } catch (error) {
+    console.error(`❌ Error actualizando cargos para hospitalización ${id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar cargos de la hospitalización',
+      error: error.message
+    });
+  }
+});
+
+// POST /accounts/:id/recalculate-totals - Recalcular totales de una cuenta específica
+router.post('/accounts/:id/recalculate-totals', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🧮 Recalculando totales para cuenta ${id}...`);
+
+    const totales = await prisma.$transaction(async (tx) => {
+      return await actualizarTotalesCuenta(parseInt(id), tx);
+    });
+
+    res.json({
+      success: true,
+      message: 'Totales recalculados exitosamente',
+      data: {
+        cuentaId: parseInt(id),
+        ...totales
+      }
+    });
+
+  } catch (error) {
+    console.error(`❌ Error recalculando totales para cuenta ${id}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al recalcular totales de la cuenta',
+      error: error.message
+    });
   }
 });
 

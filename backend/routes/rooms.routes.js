@@ -54,20 +54,66 @@ router.post('/', authenticateToken, auditMiddleware('habitaciones'), validateReq
   try {
     const { numero, tipo, precioPorDia, descripcion } = req.body;
 
-    const habitacion = await prisma.habitacion.create({
-      data: {
-        numero,
-        tipo,
-        precioPorDia: parseFloat(precioPorDia),
-        descripcion,
-        estado: 'disponible'
-      }
+    // Verificar que el número no esté duplicado
+    const existeHabitacion = await prisma.habitacion.findUnique({
+      where: { numero: numero.toString() }
+    });
+
+    if (existeHabitacion) {
+      // Obtener números existentes para información
+      const habitacionesExistentes = await prisma.habitacion.findMany({
+        select: { numero: true },
+        orderBy: { numero: 'asc' }
+      });
+      
+      const numerosExistentes = habitacionesExistentes.map(h => h.numero);
+      
+      return res.status(400).json({
+        success: false,
+        message: `Ya existe una habitación con el número "${numero}". Números existentes: ${numerosExistentes.join(', ')}`,
+        existingNumbers: numerosExistentes
+      });
+    }
+
+    // Crear habitación y servicio asociado en una transacción
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Crear la habitación
+      const habitacion = await tx.habitacion.create({
+        data: {
+          numero: numero.toString(),
+          tipo,
+          precioPorDia: parseFloat(precioPorDia),
+          descripcion,
+          estado: 'disponible'
+        }
+      });
+
+      // 2. Crear servicio asociado automáticamente
+      const codigoServicio = `HAB-${numero}`;
+      const nombreServicio = `Habitación ${numero} - ${tipo} (por día)`;
+      const descripcionServicio = `Cargo por uso de habitación ${numero} tipo ${tipo}. Tarifa diaria.`;
+      
+      const servicio = await tx.servicio.create({
+        data: {
+          codigo: codigoServicio,
+          nombre: nombreServicio,
+          descripcion: descripcionServicio,
+          tipo: 'hospitalizacion',
+          precio: parseFloat(precioPorDia),
+          activo: true
+        }
+      });
+
+      return { habitacion, servicio };
     });
 
     res.status(201).json({
       success: true,
-      data: { habitacion },
-      message: 'Habitación creada correctamente'
+      data: { 
+        habitacion: result.habitacion,
+        servicio: result.servicio 
+      },
+      message: 'Habitación y servicio asociado creados correctamente'
     });
 
   } catch (error) {
@@ -96,6 +142,128 @@ router.put('/:id/assign', authenticateToken, auditMiddleware('habitaciones'), ca
   } catch (error) {
     console.error('Error asignando habitación:', error);
     handlePrismaError(error, res);
+  }
+});
+
+// PUT /:id - Actualizar habitación
+router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), validateRequired(['numero', 'tipo', 'precioPorDia']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { numero, tipo, precioPorDia, descripcion, estado } = req.body;
+
+    const habitacion = await prisma.habitacion.update({
+      where: { id: parseInt(id) },
+      data: {
+        numero,
+        tipo,
+        precioPorDia: parseFloat(precioPorDia),
+        descripcion,
+        estado: estado || 'disponible'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: { habitacion },
+      message: 'Habitación actualizada correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error actualizando habitación:', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// DELETE /:id - Eliminar habitación
+router.delete('/:id', authenticateToken, auditMiddleware('habitaciones'), criticalOperationAudit, captureOriginalData('habitacion'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const habitacionId = parseInt(id);
+
+
+    // Verificar que la habitación no esté ocupada
+    const habitacion = await prisma.habitacion.findUnique({
+      where: { id: habitacionId }
+    });
+
+    if (!habitacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habitación no encontrada'
+      });
+    }
+
+    if (habitacion.estado === 'ocupada') {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede eliminar una habitación que está ocupada'
+      });
+    }
+
+    // Verificar si hay ingresos activos en esta habitación
+    const ingresosActivos = await prisma.hospitalizacion.count({
+      where: {
+        habitacionId: habitacionId,
+        fechaAlta: null
+      }
+    });
+
+    if (ingresosActivos > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede eliminar una habitación con ingresos activos'
+      });
+    }
+
+    await prisma.habitacion.delete({
+      where: { id: habitacionId }
+    });
+
+    res.json({
+      success: true,
+      message: 'Habitación eliminada correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error eliminando habitación:', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /available-numbers - Números disponibles y sugerencias
+router.get('/available-numbers', async (req, res) => {
+  try {
+    const habitacionesExistentes = await prisma.habitacion.findMany({
+      select: { numero: true },
+      orderBy: { numero: 'asc' }
+    });
+    
+    const numerosExistentes = habitacionesExistentes.map(h => h.numero);
+    
+    // Generar sugerencias basadas en patrón numérico
+    const sugerencias = [];
+    for (let i = 1; i <= 20; i++) {
+      const numeroSugerido = i.toString().padStart(2, '0');
+      if (!numerosExistentes.includes(numeroSugerido)) {
+        sugerencias.push(numeroSugerido);
+        if (sugerencias.length >= 5) break; // Máximo 5 sugerencias
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        existingNumbers: numerosExistentes,
+        suggestions: sugerencias,
+        total: numerosExistentes.length
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo números disponibles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
   }
 });
 

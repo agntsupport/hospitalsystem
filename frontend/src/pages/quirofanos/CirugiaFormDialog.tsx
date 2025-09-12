@@ -128,17 +128,18 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
       }
       
       if (empleadosRes.success) {
-        const empleados = empleadosRes.data.items || [];
+        const empleados = empleadosRes.data || []; // ✅ CORRECCIÓN: .data ya es el array
+        
         // Filtrar médicos (especialistas y residentes)
         const medicosList = empleados.filter(e => 
-          e.cargo === 'medico_especialista' || e.cargo === 'medico_residente'
+          e.tipoEmpleado === 'medico_especialista' || e.tipoEmpleado === 'medico_residente'
         );
         setMedicos(medicosList);
         
         // Personal médico para el equipo (enfermeros, anestesiólogos, etc.)
         const personalList = empleados.filter(e => 
-          e.cargo === 'enfermero' || 
-          e.cargo === 'medico_residente' || 
+          e.tipoEmpleado === 'enfermero' || 
+          e.tipoEmpleado === 'medico_residente' || 
           e.especialidad?.toLowerCase().includes('anestes')
         );
         setPersonalMedico(personalList);
@@ -385,7 +386,12 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
                 label="Fecha y Hora de Inicio"
                 value={formData.fechaInicio}
                 onChange={(newValue) => handleInputChange('fechaInicio', newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth required />}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true
+                  }
+                }}
                 minDateTime={new Date()}
                 ampm={false}
               />
@@ -399,7 +405,12 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
                 label="Fecha y Hora de Fin (Estimada)"
                 value={formData.fechaFin}
                 onChange={(newValue) => handleInputChange('fechaFin', newValue)}
-                renderInput={(params) => <TextField {...params} fullWidth required />}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    required: true
+                  }
+                }}
                 minDateTime={formData.fechaInicio || new Date()}
                 ampm={false}
               />
@@ -412,20 +423,24 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
               multiple
               options={personalMedico}
               getOptionLabel={(option) => 
-                `${option.nombre} ${option.apellidoPaterno} - ${option.cargo}`
+                `${option.nombre} ${option.apellidoPaterno} - ${option.tipoEmpleado}`
               }
               value={personalMedico.filter(p => formData.equipoMedico.includes(p.id))}
               onChange={(e, newValue) => 
                 handleInputChange('equipoMedico', newValue.map(v => v.id))
               }
               renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip
-                    variant="outlined"
-                    label={`${option.nombre} ${option.apellidoPaterno}`}
-                    {...getTagProps({ index })}
-                  />
-                ))
+                value.map((option, index) => {
+                  const { key, ...chipProps } = getTagProps({ index });
+                  return (
+                    <Chip
+                      key={key}
+                      variant="outlined"
+                      label={`${option.nombre} ${option.apellidoPaterno}`}
+                      {...chipProps}
+                    />
+                  );
+                })
               }
               renderInput={(params) => (
                 <TextField

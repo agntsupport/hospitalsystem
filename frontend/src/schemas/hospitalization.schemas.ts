@@ -12,9 +12,9 @@ export const admissionFormSchema = yup.object({
     .required('La habitación es requerida')
     .positive('Debe seleccionar una habitación'),
   
-  medicoResponsableId: yup
+  medicoTratanteId: yup
     .number()
-    .required('El médico responsable es requerido')
+    .required('El médico tratante es requerido')
     .positive('Debe seleccionar un médico'),
   
   tipoIngreso: yup
@@ -145,7 +145,7 @@ export const dischargeFormSchema = yup.object({
   tipoAlta: yup
     .string()
     .required('El tipo de alta es requerido')
-    .oneOf(['mejoria', 'voluntaria', 'traslado', 'defuncion', 'fuga'], 'Tipo de alta no válido'),
+    .oneOf(['alta_medica', 'alta_voluntaria', 'traslado', 'defuncion'], 'Tipo de alta no válido'),
   
   diagnosticoFinal: yup
     .string()
@@ -167,7 +167,7 @@ export const dischargeFormSchema = yup.object({
   planSeguimiento: yup
     .string()
     .when('tipoAlta', {
-      is: (val: string) => val === 'mejoria' || val === 'voluntaria',
+      is: (val: string) => val === 'alta_medica' || val === 'alta_voluntaria',
       then: (schema) => schema
         .required('El plan de seguimiento es requerido')
         .min(10, 'Mínimo 10 caracteres'),
@@ -187,7 +187,7 @@ export const dischargeFormSchema = yup.object({
   citaControl: yup
     .string()
     .when('tipoAlta', {
-      is: 'mejoria',
+      is: 'alta_medica',
       then: (schema) => schema
         .required('La fecha de cita de control es requerida')
         .test('fecha-futura', 'La cita debe ser en el futuro', function(value) {

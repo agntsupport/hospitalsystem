@@ -31,6 +31,8 @@ import OpenAccountsList from '@/components/pos/OpenAccountsList';
 import POSTransactionDialog from '@/components/pos/POSTransactionDialog';
 import HistoryTab from '@/components/pos/HistoryTab';
 import QuickSalesTab from '@/components/pos/QuickSalesTab';
+import AccountClosureDialog from '@/components/pos/AccountClosureDialog';
+import AccountDetailDialog from '@/components/pos/AccountDetailDialog';
 
 const POSPage: React.FC = () => {
   const [stats, setStats] = useState<POSStats | null>(null);
@@ -42,6 +44,10 @@ const POSPage: React.FC = () => {
   const [newAccountOpen, setNewAccountOpen] = useState(false);
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<PatientAccount | null>(null);
+  const [closureDialogOpen, setClosureDialogOpen] = useState(false);
+  const [accountToClose, setAccountToClose] = useState<PatientAccount | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [accountToView, setAccountToView] = useState<PatientAccount | null>(null);
   
   // Tabs
   const [currentTab, setCurrentTab] = useState(0);
@@ -81,7 +87,7 @@ const POSPage: React.FC = () => {
     try {
       const response = await posService.getPatientAccounts({ estado: 'abierta' });
       if (response.success) {
-        setOpenAccounts(response.data.items || []);
+        setOpenAccounts(response.data.accounts || []);
       }
     } catch (error) {
       console.error('Error loading open accounts:', error);
@@ -110,14 +116,21 @@ const POSPage: React.FC = () => {
     loadOpenAccounts();
   };
 
-  const handleCloseAccount = async (accountId: number, montoRecibido?: number) => {
-    try {
-      await posService.closeAccount(accountId, { montoRecibido });
-      loadStats();
-      loadOpenAccounts();
-    } catch (error: any) {
-      setError(error.message || 'Error al cerrar cuenta');
-    }
+  const handleCloseAccount = (account: PatientAccount) => {
+    setAccountToClose(account);
+    setClosureDialogOpen(true);
+  };
+
+  const handleViewAccount = (account: PatientAccount) => {
+    setAccountToView(account);
+    setDetailDialogOpen(true);
+  };
+
+  const handleClosureSuccess = () => {
+    setClosureDialogOpen(false);
+    setAccountToClose(null);
+    loadStats();
+    loadOpenAccounts();
   };
 
   return (
@@ -187,6 +200,7 @@ const POSPage: React.FC = () => {
               loading={loading}
               onAddTransaction={handleAddTransaction}
               onCloseAccount={handleCloseAccount}
+              onViewAccount={handleViewAccount}
               onRefresh={loadOpenAccounts}
             />
           )}
@@ -216,6 +230,25 @@ const POSPage: React.FC = () => {
           setSelectedAccount(null);
         }}
         onTransactionAdded={handleTransactionAdded}
+      />
+
+      <AccountClosureDialog
+        open={closureDialogOpen}
+        account={accountToClose}
+        onClose={() => {
+          setClosureDialogOpen(false);
+          setAccountToClose(null);
+        }}
+        onSuccess={handleClosureSuccess}
+      />
+
+      <AccountDetailDialog
+        open={detailDialogOpen}
+        account={accountToView}
+        onClose={() => {
+          setDetailDialogOpen(false);
+          setAccountToView(null);
+        }}
       />
     </Box>
   );

@@ -400,14 +400,25 @@ router.get('/stats', async (req, res) => {
       total + venta.items.filter(item => item.tipo === 'producto').reduce((sum, item) => sum + item.cantidad, 0), 0
     );
 
-    // Calcular saldos pendientes
-    const saldosPendientes = await prisma.cuentaPaciente.aggregate({
-      where: { 
-        estado: 'abierta',
-        saldoPendiente: { gt: 0 }
-      },
-      _sum: { saldoPendiente: true }
-    });
+    // Calcular saldos (separando a favor y en contra)
+    const [saldosAFavor, saldosDebe] = await Promise.all([
+      // Saldos a favor del paciente (positivos)
+      prisma.cuentaPaciente.aggregate({
+        where: { 
+          estado: 'abierta',
+          saldoPendiente: { gt: 0 }
+        },
+        _sum: { saldoPendiente: true }
+      }),
+      // Saldos que debe el paciente (negativos)
+      prisma.cuentaPaciente.aggregate({
+        where: { 
+          estado: 'abierta',
+          saldoPendiente: { lt: 0 }
+        },
+        _sum: { saldoPendiente: true }
+      })
+    ]);
 
     const stats = {
       cuentasAbiertas: cuentasAbiertas,
@@ -416,7 +427,8 @@ router.get('/stats', async (req, res) => {
       totalVentasMes: parseFloat(totalVentasMes._sum.total?.toString() || '0'),
       serviciosVendidos: serviciosVendidosHoy,
       productosVendidos: productosVendidosHoy,
-      saldosPendientes: parseFloat(saldosPendientes._sum.saldoPendiente?.toString() || '0')
+      saldosAFavor: parseFloat(saldosAFavor._sum.saldoPendiente?.toString() || '0'),
+      saldosPorCobrar: Math.abs(parseFloat(saldosDebe._sum.saldoPendiente?.toString() || '0'))
     };
 
     res.json({
@@ -430,6 +442,199 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error obteniendo estadísticas POS',
+      error: error.message
+    });
+  }
+});
+
+// GET /cuenta/:id/transacciones - Obtener transacciones de una cuenta específica
+router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      page = 1, 
+      limit = 50,
+      tipo 
+    } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Construir filtros
+    const where = {
+      cuentaId: parseInt(id)
+    };
+
+    if (tipo) {
+      where.tipo = tipo;
+    }
+
+    // Obtener transacciones con detalles
+    const [transacciones, total] = await Promise.all([
+      prisma.transaccionCuenta.findMany({
+        where,
+        include: {
+          producto: {
+            select: {
+              codigo: true,
+              nombre: true,
+              unidadMedida: true
+            }
+          },
+          servicio: {
+            select: {
+              codigo: true,
+              nombre: true,
+              tipo: true
+            }
+          }
+        },
+        orderBy: { fechaTransaccion: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.transaccionCuenta.count({ where })
+    ]);
+
+    // Formatear transacciones
+    const transaccionesFormatted = transacciones.map(transaccion => ({
+      id: transaccion.id,
+      tipo: transaccion.tipo,
+      concepto: transaccion.concepto,
+      cantidad: transaccion.cantidad,
+      precioUnitario: parseFloat(transaccion.precioUnitario?.toString() || '0'),
+      subtotal: parseFloat(transaccion.subtotal?.toString() || '0'),
+      fecha: transaccion.fechaTransaccion,
+      producto: transaccion.producto ? {
+        codigo: transaccion.producto.codigo,
+        nombre: transaccion.producto.nombre,
+        unidadMedida: transaccion.producto.unidadMedida
+      } : null,
+      servicio: transaccion.servicio ? {
+        codigo: transaccion.servicio.codigo,
+        nombre: transaccion.servicio.nombre,
+        tipo: transaccion.servicio.tipo
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        transacciones: transaccionesFormatted,
+        pagination: {
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+          currentPage: parseInt(page),
+          pageSize: parseInt(limit)
+        }
+      },
+      message: 'Transacciones obtenidas correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo transacciones de cuenta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo transacciones de cuenta',
+      error: error.message
+    });
+  }
+});
+
+// POST /recalcular-cuentas - Recalcular totales de todas las cuentas abiertas (solo administradores)
+router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
+  try {
+    // Solo administradores pueden ejecutar este endpoint
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden recalcular cuentas'
+      });
+    }
+
+    console.log('🔧 Iniciando recálculo de todas las cuentas abiertas...');
+    
+    // Obtener todas las cuentas abiertas
+    const cuentasAbiertas = await prisma.cuentaPaciente.findMany({
+      where: { estado: 'abierta' }
+    });
+
+    console.log(`📋 Encontradas ${cuentasAbiertas.length} cuentas abiertas para recalcular`);
+
+    let cuentasActualizadas = 0;
+    const resultados = [];
+
+    for (const cuenta of cuentasAbiertas) {
+      // Calcular totales por tipo de transacción
+      const [servicios, productos] = await Promise.all([
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'servicio' },
+          _sum: { subtotal: true }
+        }),
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'producto' },
+          _sum: { subtotal: true }
+        })
+      ]);
+
+      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+      const totalProductos = parseFloat(productos._sum.subtotal || 0);
+      const totalCuenta = totalServicios + totalProductos;
+      const saldoPendiente = parseFloat(cuenta.anticipo) - totalCuenta;
+
+      // Verificar si hay cambios
+      const cambios = (
+        Math.abs(parseFloat(cuenta.totalServicios) - totalServicios) > 0.01 ||
+        Math.abs(parseFloat(cuenta.totalProductos) - totalProductos) > 0.01 ||
+        Math.abs(parseFloat(cuenta.totalCuenta) - totalCuenta) > 0.01 ||
+        Math.abs(parseFloat(cuenta.saldoPendiente) - saldoPendiente) > 0.01
+      );
+
+      if (cambios) {
+        // Actualizar cuenta
+        await prisma.cuentaPaciente.update({
+          where: { id: cuenta.id },
+          data: {
+            totalServicios,
+            totalProductos,
+            totalCuenta,
+            saldoPendiente
+          }
+        });
+
+        cuentasActualizadas++;
+        resultados.push({
+          cuentaId: cuenta.id,
+          antes: {
+            totalServicios: parseFloat(cuenta.totalServicios),
+            totalProductos: parseFloat(cuenta.totalProductos),
+            totalCuenta: parseFloat(cuenta.totalCuenta),
+            saldoPendiente: parseFloat(cuenta.saldoPendiente)
+          },
+          despues: {
+            totalServicios,
+            totalProductos,
+            totalCuenta,
+            saldoPendiente
+          }
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        cuentasRevisadas: cuentasAbiertas.length,
+        cuentasActualizadas,
+        resultados
+      },
+      message: `Recálculo completado. ${cuentasActualizadas} de ${cuentasAbiertas.length} cuentas fueron actualizadas.`
+    });
+
+  } catch (error) {
+    console.error('Error recalculando cuentas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al recalcular cuentas',
       error: error.message
     });
   }

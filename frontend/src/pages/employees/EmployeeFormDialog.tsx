@@ -26,7 +26,7 @@ import {
 import { toast } from 'react-toastify';
 
 import { employeeService } from '@/services/employeeService';
-import { Employee, EmployeeType } from '@/types/employee.types';
+import { Employee, EmployeeType, EmployeeFormData } from '@/types/employee.types';
 import { employeeFormSchema, EmployeeFormValues } from '@/schemas/employees.schemas';
 import { EMPLOYEE_TYPE_LABELS } from '@/utils/constants';
 
@@ -49,10 +49,12 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<EmployeeFormValues>({
     resolver: yupResolver(employeeFormSchema),
-    context: { isNew: !isEditing },
+    context: { $isNew: !isEditing },
     defaultValues: {
       nombre: '',
       apellidoPaterno: '',
@@ -62,7 +64,7 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
       telefono: '',
       email: '',
       direccion: '',
-      tipo: 'enfermero',
+      tipo: 'cajero',
       especialidad: '',
       numeroLicencia: '',
       fechaIngreso: new Date().toISOString().split('T')[0],
@@ -71,10 +73,19 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
       username: '',
       password: '',
       confirmPassword: '',
-      rol: 'enfermero',
+      rol: 'cajero',
       activo: true
     }
   });
+
+  // Watch para sincronizar tipo con rol
+  const watchedTipo = watch('tipo');
+  
+  useEffect(() => {
+    if (watchedTipo && !isEditing) {
+      setValue('rol', watchedTipo);
+    }
+  }, [watchedTipo, setValue, isEditing]);
 
   // Cargar datos del empleado cuando se está editando
   useEffect(() => {
@@ -83,11 +94,13 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
         nombre: editingEmployee.nombre,
         apellidoPaterno: editingEmployee.apellidoPaterno,
         apellidoMaterno: editingEmployee.apellidoMaterno || '',
-        fechaNacimiento: '', // Este campo no existe en el Employee actual, mantener vacío
-        genero: 'M', // Default, no existe en Employee actual
+        fechaNacimiento: editingEmployee.fechaNacimiento 
+          ? new Date(editingEmployee.fechaNacimiento).toISOString().split('T')[0]
+          : '',
+        genero: editingEmployee.genero || 'M',
         telefono: editingEmployee.telefono || '',
         email: editingEmployee.email || '',
-        direccion: '', // Este campo no existe en el Employee actual, mantener vacío
+        direccion: editingEmployee.direccion || '',
         tipo: editingEmployee.tipoEmpleado,
         especialidad: editingEmployee.especialidad || '',
         numeroLicencia: editingEmployee.cedulaProfesional || '',
@@ -95,11 +108,11 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
           ? new Date(editingEmployee.fechaIngreso).toISOString().split('T')[0] 
           : new Date().toISOString().split('T')[0],
         salario: editingEmployee.salario || 0,
-        turno: 'matutino', // Default, no existe en Employee actual
+        turno: editingEmployee.turno || 'matutino',
         username: '',
         password: '',
         confirmPassword: '',
-        rol: 'enfermero', // Mapear desde tipoEmpleado
+        rol: editingEmployee.tipoEmpleado, // Usar el mismo tipo como rol
         activo: editingEmployee.activo
       });
     } else if (!editingEmployee && open) {
@@ -113,7 +126,7 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
         telefono: '',
         email: '',
         direccion: '',
-        tipo: 'enfermero',
+        tipo: 'cajero',
         especialidad: '',
         numeroLicencia: '',
         fechaIngreso: new Date().toISOString().split('T')[0],
@@ -122,19 +135,29 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
         username: '',
         password: '',
         confirmPassword: '',
-        rol: 'enfermero',
+        rol: 'cajero',
         activo: true
       });
     }
   }, [editingEmployee, open, reset]);
 
   const onSubmit = async (data: EmployeeFormValues) => {
+    console.log('=== FORM SUBMISSION DEBUG ===');
+    console.log('Form data received:', data);
+    console.log('Form errors:', errors);
+    console.log('Is submitting:', isSubmitting);
+    console.log('Is editing:', isEditing);
+    
     try {
       // Mapear los datos del schema al formato esperado por el servicio
-      const mappedData = {
+      const mappedData: EmployeeFormData = {
         nombre: data.nombre,
         apellidoPaterno: data.apellidoPaterno,
         apellidoMaterno: data.apellidoMaterno || undefined,
+        fechaNacimiento: data.fechaNacimiento || undefined,
+        genero: data.genero as 'M' | 'F' | 'Otro' || undefined,
+        direccion: data.direccion || undefined,
+        turno: data.turno as 'matutino' | 'vespertino' | 'nocturno' | 'mixto' || undefined,
         tipoEmpleado: data.tipo as EmployeeType,
         cedulaProfesional: data.numeroLicencia || undefined,
         especialidad: data.especialidad || undefined,
@@ -144,6 +167,13 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
         fechaIngreso: data.fechaIngreso,
         activo: data.activo
       };
+
+      // Para nuevos empleados, también crear el usuario con el mismo rol que el tipo
+      if (!isEditing) {
+        (mappedData as any).username = data.username;
+        (mappedData as any).password = data.password;
+        (mappedData as any).rol = data.tipo; // Usar el tipo como rol
+      }
 
       let response;
       if (isEditing) {
@@ -334,7 +364,11 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
                     label="Tipo de Empleado *"
                     disabled={isSubmitting}
                   >
+                    <MenuItem value="cajero">Cajero</MenuItem>
                     <MenuItem value="enfermero">Enfermero</MenuItem>
+                    <MenuItem value="almacenista">Almacenista</MenuItem>
+                    <MenuItem value="administrador">Administrador</MenuItem>
+                    <MenuItem value="socio">Socio</MenuItem>
                     <MenuItem value="medico_residente">Médico Residente</MenuItem>
                     <MenuItem value="medico_especialista">Médico Especialista</MenuItem>
                   </Select>
@@ -520,25 +554,17 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
                   name="rol"
                   control={control}
                   render={({ field }) => (
-                    <FormControl fullWidth error={!!errors.rol}>
-                      <InputLabel>Rol *</InputLabel>
-                      <Select
-                        {...field}
-                        label="Rol *"
-                        disabled={isSubmitting}
-                      >
-                        <MenuItem value="cajero">Cajero</MenuItem>
-                        <MenuItem value="enfermero">Enfermero</MenuItem>
-                        <MenuItem value="almacenista">Almacenista</MenuItem>
-                        <MenuItem value="administrador">Administrador</MenuItem>
-                        <MenuItem value="socio">Socio</MenuItem>
-                        <MenuItem value="medico_residente">Médico Residente</MenuItem>
-                        <MenuItem value="medico_especialista">Médico Especialista</MenuItem>
-                      </Select>
-                      {errors.rol && (
-                        <FormHelperText>{errors.rol.message}</FormHelperText>
-                      )}
-                    </FormControl>
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Rol (Auto-generado)"
+                      value={watchedTipo || field.value || 'Se asignará según el tipo de empleado'}
+                      disabled={true}
+                      helperText="El rol se asigna automáticamente según el tipo de empleado seleccionado"
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                    />
                   )}
                 />
               </Grid>
@@ -592,7 +618,13 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
           Cancelar
         </Button>
         <Button
-          onClick={handleSubmit(onSubmit)}
+          onClick={(e) => {
+            console.log('=== BUTTON CLICK DEBUG ===');
+            console.log('Button clicked');
+            console.log('Form errors:', errors);
+            console.log('isSubmitting:', isSubmitting);
+            handleSubmit(onSubmit)(e);
+          }}
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={20} /> : (isEditing ? <EditIcon /> : <PersonAddIcon />)}

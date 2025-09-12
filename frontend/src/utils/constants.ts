@@ -71,15 +71,23 @@ export const ATTENTION_TYPE_LABELS = {
   [ATTENTION_TYPES.HOSPITALIZATION]: 'Hospitalización'
 } as const;
 
-// Tipos de empleado
+// Tipos de empleado (expandido para incluir todos los roles)
 export const EMPLOYEE_TYPES = {
+  CASHIER: 'cajero',
   NURSE: 'enfermero',
+  WAREHOUSE: 'almacenista',
+  ADMINISTRATOR: 'administrador',
+  PARTNER: 'socio',
   RESIDENT_DOCTOR: 'medico_residente',
   SPECIALIST_DOCTOR: 'medico_especialista'
 } as const;
 
 export const EMPLOYEE_TYPE_LABELS = {
+  [EMPLOYEE_TYPES.CASHIER]: 'Cajero',
   [EMPLOYEE_TYPES.NURSE]: 'Enfermero',
+  [EMPLOYEE_TYPES.WAREHOUSE]: 'Almacenista',
+  [EMPLOYEE_TYPES.ADMINISTRATOR]: 'Administrador',
+  [EMPLOYEE_TYPES.PARTNER]: 'Socio',
   [EMPLOYEE_TYPES.RESIDENT_DOCTOR]: 'Médico Residente',
   [EMPLOYEE_TYPES.SPECIALIST_DOCTOR]: 'Médico Especialista'
 } as const;

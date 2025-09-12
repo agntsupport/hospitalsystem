@@ -178,7 +178,7 @@ const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth closeAfterTransition={false}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <InvoiceIcon color="primary" />
         Crear Nueva Factura

@@ -870,7 +870,7 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
       )}
 
       {/* Diálogo para Guardar Búsqueda */}
-      <Dialog open={saveSearchDialogOpen} onClose={() => setSaveSearchDialogOpen(false)}>
+      <Dialog open={saveSearchDialogOpen} onClose={() => setSaveSearchDialogOpen(false)} closeAfterTransition={false}>
         <DialogTitle>Guardar Búsqueda</DialogTitle>
         <DialogContent>
           <TextField
@@ -894,7 +894,7 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
       </Dialog>
 
       {/* Diálogo de Vista de Paciente */}
-      <Dialog open={viewDialogOpen} onClose={handleCloseViewDialog} maxWidth="md" fullWidth>
+      <Dialog open={viewDialogOpen} onClose={handleCloseViewDialog} maxWidth="md" fullWidth closeAfterTransition={false}>
         <DialogTitle>Detalles del Paciente</DialogTitle>
         <DialogContent>
           {selectedPatient && (

@@ -20,6 +20,7 @@ import {
   Close as CloseIcon,
   Refresh as RefreshIcon,
   AccountBalance as AccountIcon,
+  Visibility as ViewIcon,
 } from '@mui/icons-material';
 
 import { PatientAccount } from '@/types/pos.types';
@@ -29,7 +30,8 @@ interface OpenAccountsListProps {
   accounts: PatientAccount[];
   loading: boolean;
   onAddTransaction: (account: PatientAccount) => void;
-  onCloseAccount: (accountId: number, montoRecibido?: number) => void;
+  onCloseAccount: (account: PatientAccount) => void;
+  onViewAccount: (account: PatientAccount) => void;
   onRefresh: () => void;
 }
 
@@ -38,6 +40,7 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
   loading,
   onAddTransaction,
   onCloseAccount,
+  onViewAccount,
   onRefresh,
 }) => {
   const formatCurrency = (amount: number) => {
@@ -71,9 +74,11 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
   };
 
   const getSaldoColor = (saldo: number) => {
-    if (saldo > 0) return 'error';
-    if (saldo < 0) return 'success';
-    return 'default';
+    // Saldo positivo = saldo a favor del paciente (verde)
+    // Saldo negativo = paciente debe dinero (rojo/warning)
+    if (saldo > 0) return 'success';  // Verde para saldo a favor
+    if (saldo < 0) return 'error';    // Rojo para deuda
+    return 'default';                 // Neutro para saldo 0
   };
 
   if (loading) {
@@ -236,7 +241,10 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
                 
                 <TableCell align="right">
                   <Chip
-                    label={formatCurrency(account.saldoPendiente)}
+                    label={account.saldoPendiente >= 0 
+                      ? `+${formatCurrency(Math.abs(account.saldoPendiente))} A FAVOR`
+                      : `${formatCurrency(account.saldoPendiente)} DEBE`
+                    }
                     color={getSaldoColor(account.saldoPendiente) as any}
                     size="small"
                     variant={account.saldoPendiente === 0 ? 'filled' : 'outlined'}
@@ -244,7 +252,16 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
                 </TableCell>
                 
                 <TableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<ViewIcon />}
+                      onClick={() => onViewAccount(account)}
+                      sx={{ minWidth: 'auto' }}
+                    >
+                      Ver
+                    </Button>
                     <Button
                       size="small"
                       variant="outlined"
@@ -258,7 +275,7 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
                       variant="contained"
                       color="success"
                       startIcon={<CloseIcon />}
-                      onClick={() => onCloseAccount(account.id)}
+                      onClick={() => onCloseAccount(account)}
                     >
                       Cerrar
                     </Button>

@@ -52,6 +52,8 @@ import MedicalNotesDialog from './MedicalNotesDialog';
 import DischargeDialog from './DischargeDialog';
 import AuditTrail from '@/components/common/AuditTrail';
 import { toast } from 'react-toastify';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import {
   HospitalAdmission,
   HospitalizationStats,
@@ -59,6 +61,17 @@ import {
 } from '@/types/hospitalization.types';
 
 const HospitalizationPage: React.FC = () => {
+  // Información del usuario actual
+  const user = useSelector((state: RootState) => state.auth.user);
+  
+  // Roles que pueden crear ingresos hospitalarios
+  const rolesAutorizadosParaCrear = ['administrador', 'cajero', 'medico_residente', 'medico_especialista'];
+  const rolesAutorizadosParaNotasSoap = ['administrador', 'enfermero', 'medico_residente', 'medico_especialista'];
+  const rolesAutorizadosParaAlta = ['administrador', 'medico_residente', 'medico_especialista'];
+  const puedeCrearIngreso = user && rolesAutorizadosParaCrear.includes(user.rol);
+  const puedeVerNotasSoap = user && rolesAutorizadosParaNotasSoap.includes(user.rol);
+  const puedeDarAlta = user && rolesAutorizadosParaAlta.includes(user.rol);
+  
   // Estados principales
   const [admissions, setAdmissions] = useState<HospitalAdmission[]>([]);
   const [stats, setStats] = useState<HospitalizationStats | null>(null);
@@ -160,6 +173,37 @@ const HospitalizationPage: React.FC = () => {
   const handleOpenDischarge = (admission: HospitalAdmission) => {
     setSelectedAdmissionForDischarge(admission);
     setDischargeDialogOpen(true);
+  };
+
+  const handleViewPatientStatus = async (admission: HospitalAdmission) => {
+    try {
+      const response = await hospitalizationService.getPatientStatus(admission.id);
+      if (response.success) {
+        // Crear objeto compatible con el diálogo de detalle existente
+        const patientData = {
+          ...admission,
+          // Enriquecer con datos del estado del paciente
+          paciente: {
+            ...admission.paciente,
+            ...response.data.paciente
+          },
+          habitacion: response.data.habitacion || admission.habitacion,
+          medicoTratante: response.data.medicoTratante || admission.medicoTratante,
+          estado: response.data.hospitalizacion.estado || admission.estado,
+          diagnosticoIngreso: response.data.hospitalizacion.diagnosticoIngreso || admission.diagnosticoIngreso,
+          fechaIngreso: response.data.hospitalizacion.fechaIngreso || admission.fechaIngreso,
+          fechaAlta: response.data.hospitalizacion.fechaAlta || admission.fechaAlta
+        };
+        
+        setSelectedAdmission(patientData);
+        setDetailDialogOpen(true);
+      } else {
+        toast.error(response.message || 'Error al obtener estado del paciente');
+      }
+    } catch (error) {
+      console.error('Error al obtener estado del paciente:', error);
+      toast.error('Error al obtener estado del paciente');
+    }
   };
 
   const handleOpenAuditTrail = (admission: HospitalAdmission) => {
@@ -320,9 +364,11 @@ const HospitalizationPage: React.FC = () => {
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
                 <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="activa">Activa</MenuItem>
-                <MenuItem value="alta">Alta Médica</MenuItem>
-                <MenuItem value="traslado">Traslado</MenuItem>
+                <MenuItem value="en_observacion">En Observación</MenuItem>
+                <MenuItem value="estable">Estable</MenuItem>
+                <MenuItem value="critico">Crítico</MenuItem>
+                <MenuItem value="alta_medica">Alta Médica</MenuItem>
+                <MenuItem value="alta_voluntaria">Alta Voluntaria</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -383,14 +429,24 @@ const HospitalizationPage: React.FC = () => {
             Pacientes Hospitalizados ({totalItems})
           </Typography>
           
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setAdmissionDialogOpen(true)}
-            color="primary"
-          >
-            Nuevo Ingreso
-          </Button>
+          {puedeCrearIngreso && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAdmissionDialogOpen(true)}
+              color="primary"
+            >
+              Nuevo Ingreso
+            </Button>
+          )}
+          
+          {!puedeCrearIngreso && user?.rol === 'enfermero' && (
+            <Tooltip title="Solo administradores, cajeros y médicos pueden crear ingresos">
+              <Box sx={{ color: 'text.secondary', fontStyle: 'italic', fontSize: '0.875rem' }}>
+                Vista de consulta - Rol: {user.rol}
+              </Box>
+            </Tooltip>
+          )}
         </Box>
 
         {loading ? (
@@ -500,17 +556,29 @@ const HospitalizationPage: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                           
-                          <Tooltip title="Notas Médicas SOAP">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenMedicalNotes(admission)}
-                              color="primary"
-                            >
-                              <AssignmentIcon />
-                            </IconButton>
-                          </Tooltip>
+                          {puedeVerNotasSoap ? (
+                            <Tooltip title="Notas Médicas SOAP">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenMedicalNotes(admission)}
+                                color="primary"
+                              >
+                                <AssignmentIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : user?.rol === 'cajero' ? (
+                            <Tooltip title="Estado del Paciente (Solo consulta)">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleViewPatientStatus(admission)}
+                                color="info"
+                              >
+                                <AssignmentIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : null}
                           
-                          {admission.estado === 'activa' && (
+                          {(admission.estado === 'en_observacion' || admission.estado === 'estable' || admission.estado === 'critico') && (
                             <>
                               <Tooltip title="Editar">
                                 <IconButton size="small">
@@ -518,15 +586,28 @@ const HospitalizationPage: React.FC = () => {
                                 </IconButton>
                               </Tooltip>
                               
-                              <Tooltip title="Dar de Alta">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleOpenDischarge(admission)}
-                                >
-                                  <ExitToAppIcon />
-                                </IconButton>
-                              </Tooltip>
+                              {puedeDarAlta ? (
+                                <Tooltip title="Dar de Alta">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleOpenDischarge(admission)}
+                                  >
+                                    <ExitToAppIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Solo médicos pueden dar de alta">
+                                  <span>
+                                    <IconButton
+                                      size="small"
+                                      disabled
+                                    >
+                                      <ExitToAppIcon />
+                                    </IconButton>
+                                  </span>
+                                </Tooltip>
+                              )}
                             </>
                           )}
                           
@@ -593,6 +674,7 @@ const HospitalizationPage: React.FC = () => {
         onClose={() => setDetailDialogOpen(false)}
         maxWidth="lg"
         fullWidth
+        closeAfterTransition={false}
       >
         <DialogTitle>
           <Box>

@@ -38,6 +38,22 @@
 - Consulta reportes financieros y operativos
 - No puede modificar ningún dato del sistema
 
+### 6. MEDICO_RESIDENTE
+**Función principal**: Atención médica supervisada
+- Consulta pacientes y habitaciones
+- Crea ingresos hospitalarios
+- Registra notas médicas SOAP
+- Actualiza evolución de pacientes hospitalizados
+- Acceso limitado a reportes médicos
+
+### 7. MEDICO_ESPECIALISTA
+**Función principal**: Atención médica especializada
+- Todas las funciones de médico residente
+- Programa cirugías en quirófanos
+- Autoriza altas médicas
+- Acceso completo a reportes médicos y operativos
+- Supervisa residentes
+
 ## Matriz de Permisos por Módulo
 
 ### Módulo CRM (Pacientes)
@@ -48,6 +64,8 @@
 | Almacenista | ❌ | ✅ | ❌ | ❌ |
 | Administrador | ✅ | ✅ | ✅ | ✅ |
 | Socio | ❌ | ❌ | ❌ | ❌ |
+| Medico_Residente | ❌ | ✅ | ✅ | ❌ |
+| Medico_Especialista | ❌ | ✅ | ✅ | ❌ |
 
 ### Módulo Empleados
 | Rol | Crear | Leer | Actualizar | Eliminar |
@@ -57,6 +75,8 @@
 | Almacenista | ❌ | ✅ | ❌ | ❌ |
 | Administrador | ✅ | ✅ | ✅ | ✅ |
 | Socio | ❌ | ❌ | ❌ | ❌ |
+| Medico_Residente | ❌ | ✅ | ❌ | ❌ |
+| Medico_Especialista | ❌ | ✅ | ❌ | ❌ |
 
 ### Módulo Habitaciones y Consultorios
 | Rol | Crear | Leer | Actualizar | Eliminar |
@@ -66,6 +86,8 @@
 | Almacenista | ❌ | ✅ | ❌ | ❌ |
 | Administrador | ✅ | ✅ | ✅ | ✅ |
 | Socio | ❌ | ❌ | ❌ | ❌ |
+| Medico_Residente | ❌ | ✅ | ❌ | ❌ |
+| Medico_Especialista | ❌ | ✅ | ❌ | ❌ |
 
 ### Módulo Inventario (Proveedores, Productos, Servicios)
 | Rol | Crear | Leer | Actualizar | Eliminar |
@@ -75,6 +97,8 @@
 | Almacenista | ✅ | ✅ | ✅ | ✅ |
 | Administrador | ✅ | ✅ | ✅ | ✅ |
 | Socio | ❌ | ❌ | ❌ | ❌ |
+| Medico_Residente | ❌ | ✅ | ❌ | ❌ |
+| Medico_Especialista | ❌ | ✅ | ❌ | ❌ |
 
 ### Módulo POS (Punto de Venta)
 | Rol | Abrir Cuenta | Cerrar Cuenta | Procesar Pago | Consultar |
@@ -84,6 +108,8 @@
 | Almacenista | ❌ | ❌ | ❌ | ✅ |
 | Administrador | ✅ | ✅ | ✅ | ✅ |
 | Socio | ❌ | ❌ | ❌ | ❌ |
+| Medico_Residente | ❌ | ❌ | ❌ | ✅ |
+| Medico_Especialista | ❌ | ❌ | ❌ | ✅ |
 
 ### Módulo Cuentas Abiertas
 | Rol | Agregar Cargo | Ver Cuenta | Modificar | Cerrar |
@@ -93,15 +119,25 @@
 | Almacenista | ❌ | ✅ | ❌ | ❌ |
 | Administrador | ✅ | ✅ | ✅ | ✅ |
 | Socio | ❌ | ❌ | ❌ | ❌ |
+| Medico_Residente | ❌ | ✅ | ❌ | ❌ |
+| Medico_Especialista | ❌ | ✅ | ❌ | ❌ |
 
-### Módulo Hospitalización
-| Rol | Crear Órdenes | Aplicar Medicamentos | Notas Evolución | Ver Historial |
-|-----|---------------|---------------------|-----------------|---------------|
-| Cajero | ❌ | ❌ | ❌ | ✅ |
-| Enfermero | ❌ | ✅ | ✅ | ✅ |
-| Almacenista | ❌ | ❌ | ❌ | ✅ |
-| Administrador | ✅ | ✅ | ✅ | ✅ |
-| Socio | ❌ | ❌ | ❌ | ❌ |
+### Módulo Hospitalización ✅ ACTUALIZADO
+| Rol | Crear Ingresos | Ver Hospitalización | Notas Médicas | Dar Altas | Anticipo Automático |
+|-----|----------------|---------------------|---------------|-----------|---------------------|
+| Cajero | ✅ | ✅ | ❌ | ❌ | ✅ ($10,000 MXN) |
+| Enfermero | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Almacenista | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Medico Residente | ✅ | ✅ | ✅ | ✅ | ✅ ($10,000 MXN) |
+| Medico Especialista | ✅ | ✅ | ✅ | ✅ | ✅ ($10,000 MXN) |
+| Administrador | ✅ | ✅ | ✅ | ✅ | ✅ ($10,000 MXN) |
+| Socio | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+**Características Específicas del Módulo:**
+- **Anticipo Automático**: Al crear un ingreso hospitalario se genera automáticamente un anticipo de $10,000 MXN
+- **Control UI Granular**: El botón "Nuevo Ingreso" solo se muestra a roles autorizados para crear (administrador, cajero, médicos)
+- **Vista de Consulta**: El rol enfermero puede ver toda la información pero no crear nuevos ingresos
+- **Auditoría Completa**: Todas las operaciones quedan registradas en el sistema de auditoría
 
 **Nota**: Solo médicos especialistas pueden crear órdenes médicas, pero esto se controla por el campo `tipo_empleado` en la tabla empleados.
 
@@ -141,6 +177,8 @@
 3. **Almacenista**: Solo puede modificar inventario con justificación
 4. **Administrador**: Acceso completo pero con log de auditoría
 5. **Socio**: Solo lectura, sin capacidad de exportar datos sensibles
+6. **Medico_Residente**: Puede crear ingresos y notas bajo supervisión
+7. **Medico_Especialista**: Puede programar cirugías y autorizar altas
 
 ### Validaciones por Horario:
 - Enfermeros: Registro por turnos (matutino, vespertino, nocturno)

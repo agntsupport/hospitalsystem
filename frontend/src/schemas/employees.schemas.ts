@@ -71,7 +71,7 @@ export const employeeFormSchema = yup.object({
   tipo: yup
     .string()
     .required('El tipo de empleado es requerido')
-    .oneOf(['enfermero', 'medico_residente', 'medico_especialista'], 'Tipo de empleado no válido'),
+    .oneOf(['cajero', 'enfermero', 'almacenista', 'administrador', 'socio', 'medico_residente', 'medico_especialista'], 'Tipo de empleado no válido'),
   
   especialidad: yup
     .string()

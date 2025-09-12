@@ -2,6 +2,70 @@
 // TIPOS PARA MÓDULO DE INVENTARIO
 // ========================================
 
+// Tipos de servicio médico
+export enum TipoServicio {
+  CONSULTA_GENERAL = 'consulta_general',
+  CONSULTA_ESPECIALIDAD = 'consulta_especialidad',
+  URGENCIA = 'urgencia',
+  CURACION = 'curacion',
+  HOSPITALIZACION = 'hospitalizacion'
+}
+
+// Servicio médico
+export interface Service {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  tipo: TipoServicio;
+  precio: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    transacciones: number;
+    itemsVentaRapida: number;
+    detallesFactura: number;
+  };
+}
+
+export interface CreateServiceRequest {
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  tipo: TipoServicio;
+  precio: number;
+}
+
+export interface UpdateServiceRequest {
+  codigo?: string;
+  nombre?: string;
+  descripcion?: string;
+  tipo?: TipoServicio;
+  precio?: number;
+  activo?: boolean;
+}
+
+export interface ServiceFilters {
+  search?: string;
+  tipo?: TipoServicio | 'all';
+  activo?: 'all' | 'true' | 'false';
+}
+
+export interface ServicesResponse {
+  success: boolean;
+  data: {
+    servicios: Service[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+  message?: string;
+}
+
 // Proveedor/Supplier
 export interface Supplier {
   id: number;

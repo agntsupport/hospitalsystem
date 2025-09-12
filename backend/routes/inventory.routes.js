@@ -11,6 +11,225 @@ const { getSafeSelect, validateSelect } = require('../utils/schema-validator');
 // ENDPOINTS DE INVENTARIO
 // ==============================================
 
+// ==============================================
+// ENDPOINTS DE PROVEEDORES
+// ==============================================
+
+// GET /suppliers - Obtener proveedores con filtros
+router.get('/suppliers', validatePagination, async (req, res) => {
+  try {
+    const { page, limit, offset } = req.pagination;
+    const { 
+      search,
+      activo,
+      sortBy = 'nombreEmpresa',
+      sortOrder = 'asc'
+    } = req.query;
+
+    const where = {};
+
+    // Filtro de activo (por defecto true)
+    if (activo !== undefined) {
+      where.activo = activo === 'true';
+    } else {
+      where.activo = true;
+    }
+
+    // Búsqueda por texto
+    if (search) {
+      const searchTerm = sanitizeSearch(search);
+      where.OR = [
+        { nombreEmpresa: { contains: searchTerm, mode: 'insensitive' } },
+        { nombreComercial: { contains: searchTerm, mode: 'insensitive' } },
+        { codigo: { contains: searchTerm, mode: 'insensitive' } },
+        { rfc: { contains: searchTerm, mode: 'insensitive' } },
+        { contactoNombre: { contains: searchTerm, mode: 'insensitive' } }
+      ];
+    }
+
+    const [proveedores, total] = await Promise.all([
+      prisma.proveedor.findMany({
+        where,
+        orderBy: { [sortBy]: sortOrder },
+        take: limit,
+        skip: offset
+      }),
+      prisma.proveedor.count({ where })
+    ]);
+
+    const proveedoresFormatted = proveedores.map(proveedor => ({
+      id: proveedor.id,
+      codigo: proveedor.codigo,
+      razonSocial: proveedor.nombreEmpresa,
+      nombreComercial: proveedor.nombreComercial,
+      rfc: proveedor.rfc,
+      contacto: {
+        nombre: proveedor.contactoNombre,
+        telefono: proveedor.contactoTelefono,
+        email: proveedor.contactoEmail
+      },
+      direccion: proveedor.direccion,
+      condicionesPago: proveedor.condicionesPago,
+      activo: proveedor.activo,
+      fechaRegistro: proveedor.createdAt,
+      fechaActualizacion: proveedor.updatedAt
+    }));
+
+    res.json(formatPaginationResponse(proveedoresFormatted, total, page, limit));
+
+  } catch (error) {
+    console.error('Error obteniendo proveedores:', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// POST /suppliers - Crear proveedor
+router.post('/suppliers', authenticateToken, auditMiddleware('inventario'), validateRequired(['nombreEmpresa']), async (req, res) => {
+  try {
+    const {
+      nombreEmpresa,
+      nombreComercial,
+      rfc,
+      contactoNombre,
+      contactoTelefono,
+      contactoEmail,
+      direccion,
+      condicionesPago
+    } = req.body;
+
+    // Generar código único para el proveedor
+    const lastSupplier = await prisma.proveedor.findFirst({
+      orderBy: { id: 'desc' }
+    });
+    const nextNumber = lastSupplier ? lastSupplier.id + 1 : 1;
+    const codigo = `PROV${nextNumber.toString().padStart(4, '0')}`;
+
+    const proveedor = await prisma.proveedor.create({
+      data: {
+        codigo,
+        nombreEmpresa,
+        nombreComercial,
+        rfc,
+        contactoNombre,
+        contactoTelefono,
+        contactoEmail,
+        direccion,
+        condicionesPago: condicionesPago || '30_dias',
+        activo: true
+      }
+    });
+
+    // Format response to match frontend expectations
+    const proveedorFormatted = {
+      id: proveedor.id,
+      codigo: proveedor.codigo,
+      razonSocial: proveedor.nombreEmpresa,
+      nombreComercial: proveedor.nombreComercial,
+      rfc: proveedor.rfc,
+      contacto: {
+        nombre: proveedor.contactoNombre,
+        telefono: proveedor.contactoTelefono,
+        email: proveedor.contactoEmail
+      },
+      direccion: proveedor.direccion,
+      condicionesPago: proveedor.condicionesPago,
+      activo: proveedor.activo,
+      fechaCreacion: proveedor.createdAt,
+      fechaActualizacion: proveedor.updatedAt
+    };
+
+    res.status(201).json({
+      success: true,
+      data: proveedorFormatted,
+      message: 'Proveedor creado correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error creando proveedor:', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// PUT /suppliers/:id - Actualizar proveedor
+router.put('/suppliers/:id', authenticateToken, auditMiddleware('inventario'), captureOriginalData('proveedor'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      nombreEmpresa,
+      nombreComercial,
+      rfc,
+      contactoNombre,
+      contactoTelefono,
+      contactoEmail,
+      direccion,
+      condicionesPago,
+      activo
+    } = req.body;
+
+    const proveedor = await prisma.proveedor.update({
+      where: { id: parseInt(id) },
+      data: {
+        nombreEmpresa,
+        nombreComercial,
+        rfc,
+        contactoNombre,
+        contactoTelefono,
+        contactoEmail,
+        direccion,
+        condicionesPago,
+        activo
+      }
+    });
+
+    res.json({
+      success: true,
+      data: { proveedor },
+      message: 'Proveedor actualizado correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error actualizando proveedor:', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// DELETE /suppliers/:id - Eliminar proveedor (soft delete)
+router.delete('/suppliers/:id', authenticateToken, auditMiddleware('inventario'), criticalOperationAudit, captureOriginalData('proveedor'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar si el proveedor tiene productos asociados
+    const productosAsociados = await prisma.producto.count({
+      where: { proveedorId: parseInt(id) }
+    });
+
+    if (productosAsociados > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede eliminar el proveedor porque tiene ${productosAsociados} productos asociados`
+      });
+    }
+
+    await prisma.proveedor.update({
+      where: { id: parseInt(id) },
+      data: { activo: false }
+    });
+
+    res.json({
+      success: true,
+      message: 'Proveedor desactivado correctamente'
+    });
+
+  } catch (error) {
+    console.error('Error eliminando proveedor:', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// ==============================================
+// ENDPOINTS DE PRODUCTOS
+// ==============================================
+
 // GET /products - Obtener productos con filtros
 router.get('/products', validatePagination, async (req, res) => {
   try {
@@ -22,6 +241,7 @@ router.get('/products', validatePagination, async (req, res) => {
       activo,
       conStock,
       stockBajo,
+      ids,
       sortBy = 'nombre',
       sortOrder = 'asc'
     } = req.query;
@@ -53,6 +273,14 @@ router.get('/products', validatePagination, async (req, res) => {
     if (conStock === 'true') where.stockActual = { gt: 0 };
     if (stockBajo === 'true') {
       where.stockActual = { lte: prisma.raw('stock_minimo') };
+    }
+    
+    // Filtro por IDs específicos (para validación de stock)
+    if (ids) {
+      const idsArray = ids.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (idsArray.length > 0) {
+        where.id = { in: idsArray };
+      }
     }
 
     // Ejecutar consulta con paginación
@@ -466,6 +694,272 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
       });
     }
     handlePrismaError(error, res);
+  }
+});
+
+// ==============================================
+// SERVICIOS ENDPOINTS
+// ==============================================
+
+// GET /services - Obtener lista de servicios con paginación y filtros
+router.get('/services', validatePagination, async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      tipo = 'all',
+      activo = 'all',
+      sortBy = 'nombre',
+      sortOrder = 'asc'
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+
+    // Construir condiciones de filtrado
+    const whereConditions = {};
+
+    // Filtro de búsqueda
+    if (search) {
+      whereConditions.OR = [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { codigo: { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Filtro por tipo
+    if (tipo !== 'all') {
+      whereConditions.tipo = tipo;
+    }
+
+    // Filtro por estado activo
+    if (activo !== 'all') {
+      whereConditions.activo = activo === 'true';
+    }
+
+    // Ejecutar consultas en paralelo
+    const [servicios, totalServicios] = await Promise.all([
+      prisma.servicio.findMany({
+        where: whereConditions,
+        skip: offset,
+        take: parseInt(limit),
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          _count: {
+            select: {
+              transacciones: true,
+              itemsVentaRapida: true,
+              detallesFactura: true
+            }
+          }
+        }
+      }),
+      prisma.servicio.count({ where: whereConditions })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        servicios,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalServicios,
+          totalPages: Math.ceil(totalServicios / limit)
+        }
+      },
+      message: 'Servicios obtenidos correctamente'
+    });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener servicios',
+      error: error.message
+    });
+  }
+});
+
+// POST /services - Crear nuevo servicio
+router.post('/services', 
+  authenticateToken, 
+  auditMiddleware('inventario'),
+  validateRequired(['codigo', 'nombre', 'tipo', 'precio']), 
+  async (req, res) => {
+  try {
+    const { codigo, nombre, descripcion, tipo, precio } = req.body;
+
+    // Verificar si el código ya existe
+    const existingService = await prisma.servicio.findUnique({
+      where: { codigo }
+    });
+
+    if (existingService) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un servicio con ese código'
+      });
+    }
+
+    // Crear el servicio
+    const newService = await prisma.servicio.create({
+      data: {
+        codigo,
+        nombre,
+        descripcion,
+        tipo,
+        precio: parseFloat(precio),
+        activo: true
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: newService,
+      message: 'Servicio creado correctamente'
+    });
+  } catch (error) {
+    console.error('Error creating service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear servicio',
+      error: error.message
+    });
+  }
+});
+
+// PUT /services/:id - Actualizar servicio
+router.put('/services/:id', 
+  authenticateToken, 
+  auditMiddleware('inventario'),
+  captureOriginalData('servicio'),
+  async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { codigo, nombre, descripcion, tipo, precio, activo } = req.body;
+
+    // Verificar que el servicio existe
+    const existingService = await prisma.servicio.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!existingService) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Si se está cambiando el código, verificar que no exista otro con ese código
+    if (codigo && codigo !== existingService.codigo) {
+      const codeExists = await prisma.servicio.findUnique({
+        where: { codigo }
+      });
+
+      if (codeExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe otro servicio con ese código'
+        });
+      }
+    }
+
+    // Actualizar el servicio
+    const updatedService = await prisma.servicio.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(codigo && { codigo }),
+        ...(nombre && { nombre }),
+        ...(descripcion !== undefined && { descripcion }),
+        ...(tipo && { tipo }),
+        ...(precio !== undefined && { precio: parseFloat(precio) }),
+        ...(activo !== undefined && { activo })
+      }
+    });
+
+    res.json({
+      success: true,
+      data: updatedService,
+      message: 'Servicio actualizado correctamente'
+    });
+  } catch (error) {
+    console.error('Error updating service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar servicio',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /services/:id - Eliminar servicio (soft delete)
+router.delete('/services/:id', 
+  authenticateToken, 
+  auditMiddleware('inventario'),
+  criticalOperationAudit,
+  captureOriginalData('servicio'),
+  async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el servicio existe
+    const existingService = await prisma.servicio.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        _count: {
+          select: {
+            transacciones: true,
+            itemsVentaRapida: true,
+            detallesFactura: true
+          }
+        }
+      }
+    });
+
+    if (!existingService) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Verificar si el servicio tiene relaciones activas
+    const hasActiveRelations = 
+      existingService._count.transacciones > 0 ||
+      existingService._count.itemsVentaRapida > 0 ||
+      existingService._count.detallesFactura > 0;
+
+    if (hasActiveRelations) {
+      // Solo desactivar si tiene relaciones
+      const updatedService = await prisma.servicio.update({
+        where: { id: parseInt(id) },
+        data: { activo: false }
+      });
+
+      return res.json({
+        success: true,
+        data: updatedService,
+        message: 'Servicio desactivado correctamente (tiene historial asociado)'
+      });
+    }
+
+    // Si no tiene relaciones, eliminar permanentemente
+    await prisma.servicio.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({
+      success: true,
+      message: 'Servicio eliminado permanentemente'
+    });
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar servicio',
+      error: error.message
+    });
   }
 });
 

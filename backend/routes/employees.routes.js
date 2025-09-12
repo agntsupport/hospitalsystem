@@ -124,6 +124,10 @@ router.get('/', async (req, res) => {
       apellidoPaterno: empleado.apellidoPaterno,
       apellidoMaterno: empleado.apellidoMaterno,
       nombreCompleto: `${empleado.nombre} ${empleado.apellidoPaterno} ${empleado.apellidoMaterno || ''}`.trim(),
+      fechaNacimiento: empleado.fechaNacimiento,
+      genero: empleado.genero,
+      direccion: empleado.direccion,
+      turno: empleado.turno,
       tipoEmpleado: empleado.tipoEmpleado,
       especialidad: empleado.especialidad,
       cedulaProfesional: empleado.cedulaProfesional,
@@ -203,20 +207,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST / - Crear nuevo empleado
+// POST / - Crear nuevo empleado y usuario
 router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, res) => {
   try {
     const {
       nombre,
       apellidoPaterno,
       apellidoMaterno,
+      fechaNacimiento,
+      genero,
+      direccion,
+      turno,
       tipoEmpleado,
       especialidad,
       cedulaProfesional,
       telefono,
       email,
       salario,
-      fechaIngreso
+      fechaIngreso,
+      // Datos de usuario
+      username,
+      password,
+      rol
     } = req.body;
     
     // Validaciones básicas
@@ -225,6 +237,28 @@ router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, re
         success: false,
         message: 'Faltan campos requeridos (nombre, apellidoPaterno, tipoEmpleado, fechaIngreso)'
       });
+    }
+
+    // Validaciones para usuario si se proporciona username/password
+    if (username || password) {
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Debe proporcionar tanto nombre de usuario como contraseña'
+        });
+      }
+
+      // Validar que el username no esté en uso
+      const usuarioExistente = await prisma.usuario.findUnique({
+        where: { username }
+      });
+
+      if (usuarioExistente) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre de usuario ya está en uso'
+        });
+      }
     }
     
     // Validar que email no esté en uso si se proporciona
@@ -254,28 +288,56 @@ router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, re
         });
       }
     }
-    
-    // Crear empleado
-    const nuevoEmpleado = await prisma.empleado.create({
-      data: {
-        nombre,
-        apellidoPaterno,
-        apellidoMaterno,
-        tipoEmpleado,
-        especialidad,
-        cedulaProfesional,
-        telefono,
-        email,
-        salario: salario ? parseFloat(salario) : null,
-        fechaIngreso: new Date(fechaIngreso),
-        activo: true
+
+    // Usar transacción para crear empleado y usuario
+    const resultado = await prisma.$transaction(async (tx) => {
+      // Crear empleado
+      const nuevoEmpleado = await tx.empleado.create({
+        data: {
+          nombre,
+          apellidoPaterno,
+          apellidoMaterno,
+          fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
+          genero: genero || null,
+          direccion: direccion || null,
+          turno: turno || null,
+          tipoEmpleado,
+          especialidad,
+          cedulaProfesional,
+          telefono,
+          email,
+          salario: salario ? parseFloat(salario) : null,
+          fechaIngreso: new Date(fechaIngreso),
+          activo: true
+        }
+      });
+
+      // Si se proporcionan datos de usuario, crear la cuenta
+      let nuevoUsuario = null;
+      if (username && password) {
+        const bcrypt = require('bcrypt');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        nuevoUsuario = await tx.usuario.create({
+          data: {
+            username,
+            password: hashedPassword,
+            nombre: `${nombre} ${apellidoPaterno} ${apellidoMaterno || ''}`.trim(),
+            email: email || null,
+            rol: rol || tipoEmpleado, // Usar el rol proporcionado o el tipo de empleado
+            activo: true,
+            empleadoId: nuevoEmpleado.id
+          }
+        });
       }
+
+      return { empleado: nuevoEmpleado, usuario: nuevoUsuario };
     });
     
     res.status(201).json({
       success: true,
-      data: nuevoEmpleado,
-      message: 'Empleado creado exitosamente'
+      data: resultado.empleado,
+      message: `Empleado ${resultado.usuario ? 'y usuario' : ''} creado exitosamente`
     });
     
   } catch (error) {
@@ -292,6 +354,10 @@ router.put('/:id', authenticateToken, auditMiddleware('empleados'), captureOrigi
       nombre,
       apellidoPaterno,
       apellidoMaterno,
+      fechaNacimiento,
+      genero,
+      direccion,
+      turno,
       tipoEmpleado,
       especialidad,
       cedulaProfesional,
@@ -357,6 +423,10 @@ router.put('/:id', authenticateToken, auditMiddleware('empleados'), captureOrigi
         nombre,
         apellidoPaterno,
         apellidoMaterno,
+        fechaNacimiento: fechaNacimiento !== undefined ? (fechaNacimiento ? new Date(fechaNacimiento) : null) : undefined,
+        genero: genero !== undefined ? genero : undefined,
+        direccion: direccion !== undefined ? direccion : undefined,
+        turno: turno !== undefined ? turno : undefined,
         tipoEmpleado,
         especialidad,
         cedulaProfesional,

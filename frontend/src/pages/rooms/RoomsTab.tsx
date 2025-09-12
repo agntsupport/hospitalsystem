@@ -519,7 +519,7 @@ const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
       </TableContainer>
 
       {/* Assign Room Dialog */}
-      <Dialog open={assignDialogOpen} onClose={handleCloseAssignDialog} maxWidth="sm" fullWidth>
+      <Dialog open={assignDialogOpen} onClose={handleCloseAssignDialog} maxWidth="sm" fullWidth closeAfterTransition={false}>
         <DialogTitle>
           Asignar Habitación #{selectedRoom?.numero}
         </DialogTitle>
@@ -565,7 +565,7 @@ const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
       </Dialog>
 
       {/* Maintenance Dialog */}
-      <Dialog open={maintenanceDialogOpen} onClose={handleCloseMaintenanceDialog} maxWidth="sm" fullWidth>
+      <Dialog open={maintenanceDialogOpen} onClose={handleCloseMaintenanceDialog} maxWidth="sm" fullWidth closeAfterTransition={false}>
         <DialogTitle>
           Marcar en Mantenimiento - Habitación #{selectedRoom?.numero}
         </DialogTitle>

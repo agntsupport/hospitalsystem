@@ -72,18 +72,25 @@ const POSStatsCards: React.FC<POSStatsCardsProps> = ({ stats }) => {
       description: 'Medicamentos/insumos'
     },
     {
-      title: 'Saldos Pendientes',
-      value: formatCurrency(stats?.saldosPendientes),
+      title: 'Saldos a Favor',
+      value: formatCurrency(stats?.saldosAFavor),
+      icon: <AccountIcon color="success" sx={{ fontSize: { xs: 32, sm: 40 } }} />,
+      color: 'success.main',
+      description: 'Crédito de pacientes'
+    },
+    {
+      title: 'Por Cobrar',
+      value: formatCurrency(stats?.saldosPorCobrar),
       icon: <WarningIcon color="error" sx={{ fontSize: { xs: 32, sm: 40 } }} />,
       color: 'error.main',
-      description: 'Por cobrar'
+      description: 'Deuda de pacientes'
     },
   ];
 
   return (
     <Grid container spacing={3}>
       {statsCards.map((card, index) => (
-        <Grid item xs={12} sm={6} md={4} lg={4} xl={2} key={index}>
+        <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={index}>
           <Tooltip 
             title={
               <Box>

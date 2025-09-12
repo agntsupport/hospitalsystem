@@ -94,16 +94,23 @@ class HospitalizationService {
    */
   async createAdmission(admissionData: HospitalAdmissionForm): Promise<HospitalizationResponse<HospitalAdmission>> {
     try {
+      console.log('📊 Creating admission with data:', admissionData);
+      
       // Validaciones del lado cliente
       const validation = this.validateAdmissionForm(admissionData);
+      console.log('📋 Validation result:', validation);
+      
       if (!validation.valid) {
+        console.error('❌ Validation failed:', validation.errors);
         return {
           success: false,
           message: validation.errors.join(', ')
         };
       }
       
+      console.log('🚀 Sending POST request to /hospitalization/admissions');
       const response = await api.post('/hospitalization/admissions', admissionData);
+      console.log('✅ Response received:', response.data);
       
       return {
         success: true,
@@ -169,6 +176,29 @@ class HospitalizationService {
     }
   }
   
+  /**
+   * Obtiene estado básico del paciente (para cajeros)
+   */
+  async getPatientStatus(admissionId: number): Promise<HospitalizationResponse<any>> {
+    try {
+      const response = await api.get(`/hospitalization/admissions/${admissionId}/patient-status`);
+      
+      return {
+        success: true,
+        message: 'Estado del paciente obtenido correctamente',
+        data: response.data,
+        generadoEn: new Date().toISOString()
+      };
+    } catch (error: any) {
+      console.error('Error al obtener estado del paciente:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener estado del paciente',
+        error: error.error
+      };
+    }
+  }
+
   /**
    * Crea una nueva nota médica
    */
@@ -357,13 +387,8 @@ class HospitalizationService {
       errors.push('El médico tratante es requerido');
     }
     
-    if (!data.tipoHospitalizacion) {
-      errors.push('El tipo de hospitalización es requerido');
-    }
-    
-    if (!data.especialidad) {
-      errors.push('La especialidad es requerida');
-    }
+    // Campos opcionales - no requeridos por el backend
+    // tipoHospitalizacion y especialidad son opcionales
     
     return {
       valid: errors.length === 0,
@@ -439,11 +464,11 @@ class HospitalizationService {
    */
   formatAdmissionStatus(status: string): string {
     const statusLabels: Record<string, string> = {
-      activa: 'Activa',
-      alta: 'Alta Médica',
-      traslado: 'Traslado',
-      defuncion: 'Defunción',
-      fuga: 'Fuga'
+      en_observacion: 'En Observación',
+      estable: 'Estable',
+      critico: 'Crítico',
+      alta_medica: 'Alta Médica',
+      alta_voluntaria: 'Alta Voluntaria'
     };
     
     return statusLabels[status] || status;
@@ -481,11 +506,11 @@ class HospitalizationService {
    */
   getStatusColor(status: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' {
     const colorMap: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
-      activa: 'primary',
-      alta: 'success',
-      traslado: 'info',
-      defuncion: 'error',
-      fuga: 'warning'
+      en_observacion: 'warning',
+      estable: 'primary',
+      critico: 'error',
+      alta_medica: 'success',
+      alta_voluntaria: 'info'
     };
     
     return colorMap[status] || 'default';
@@ -584,6 +609,60 @@ class HospitalizationService {
       return 'vespertino';
     } else {
       return 'nocturno';
+    }
+  }
+
+  /**
+   * Obtiene lista de pacientes hospitalizados activos (no dados de alta)
+   */
+  async getActiveHospitalizedPatients(): Promise<any> {
+    try {
+      // Obtener solo hospitalizaciones activas (en observación, estable, crítico)
+      const response = await this.getAdmissions({
+        estado: ['en_observacion', 'estable', 'critico'],
+        limite: 1000 // Obtener todos los activos
+      });
+
+      if (response.success && response.data?.items) {
+        // Transformar los datos para devolver solo información del paciente
+        const pacientesHospitalizados = response.data.items.map(admission => ({
+          id: admission.paciente.id,
+          nombre: admission.paciente.nombre,
+          apellidoPaterno: admission.paciente.apellidoPaterno || '',
+          apellidoMaterno: admission.paciente.apellidoMaterno || '',
+          numeroExpediente: admission.paciente.numeroExpediente,
+          hospitalizacionId: admission.id,
+          cuentaId: admission.cuentaPacienteId, // ID directo de la cuenta
+          cuentaPaciente: admission.cuentaPaciente, // Información completa de la cuenta
+          habitacion: admission.habitacion?.numero,
+          estado: admission.estado
+        }));
+
+        return {
+          success: true,
+          message: 'Pacientes hospitalizados obtenidos correctamente',
+          data: {
+            items: pacientesHospitalizados,
+            total: pacientesHospitalizados.length,
+            pagina: 1,
+            limite: 1000,
+            totalPaginas: 1
+          },
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      return {
+        success: false,
+        message: 'No se pudieron obtener los pacientes hospitalizados'
+      };
+    } catch (error: any) {
+      console.error('Error al obtener pacientes hospitalizados:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener pacientes hospitalizados',
+        error: error.error
+      };
     }
   }
 }

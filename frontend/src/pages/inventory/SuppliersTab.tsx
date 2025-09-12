@@ -51,9 +51,10 @@ import { toast } from 'react-toastify';
 
 interface SuppliersTabProps {
   onDataChange: () => void;
+  onEditSupplier: (supplier: Supplier) => void;
 }
 
-const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
+const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange, onEditSupplier }) => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
   // Paginación
@@ -93,7 +95,6 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
       console.error('Error loading suppliers:', error);
       const errorMessage = error?.message || 'Error al cargar proveedores';
       setError(errorMessage);
-      // Asegurar que suppliers siempre sea un array para evitar errores de renderizado
       setSuppliers([]);
     } finally {
       setLoading(false);
@@ -110,9 +111,13 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
 
   const handleDeleteSupplier = async () => {
     if (!selectedSupplier) return;
+    if (!deleteReason.trim()) {
+      toast.error('Debe especificar un motivo para la eliminación');
+      return;
+    }
 
     try {
-      const response = await inventoryService.deleteSupplier(selectedSupplier.id);
+      const response = await inventoryService.deleteSupplier(selectedSupplier.id, deleteReason.trim());
       if (response.success) {
         toast.success('Proveedor eliminado exitosamente');
         loadSuppliers();
@@ -138,6 +143,11 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
     setSelectedSupplier(null);
   };
 
+  const handleOpenEditDialog = (supplier: Supplier) => {
+    onEditSupplier(supplier);
+  };
+
+
   const handleOpenDeleteDialog = (supplier: Supplier) => {
     setSelectedSupplier(supplier);
     setDeleteDialogOpen(true);
@@ -146,6 +156,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setSelectedSupplier(null);
+    setDeleteReason('');
   };
 
   const handleChangePage = (_event: unknown, newPage: number) => {
@@ -440,10 +451,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
                         <IconButton
                           size="small"
                           color="primary"
-                          onClick={() => {
-                            // TODO: Implement edit functionality
-                            toast.info('Funcionalidad de edición próximamente');
-                          }}
+                          onClick={() => handleOpenEditDialog(supplier)}
                         >
                           <EditIcon />
                         </IconButton>
@@ -593,9 +601,22 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
           <Typography>
             ¿Está seguro que desea eliminar al proveedor <strong>{selectedSupplier?.razonSocial}</strong>?
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
             Esta acción marcará al proveedor como inactivo.
           </Typography>
+          
+          <TextField
+            fullWidth
+            required
+            multiline
+            rows={3}
+            label="Motivo de la eliminación"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            placeholder="Ingrese el motivo por el cual elimina este proveedor..."
+            helperText="Este campo es obligatorio para proceder con la eliminación"
+            sx={{ mt: 2 }}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDeleteDialog}>
@@ -606,11 +627,13 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange }) => {
             color="error"
             onClick={handleDeleteSupplier}
             startIcon={<DeleteIcon />}
+            disabled={!deleteReason.trim()}
           >
             Eliminar
           </Button>
         </DialogActions>
       </Dialog>
+
     </Box>
   );
 };

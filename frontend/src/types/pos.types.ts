@@ -99,7 +99,8 @@ export interface POSStats {
   totalVentasMes: number;
   serviciosVendidos: number;
   productosVendidos: number;
-  saldosPendientes: number;
+  saldosAFavor: number;
+  saldosPorCobrar: number;
 }
 
 export interface CartItem {

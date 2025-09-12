@@ -20,6 +20,7 @@ import SuppliersTab from './SuppliersTab';
 import ProductsTab from './ProductsTab';
 import StockMovementsTab from './StockMovementsTab';
 import StockControlTab from './StockControlTab';
+import ServicesTab from './ServicesTab';
 import SupplierFormDialog from './SupplierFormDialog';
 import ProductFormDialog from './ProductFormDialog';
 import StockMovementDialog from './StockMovementDialog';
@@ -74,6 +75,7 @@ const InventoryPage: React.FC = () => {
   
   // Estados para diálogos
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [movementDialogOpen, setMovementDialogOpen] = useState(false);
 
@@ -134,9 +136,11 @@ const InventoryPage: React.FC = () => {
       case 2: // Productos
         setProductDialogOpen(true);
         break;
-      case 3: // Control de Stock - no aplica
+      case 3: // Servicios - manejado internamente por ServicesTab
         break;
-      case 4: // Movimientos
+      case 4: // Control de Stock - no aplica
+        break;
+      case 5: // Movimientos
         setMovementDialogOpen(true);
         break;
       default:
@@ -149,12 +153,23 @@ const InventoryPage: React.FC = () => {
     loadSuppliers(); // Recargar proveedores cuando cambian los datos
   };
 
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setSupplierDialogOpen(true);
+  };
+
+  const handleCloseSupplierDialog = () => {
+    setSupplierDialogOpen(false);
+    setEditingSupplier(null);
+  };
+
   const getFabTooltip = () => {
     switch (value) {
       case 1: return 'Agregar Proveedor';
       case 2: return 'Agregar Producto';
       case 3: return '';
-      case 4: return 'Registrar Movimiento';
+      case 4: return '';
+      case 5: return 'Registrar Movimiento';
       default: return '';
     }
   };
@@ -209,8 +224,9 @@ const InventoryPage: React.FC = () => {
           <Tab label="Resumen" {...a11yProps(0)} />
           <Tab label="Proveedores" {...a11yProps(1)} />
           <Tab label="Productos" {...a11yProps(2)} />
-          <Tab label="Control de Stock" {...a11yProps(3)} />
-          <Tab label="Movimientos" {...a11yProps(4)} />
+          <Tab label="Servicios" {...a11yProps(3)} />
+          <Tab label="Control de Stock" {...a11yProps(4)} />
+          <Tab label="Movimientos" {...a11yProps(5)} />
         </Tabs>
       </Box>
 
@@ -227,7 +243,10 @@ const InventoryPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={value} index={1}>
-        <SuppliersTab onDataChange={handleDataChange} />
+        <SuppliersTab 
+          onDataChange={handleDataChange}
+          onEditSupplier={handleEditSupplier}
+        />
       </TabPanel>
 
       <TabPanel value={value} index={2}>
@@ -238,15 +257,19 @@ const InventoryPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={value} index={3}>
-        <StockControlTab />
+        <ServicesTab />
       </TabPanel>
 
       <TabPanel value={value} index={4}>
+        <StockControlTab />
+      </TabPanel>
+
+      <TabPanel value={value} index={5}>
         <StockMovementsTab onDataChange={handleDataChange} />
       </TabPanel>
 
       {/* Floating Action Button */}
-      {value > 0 && value !== 3 && getFabTooltip() && (
+      {value > 0 && value !== 4 && getFabTooltip() && (
         <Fab
           color="primary"
           aria-label={getFabTooltip()}
@@ -266,8 +289,9 @@ const InventoryPage: React.FC = () => {
       {/* Diálogos */}
       <SupplierFormDialog
         open={supplierDialogOpen}
-        onClose={() => setSupplierDialogOpen(false)}
+        onClose={handleCloseSupplierDialog}
         onSupplierCreated={handleDataChange}
+        editingSupplier={editingSupplier}
       />
 
       <ProductFormDialog

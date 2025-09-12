@@ -74,7 +74,7 @@ interface DischargeDialogProps {
 
 // Default values matching the schema
 const defaultValues: DischargeFormValues = {
-  tipoAlta: 'mejoria',
+  tipoAlta: 'alta_medica',
   diagnosticoFinal: '',
   resumenEstancia: '',
   condicionAlta: 'estable',
@@ -87,11 +87,10 @@ const defaultValues: DischargeFormValues = {
 };
 
 const tiposAlta = [
-  { value: 'mejoria', label: 'Alta por mejoría', color: 'success' },
-  { value: 'voluntaria', label: 'Alta voluntaria', color: 'warning' },
+  { value: 'alta_medica', label: 'Alta Médica', color: 'success' },
+  { value: 'alta_voluntaria', label: 'Alta Voluntaria', color: 'warning' },
   { value: 'traslado', label: 'Traslado', color: 'info' },
   { value: 'defuncion', label: 'Defunción', color: 'error' },
-  { value: 'fuga', label: 'Fuga', color: 'warning' },
 ];
 
 const condicionesAlta = [
@@ -280,6 +279,7 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
       onClose={handleClose} 
       maxWidth="xl" 
       fullWidth
+      closeAfterTransition={false}
       PaperProps={{
         sx: { height: '95vh', maxHeight: '95vh' }
       }}

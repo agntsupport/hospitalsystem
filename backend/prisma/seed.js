@@ -7,9 +7,23 @@ async function main() {
   console.log('🌱 Iniciando seed de la base de datos...');
 
   try {
-    // Limpiar datos existentes (opcional en desarrollo)
+    // Verificar si ya hay datos en la base
+    const existingUsers = await prisma.usuario.count();
+    const existingQuirofanos = await prisma.quirofano.count();
+    
+    if (existingUsers > 0 || existingQuirofanos > 0) {
+      console.log('📊 Base de datos ya contiene datos:', {
+        usuarios: existingUsers,
+        quirofanos: existingQuirofanos
+      });
+      console.log('⏭️  Saltando limpieza para preservar datos existentes...');
+      console.log('💡 Para resetear completamente: npm run db:reset');
+      return;
+    }
+
+    // Limpiar datos existentes solo si la BD está vacía
     if (process.env.NODE_ENV === 'development') {
-      console.log('🧹 Limpiando datos existentes...');
+      console.log('🧹 Base de datos vacía - Inicializando datos de desarrollo...');
       
       // Limpiar en orden inverso de dependencias para evitar violaciones de foreign key
       await prisma.auditoriaOperacion.deleteMany({});

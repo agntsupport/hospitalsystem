@@ -24,9 +24,9 @@ import { PersonAdd as PersonAddIcon } from '@mui/icons-material';
 
 import { posService } from '@/services/posService';
 import { employeeService } from '@/services/employeeService';
-import { patientService } from '@/services/patientService';
+import { patientsService } from '@/services/patientsService';
 import { AttentionType, PatientAccountFormData } from '@/types/pos.types';
-import { Patient } from '@/types/patient.types';
+import { Patient } from '@/types/patients.types';
 import { Employee } from '@/types/employee.types';
 import { newAccountSchema, NewAccountFormValues } from '@/schemas/pos.schemas';
 
@@ -80,7 +80,7 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     
     setSearchLoading(true);
     try {
-      const response = await patientService.searchPatients(query, 10);
+      const response = await patientsService.searchPatients(query, 10);
       if (response.success) {
         setPatients(response.data.patients);
       }

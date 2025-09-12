@@ -27,6 +27,8 @@ import {
   MedicalServices,
   Receipt,
   ContentCut,
+  Group,
+  Assignment,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -68,6 +70,13 @@ const menuItems: MenuItem[] = [
     roles: ['administrador'],
   },
   {
+    id: 'users',
+    text: 'Usuarios',
+    icon: <Group />,
+    path: '/users',
+    roles: ['administrador'],
+  },
+  {
     id: 'rooms',
     text: 'Habitaciones',
     icon: <Hotel />,
@@ -104,6 +113,13 @@ const menuItems: MenuItem[] = [
     roles: ['almacenista', 'administrador'],
   },
   {
+    id: 'solicitudes',
+    text: 'Solicitudes de Productos',
+    icon: <Assignment />,
+    path: '/solicitudes',
+    roles: ['enfermero', 'medico_residente', 'medico_especialista', 'almacenista', 'administrador'],
+  },
+  {
     id: 'billing',
     text: 'Facturación',
     icon: <Receipt />,
@@ -123,7 +139,7 @@ const menuItems: MenuItem[] = [
     text: 'Hospitalización',
     icon: <LocalHospital />,
     path: '/hospitalization',
-    roles: ['enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
+    roles: ['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
   },
 ];
 

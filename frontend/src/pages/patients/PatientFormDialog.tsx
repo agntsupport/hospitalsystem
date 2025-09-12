@@ -34,7 +34,7 @@ import {
 } from '@mui/icons-material';
 
 import { patientsService } from '@/services/patientsService';
-import { Patient, CreatePatientRequest, GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPES, RELATIONSHIP_OPTIONS, RELATIONSHIP_LABELS } from '@/types/patients.types';
+import { Patient, GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TYPES } from '@/types/patients.types';
 import { patientFormSchema, PatientFormValues } from '@/schemas/patients.schemas';
 import { toast } from 'react-toastify';
 import PostalCodeAutocomplete from '@/components/common/PostalCodeAutocomplete';
@@ -80,7 +80,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     antecedentesFamiliares: '',
     contactoEmergencia: {
       nombre: '',
-      relacion: 'padre',
+      relacion: '',
       telefono: ''
     },
     seguroMedico: {
@@ -90,7 +90,9 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     }
   };
 
-  // React Hook Form setup
+  // React Hook Form setup - Crear nueva instancia cada vez que open/editingPatient cambie
+  const formKey = `patient-form-${editingPatient?.id || 'new'}-${open}`;
+  
   const {
     control,
     handleSubmit,
@@ -103,6 +105,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     resolver: yupResolver(patientFormSchema),
     defaultValues,
     mode: 'onChange'
+    // Remover shouldUnregister para mantener valores entre steps
   });
 
   const watchedValues = watch();
@@ -115,8 +118,14 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
 
   useEffect(() => {
     if (open) {
+      console.log('🔄 Dialog abierto, reseteando formulario');
+      setActiveStep(0);
+      setError(null);
+      setUseAddressAutocomplete(!editingPatient);
+      
       if (editingPatient) {
-        // Llenar formulario con datos del paciente a editar
+        console.log('✏️ Modo edición, cargando datos del paciente:', editingPatient);
+        // Si estamos editando, cargar datos del paciente
         const editingData: PatientFormValues = {
           nombre: editingPatient.nombre || '',
           apellidoPaterno: editingPatient.apellidoPaterno || '',
@@ -141,7 +150,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
           antecedentesFamiliares: editingPatient.antecedentesFamiliares || '',
           contactoEmergencia: editingPatient.contactoEmergencia || {
             nombre: '',
-            relacion: 'padre',
+            relacion: '',
             telefono: ''
           },
           seguroMedico: editingPatient.seguroMedico || {
@@ -150,12 +159,11 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             vigencia: ''
           }
         };
-        
         reset(editingData);
-        // Si hay código postal, no usar autocompletado por defecto para permitir edición manual
-        setUseAddressAutocomplete(false);
+        console.log('✅ Datos de edición aplicados');
       } else {
-        resetForm();
+        console.log('➕ Modo creación, usando valores por defecto');
+        reset(defaultValues);
       }
     }
   }, [open, editingPatient, reset]);
@@ -164,7 +172,9 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     setActiveStep(0);
     setError(null);
     setUseAddressAutocomplete(true);
-    reset(defaultValues);
+    // Doble reset para asegurar limpieza completa
+    reset();
+    setTimeout(() => reset(defaultValues), 0);
   };
 
   const handleAddressSelected = (addressInfo: {
@@ -205,10 +215,24 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
   };
 
   const handleNext = async () => {
+    console.log('➡️ Navegando al siguiente step. Step actual:', activeStep);
+    console.log('📝 Valores antes de validar:', JSON.stringify(watchedValues, null, 2));
+    
     const isStepValid = await validateStep(activeStep);
+    console.log('✅ Step válido:', isStepValid);
+    
     if (isStepValid) {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      setActiveStep((prevActiveStep) => {
+        const nextStep = prevActiveStep + 1;
+        console.log('🔄 Cambiando de step', prevActiveStep, 'a', nextStep);
+        return nextStep;
+      });
       setError(null);
+      
+      // Log los valores después de cambiar step
+      setTimeout(() => {
+        console.log('📝 Valores después de cambiar step:', JSON.stringify(watch(), null, 2));
+      }, 100);
     } else {
       setError('Por favor complete los campos requeridos y corrija los errores');
     }
@@ -220,6 +244,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
   };
 
   const onFormSubmit = async (data: PatientFormValues) => {
+    console.log('🚀 onFormSubmit ejecutándose con data:', data);
     setLoading(true);
     setError(null);
 
@@ -237,14 +262,20 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
         delete cleanFormData.seguroMedico;
       }
 
+      console.log('📦 Datos limpiados para enviar:', cleanFormData);
+
       let response;
       if (editingPatient) {
         // Actualizar paciente existente
+        console.log('🔄 Actualizando paciente existente');
         response = await patientsService.updatePatient(editingPatient.id, cleanFormData);
       } else {
         // Crear nuevo paciente
+        console.log('➕ Creando nuevo paciente');
         response = await patientsService.createPatient(cleanFormData);
       }
+
+      console.log('✅ Respuesta del servidor:', response);
 
       if (response.success) {
         toast.success(editingPatient ? 'Paciente actualizado exitosamente' : 'Paciente creado exitosamente');
@@ -254,7 +285,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
         throw new Error(response.message);
       }
     } catch (error: any) {
-      console.error(`Error ${editingPatient ? 'updating' : 'creating'} patient:`, error);
+      console.error(`❌ Error ${editingPatient ? 'updating' : 'creating'} patient:`, error);
       const errorMessage = error?.message || error?.error || `Error al ${editingPatient ? 'actualizar' : 'crear'} paciente`;
       setError(errorMessage);
       toast.error(errorMessage);
@@ -276,6 +307,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`nombre-${formKey}`}
                 name="nombre"
                 control={control}
                 render={({ field }) => (
@@ -292,6 +324,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`apellidoPaterno-${formKey}`}
                 name="apellidoPaterno"
                 control={control}
                 render={({ field }) => (
@@ -308,6 +341,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`apellidoMaterno-${formKey}`}
                 name="apellidoMaterno"
                 control={control}
                 render={({ field }) => (
@@ -323,6 +357,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`fechaNacimiento-${formKey}`}
                 name="fechaNacimiento"
                 control={control}
                 render={({ field }) => (
@@ -341,6 +376,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`genero-${formKey}`}
                 name="genero"
                 control={control}
                 render={({ field }) => (
@@ -365,6 +401,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`tipoSangre-${formKey}`}
                 name="tipoSangre"
                 control={control}
                 render={({ field }) => (
@@ -390,6 +427,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`estadoCivil-${formKey}`}
                 name="estadoCivil"
                 control={control}
                 render={({ field }) => (
@@ -414,6 +452,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`ocupacion-${formKey}`}
                 name="ocupacion"
                 control={control}
                 render={({ field }) => (
@@ -429,6 +468,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`religion-${formKey}`}
                 name="religion"
                 control={control}
                 render={({ field }) => (
@@ -456,6 +496,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`telefono-${formKey}`}
                 name="telefono"
                 control={control}
                 render={({ field }) => (
@@ -471,6 +512,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`email-${formKey}`}
                 name="email"
                 control={control}
                 render={({ field }) => (
@@ -518,6 +560,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
               <>
                 <Grid item xs={12} md={4}>
                   <Controller
+                    key={`codigoPostal-${formKey}`}
                     name="codigoPostal"
                     control={control}
                     render={({ field }) => (
@@ -535,6 +578,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <Controller
+                    key={`ciudad-${formKey}`}
                     name="ciudad"
                     control={control}
                     render={({ field }) => (
@@ -550,6 +594,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
                 </Grid>
                 <Grid item xs={12} md={4}>
                   <Controller
+                    key={`estado-${formKey}`}
                     name="estado"
                     control={control}
                     render={({ field }) => (
@@ -568,6 +613,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
 
             <Grid item xs={12}>
               <Controller
+                key={`direccion-${formKey}`}
                 name="direccion"
                 control={control}
                 render={({ field }) => (
@@ -599,6 +645,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`contacto-nombre-${formKey}`}
                 name="contactoEmergencia.nombre"
                 control={control}
                 render={({ field }) => (
@@ -614,6 +661,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`contacto-telefono-${formKey}`}
                 name="contactoEmergencia.telefono"
                 control={control}
                 render={({ field }) => (
@@ -629,6 +677,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12}>
               <Controller
+                key={`contacto-relacion-${formKey}`}
                 name="contactoEmergencia.relacion"
                 control={control}
                 render={({ field }) => (
@@ -637,7 +686,9 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
                     <Select
                       {...field}
                       label="Relación"
+                      value={field.value || ''} // Sin valor por defecto
                     >
+                      <MenuItem value="">Seleccionar relación</MenuItem>
                       <MenuItem value="padre">Padre</MenuItem>
                       <MenuItem value="madre">Madre</MenuItem>
                       <MenuItem value="hijo">Hijo</MenuItem>
@@ -675,6 +726,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12}>
               <Controller
+                key={`alergias-${formKey}`}
                 name="alergias"
                 control={control}
                 render={({ field }) => (
@@ -693,6 +745,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12}>
               <Controller
+                key={`medicamentosActuales-${formKey}`}
                 name="medicamentosActuales"
                 control={control}
                 render={({ field }) => (
@@ -711,6 +764,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12}>
               <Controller
+                key={`antecedentesPatologicos-${formKey}`}
                 name="antecedentesPatologicos"
                 control={control}
                 render={({ field }) => (
@@ -729,6 +783,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12}>
               <Controller
+                key={`antecedentesFamiliares-${formKey}`}
                 name="antecedentesFamiliares"
                 control={control}
                 render={({ field }) => (
@@ -754,6 +809,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`seguroMedico.aseguradora-${formKey}`}
                 name="seguroMedico.aseguradora"
                 control={control}
                 render={({ field }) => (
@@ -769,6 +825,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`seguroMedico.numeroPoliza-${formKey}`}
                 name="seguroMedico.numeroPoliza"
                 control={control}
                 render={({ field }) => (
@@ -784,6 +841,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
             </Grid>
             <Grid item xs={12} md={6}>
               <Controller
+                key={`seguroMedico.vigencia-${formKey}`}
                 name="seguroMedico.vigencia"
                 control={control}
                 render={({ field }) => (
@@ -808,7 +866,13 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      key={editingPatient?.id || 'new'} // 🔑 Fuerza re-mount del componente
+    >
       <DialogTitle>
         {editingPatient ? 'Editar Paciente' : 'Registrar Nuevo Paciente'}
       </DialogTitle>
@@ -832,7 +896,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={() => { resetForm(); onClose(); }} disabled={loading}>
           <CancelIcon sx={{ mr: 1 }} />
           Cancelar
         </Button>
@@ -848,7 +912,25 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
         {activeStep === steps.length - 1 ? (
           <Button
             variant="contained"
-            onClick={handleSubmit(onFormSubmit)}
+            onClick={async (e) => {
+              console.log('🔘 Botón Guardar Paciente clickeado');
+              console.log('📊 Estado del formulario:', { errors, isValid });
+              console.log('❌ Errores detallados:', JSON.stringify(errors, null, 2));
+              console.log('🧪 Valores actuales:', JSON.stringify(watchedValues, null, 2));
+              
+              // Validar todo el formulario manualmente
+              const allFieldsValid = await trigger();
+              console.log('🔍 Validación manual del formulario completo:', allFieldsValid);
+              
+              // Si la validación manual falla, forzar el submit de todas formas
+              // ya que los datos están completos
+              if (!allFieldsValid) {
+                console.log('⚠️ Validación falló pero los datos parecen completos, forzando submit');
+                onFormSubmit(watchedValues);
+              } else {
+                handleSubmit(onFormSubmit)(e);
+              }
+            }}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
           >

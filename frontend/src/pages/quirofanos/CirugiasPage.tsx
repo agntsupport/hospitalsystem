@@ -299,7 +299,12 @@ const CirugiasPage: React.FC = () => {
                   label="Fecha Inicio"
                   value={filters.fechaInicio}
                   onChange={(newValue) => handleFilterChange('fechaInicio', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      size: "small"
+                    }
+                  }}
                 />
               </LocalizationProvider>
             </Grid>
@@ -310,7 +315,12 @@ const CirugiasPage: React.FC = () => {
                   label="Fecha Fin"
                   value={filters.fechaFin}
                   onChange={(newValue) => handleFilterChange('fechaFin', newValue)}
-                  renderInput={(params) => <TextField {...params} fullWidth size="small" />}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      size: "small"
+                    }
+                  }}
                 />
               </LocalizationProvider>
             </Grid>
@@ -356,7 +366,7 @@ const CirugiasPage: React.FC = () => {
         <Paper sx={{ mb: 3 }}>
           <Tabs value={tabValue} onChange={handleTabChange} indicatorColor="primary">
             <Tab label="Programadas" icon={<ScheduleIcon />} iconPosition="start" />
-            <Tab label="En Progreso" icon={<PlayArrow />} iconPosition="start" />
+            <Tab label="En Progreso" icon={<StartIcon />} iconPosition="start" />
             <Tab label="Completadas" icon={<CompleteIcon />} iconPosition="start" />
             <Tab label="Todas" icon={<SurgeryIcon />} iconPosition="start" />
           </Tabs>

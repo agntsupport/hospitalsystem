@@ -130,6 +130,44 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/quirofanos/available-numbers - Números disponibles y sugerencias
+router.get('/available-numbers', authenticateToken, async (req, res) => {
+  try {
+    const quirofanosExistentes = await prisma.quirofano.findMany({
+      select: { numero: true },
+      orderBy: { numero: 'asc' }
+    });
+    
+    const numerosExistentes = quirofanosExistentes.map(q => q.numero);
+    
+    // Generar sugerencias basadas en patrón Q + número
+    const sugerencias = [];
+    for (let i = 1; i <= 20; i++) {
+      const numeroSugerido = `Q${i}`;
+      if (!numerosExistentes.includes(numeroSugerido)) {
+        sugerencias.push(numeroSugerido);
+        if (sugerencias.length >= 5) break; // Máximo 5 sugerencias
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        existingNumbers: numerosExistentes,
+        suggestions: sugerencias,
+        total: numerosExistentes.length,
+        pattern: 'Q1, Q2, Q3...'
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo números disponibles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
 // GET /api/quirofanos/stats - Estadísticas de quirófanos
 router.get('/stats', authenticateToken, async (req, res) => {
   try {
@@ -234,32 +272,532 @@ router.post('/', authenticateToken, auditMiddleware('quirofanos'), async (req, r
     });
 
     if (existeQuirofano) {
+      // Obtener números existentes para información
+      const quirofanosExistentes = await prisma.quirofano.findMany({
+        select: { numero: true },
+        orderBy: { numero: 'asc' }
+      });
+      
+      const numerosExistentes = quirofanosExistentes.map(q => q.numero);
+      
+      // Sugerir el próximo número disponible
+      let siguienteNumero = 'Q6';
+      for (let i = 1; i <= 20; i++) {
+        const numeroSugerido = `Q${i}`;
+        if (!numerosExistentes.includes(numeroSugerido)) {
+          siguienteNumero = numeroSugerido;
+          break;
+        }
+      }
+      
       return res.status(400).json({
         success: false,
-        message: 'Ya existe un quirófano con ese número'
+        message: `Ya existe un quirófano con el número "${numero}". Números existentes: ${numerosExistentes.join(', ')}. Sugerencia: ${siguienteNumero}`,
+        existingNumbers: numerosExistentes,
+        suggestion: siguienteNumero
       });
     }
 
-    const nuevoQuirofano = await prisma.quirofano.create({
+    // Crear quirófano y servicio asociado en una transacción
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Crear el quirófano
+      const nuevoQuirofano = await tx.quirofano.create({
+        data: {
+          numero: numero.toString(),
+          tipo,
+          especialidad,
+          estado: 'disponible', // Estado inicial
+          descripcion,
+          equipamiento,
+          capacidadEquipo: capacidadEquipo || 6,
+          precioHora: precioHora ? parseFloat(precioHora) : null
+        }
+      });
+
+      // 2. Crear servicio asociado automáticamente si se especifica precio por hora
+      let servicio = null;
+      if (precioHora) {
+        const codigoServicio = `QUIR-${numero}`;
+        const nombreServicio = `Quirófano ${numero} - ${tipo} (por hora)`;
+        const descripcionServicio = `Cargo por uso de quirófano ${numero} tipo ${tipo}. Tarifa por hora. ${especialidad ? `Especialidad: ${especialidad}` : ''}`;
+        
+        servicio = await tx.servicio.create({
+          data: {
+            codigo: codigoServicio,
+            nombre: nombreServicio,
+            descripcion: descripcionServicio,
+            tipo: 'cirugia',
+            precio: parseFloat(precioHora),
+            activo: true
+          }
+        });
+      }
+
+      return { quirofano: nuevoQuirofano, servicio };
+    });
+
+    res.status(201).json({
+      success: true,
       data: {
-        numero: numero.toString(),
-        tipo,
-        especialidad,
-        estado: 'disponible', // Estado inicial
-        descripcion,
-        equipamiento,
-        capacidadEquipo: capacidadEquipo || 6,
-        precioHora: precioHora ? parseFloat(precioHora) : null
+        quirofano: result.quirofano,
+        servicio: result.servicio
+      },
+      message: result.servicio 
+        ? 'Quirófano y servicio asociado creados exitosamente' 
+        : 'Quirófano creado exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al crear quirófano:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// ==============================================
+// RUTAS DE CIRUGÍAS PROGRAMADAS
+// ==============================================
+
+// POST /api/quirofanos/cirugias - Programar nueva cirugía
+router.post('/cirugias', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
+  try {
+    // Verificar permisos - médicos especialistas y administradores
+    const allowedRoles = ['administrador', 'medico_especialista'];
+    if (!allowedRoles.includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para programar cirugías'
+      });
+    }
+
+    const {
+      quirofanoId,
+      pacienteId,
+      medicoId,
+      tipoIntervencion,
+      fechaInicio,
+      fechaFin,
+      observaciones,
+      equipoMedico
+    } = req.body;
+
+    // Validaciones básicas
+    if (!quirofanoId || !pacienteId || !medicoId || !tipoIntervencion || !fechaInicio || !fechaFin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Datos incompletos para programar la cirugía'
+      });
+    }
+
+    // Verificar disponibilidad del quirófano
+    const conflictos = await prisma.cirugiaQuirofano.findMany({
+      where: {
+        quirofanoId: parseInt(quirofanoId),
+        estado: {
+          in: ['programada', 'en_progreso']
+        },
+        OR: [
+          {
+            fechaInicio: {
+              lt: new Date(fechaFin),
+              gte: new Date(fechaInicio)
+            }
+          },
+          {
+            fechaFin: {
+              gt: new Date(fechaInicio),
+              lte: new Date(fechaFin)
+            }
+          }
+        ]
+      }
+    });
+
+    if (conflictos.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El quirófano ya está reservado para ese horario'
+      });
+    }
+
+    // Crear la cirugía programada
+    const nuevaCirugia = await prisma.cirugiaQuirofano.create({
+      data: {
+        quirofanoId: parseInt(quirofanoId),
+        pacienteId: parseInt(pacienteId),
+        medicoId: parseInt(medicoId),
+        tipoIntervencion,
+        fechaInicio: new Date(fechaInicio),
+        fechaFin: new Date(fechaFin),
+        observaciones,
+        equipoMedico: equipoMedico || [],
+        estado: 'programada'
+      },
+      include: {
+        quirofano: true,
+        paciente: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true
+          }
+        },
+        medico: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            especialidad: true
+          }
+        }
       }
     });
 
     res.status(201).json({
       success: true,
-      data: nuevoQuirofano,
-      message: 'Quirófano creado exitosamente'
+      data: nuevaCirugia,
+      message: 'Cirugía programada exitosamente'
     });
   } catch (error) {
-    console.error('Error al crear quirófano:', error);
+    console.error('Error al programar cirugía:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/quirofanos/cirugias - Obtener lista de cirugías
+router.get('/cirugias', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      estado,
+      quirofanoId,
+      medicoId,
+      fechaInicio,
+      fechaFin,
+      sortBy = 'fechaInicio',
+      sortOrder = 'asc',
+      limit = 50,
+      offset = 0
+    } = req.query;
+
+    const whereClause = {};
+
+    if (estado) whereClause.estado = estado;
+    if (quirofanoId && quirofanoId !== '') whereClause.quirofanoId = parseInt(quirofanoId);
+    if (medicoId && medicoId !== '') whereClause.medicoId = parseInt(medicoId);
+    
+    if (fechaInicio || fechaFin) {
+      whereClause.fechaInicio = {};
+      if (fechaInicio) whereClause.fechaInicio.gte = new Date(fechaInicio);
+      if (fechaFin) whereClause.fechaInicio.lte = new Date(fechaFin);
+    }
+
+    // Usar la cláusula where directamente
+    const extendedWhereClause = {
+      ...whereClause
+    };
+
+    const [cirugias, total] = await Promise.all([
+      prisma.cirugiaQuirofano.findMany({
+        where: extendedWhereClause,
+        orderBy: {
+          [sortBy]: sortOrder
+        },
+        skip: parseInt(offset),
+        take: parseInt(limit),
+        include: {
+          quirofano: {
+            select: {
+              id: true,
+              numero: true,
+              tipo: true,
+              especialidad: true,
+              estado: true
+            }
+          },
+          paciente: {
+            select: {
+              nombre: true,
+              apellidoPaterno: true,
+              apellidoMaterno: true,
+              telefono: true
+            }
+          },
+          medico: {
+            select: {
+              nombre: true,
+              apellidoPaterno: true,
+              apellidoMaterno: true,
+              especialidad: true
+            }
+          }
+        }
+      }),
+      prisma.cirugiaQuirofano.count({ where: extendedWhereClause })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        items: cirugias,
+        total,
+        hasMore: parseInt(offset) + cirugias.length < total,
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener cirugías:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/quirofanos/cirugias/:id - Obtener detalle de cirugía
+router.get('/cirugias/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const cirugia = await prisma.cirugiaQuirofano.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        quirofano: true,
+        paciente: true,
+        medico: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            especialidad: true,
+            telefono: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!cirugia) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cirugía no encontrada'
+      });
+    }
+
+    // Si hay equipo médico, obtener sus datos
+    if (cirugia.equipoMedico && Array.isArray(cirugia.equipoMedico)) {
+      const equipoIds = cirugia.equipoMedico;
+      const equipoDetalle = await prisma.empleado.findMany({
+        where: {
+          id: {
+            in: equipoIds
+          }
+        },
+        select: {
+          id: true,
+          nombre: true,
+          apellidoPaterno: true,
+          apellidoMaterno: true,
+          tipoEmpleado: true,
+          especialidad: true
+        }
+      });
+      cirugia.equipoMedicoDetalle = equipoDetalle;
+    }
+
+    res.json({
+      success: true,
+      data: cirugia
+    });
+  } catch (error) {
+    console.error('Error al obtener detalle de cirugía:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/quirofanos/cirugias/:id/estado - Actualizar estado de cirugía
+router.put('/cirugias/:id/estado', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado, observaciones, motivo } = req.body;
+
+    // Verificar permisos
+    const allowedRoles = ['administrador', 'medico_especialista', 'enfermero'];
+    if (!allowedRoles.includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para actualizar el estado de cirugías'
+      });
+    }
+
+    const estadosValidos = ['programada', 'en_progreso', 'completada', 'cancelada', 'reprogramada'];
+    if (!estadosValidos.includes(estado)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Estado no válido'
+      });
+    }
+
+    // Si es cancelación, requerir motivo
+    if (estado === 'cancelada' && !motivo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere un motivo para cancelar la cirugía'
+      });
+    }
+
+    const cirugia = await prisma.cirugiaQuirofano.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!cirugia) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cirugía no encontrada'
+      });
+    }
+
+    const updateData = { estado };
+    
+    // Si la cirugía se inicia, actualizar el estado del quirófano
+    if (estado === 'en_progreso') {
+      await prisma.quirofano.update({
+        where: { id: cirugia.quirofanoId },
+        data: { estado: 'ocupado' }
+      });
+    }
+    
+    // Si la cirugía termina, liberar el quirófano
+    if (estado === 'completada' || estado === 'cancelada') {
+      updateData.fechaFin = new Date();
+      await prisma.quirofano.update({
+        where: { id: cirugia.quirofanoId },
+        data: { estado: 'limpieza' }
+      });
+    }
+
+    if (observaciones) {
+      updateData.observaciones = cirugia.observaciones 
+        ? `${cirugia.observaciones}\n${observaciones}` 
+        : observaciones;
+    }
+
+    const cirugiaActualizada = await prisma.cirugiaQuirofano.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        quirofano: true,
+        paciente: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true
+          }
+        },
+        medico: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: cirugiaActualizada,
+      message: `Estado de la cirugía actualizado a ${estado}`
+    });
+  } catch (error) {
+    console.error('Error al actualizar estado de cirugía:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// DELETE /api/quirofanos/cirugias/:id - Cancelar cirugía
+router.delete('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motivo } = req.body;
+
+    // Verificar permisos
+    if (req.user.rol !== 'administrador' && req.user.rol !== 'medico_especialista') {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para cancelar cirugías'
+      });
+    }
+
+    if (!motivo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere un motivo para cancelar la cirugía'
+      });
+    }
+
+    const cirugia = await prisma.cirugiaQuirofano.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!cirugia) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cirugía no encontrada'
+      });
+    }
+
+    if (cirugia.estado === 'completada') {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede cancelar una cirugía completada'
+      });
+    }
+
+    const cirugiaCancelada = await prisma.cirugiaQuirofano.update({
+      where: { id: parseInt(id) },
+      data: {
+        estado: 'cancelada',
+        observaciones: cirugia.observaciones 
+          ? `${cirugia.observaciones}\n[CANCELADA - ${new Date().toISOString()}]: ${motivo}` 
+          : `[CANCELADA - ${new Date().toISOString()}]: ${motivo}`
+      }
+    });
+
+    // Liberar el quirófano si estaba ocupado
+    if (cirugia.estado === 'en_progreso') {
+      await prisma.quirofano.update({
+        where: { id: cirugia.quirofanoId },
+        data: { estado: 'disponible' }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: cirugiaCancelada,
+      message: 'Cirugía cancelada exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al cancelar cirugía:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -286,7 +824,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
                 telefono: true
               }
             },
-            empleado: {
+            medico: {
               select: {
                 nombre: true,
                 apellidoPaterno: true,
@@ -634,443 +1172,6 @@ router.get('/disponibles/horario', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error al buscar quirófanos disponibles:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// ==============================================
-// RUTAS DE CIRUGÍAS PROGRAMADAS
-// ==============================================
-
-// POST /api/quirofanos/cirugias - Programar nueva cirugía
-router.post('/cirugias', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
-  try {
-    // Verificar permisos - médicos especialistas y administradores
-    const allowedRoles = ['administrador', 'medico_especialista'];
-    if (!allowedRoles.includes(req.user.rol)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tiene permisos para programar cirugías'
-      });
-    }
-
-    const {
-      quirofanoId,
-      pacienteId,
-      medicoId,
-      tipoIntervencion,
-      fechaInicio,
-      fechaFin,
-      observaciones,
-      equipoMedico
-    } = req.body;
-
-    // Validaciones básicas
-    if (!quirofanoId || !pacienteId || !medicoId || !tipoIntervencion || !fechaInicio || !fechaFin) {
-      return res.status(400).json({
-        success: false,
-        message: 'Datos incompletos para programar la cirugía'
-      });
-    }
-
-    // Verificar disponibilidad del quirófano
-    const conflictos = await prisma.cirugiaQuirofano.findMany({
-      where: {
-        quirofanoId: parseInt(quirofanoId),
-        estado: {
-          in: ['programada', 'en_progreso']
-        },
-        OR: [
-          {
-            fechaInicio: {
-              lt: new Date(fechaFin),
-              gte: new Date(fechaInicio)
-            }
-          },
-          {
-            fechaFin: {
-              gt: new Date(fechaInicio),
-              lte: new Date(fechaFin)
-            }
-          }
-        ]
-      }
-    });
-
-    if (conflictos.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'El quirófano ya está reservado para ese horario'
-      });
-    }
-
-    // Crear la cirugía programada
-    const nuevaCirugia = await prisma.cirugiaQuirofano.create({
-      data: {
-        quirofanoId: parseInt(quirofanoId),
-        pacienteId: parseInt(pacienteId),
-        medicoId: parseInt(medicoId),
-        tipoIntervencion,
-        fechaInicio: new Date(fechaInicio),
-        fechaFin: new Date(fechaFin),
-        observaciones,
-        equipoMedico: equipoMedico || [],
-        estado: 'programada'
-      },
-      include: {
-        quirofano: true,
-        paciente: {
-          select: {
-            nombre: true,
-            apellidoPaterno: true,
-            apellidoMaterno: true
-          }
-        },
-        medico: {
-          select: {
-            nombre: true,
-            apellidoPaterno: true,
-            apellidoMaterno: true,
-            especialidad: true
-          }
-        }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      data: nuevaCirugia,
-      message: 'Cirugía programada exitosamente'
-    });
-  } catch (error) {
-    console.error('Error al programar cirugía:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/quirofanos/cirugias - Obtener lista de cirugías
-router.get('/cirugias', authenticateToken, async (req, res) => {
-  try {
-    const { 
-      estado,
-      quirofanoId,
-      medicoId,
-      fechaInicio,
-      fechaFin,
-      sortBy = 'fechaInicio',
-      sortOrder = 'asc',
-      limit = 50,
-      offset = 0
-    } = req.query;
-
-    const whereClause = {};
-
-    if (estado) whereClause.estado = estado;
-    if (quirofanoId) whereClause.quirofanoId = parseInt(quirofanoId);
-    if (medicoId) whereClause.medicoId = parseInt(medicoId);
-    
-    if (fechaInicio || fechaFin) {
-      whereClause.fechaInicio = {};
-      if (fechaInicio) whereClause.fechaInicio.gte = new Date(fechaInicio);
-      if (fechaFin) whereClause.fechaInicio.lte = new Date(fechaFin);
-    }
-
-    const [cirugias, total] = await Promise.all([
-      prisma.cirugiaQuirofano.findMany({
-        where: whereClause,
-        orderBy: {
-          [sortBy]: sortOrder
-        },
-        skip: parseInt(offset),
-        take: parseInt(limit),
-        include: {
-          quirofano: true,
-          paciente: {
-            select: {
-              nombre: true,
-              apellidoPaterno: true,
-              apellidoMaterno: true,
-              telefono: true
-            }
-          },
-          medico: {
-            select: {
-              nombre: true,
-              apellidoPaterno: true,
-              apellidoMaterno: true,
-              especialidad: true
-            }
-          }
-        }
-      }),
-      prisma.cirugiaQuirofano.count({ where: whereClause })
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        items: cirugias,
-        total,
-        hasMore: parseInt(offset) + cirugias.length < total,
-        pagination: {
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          total
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error al obtener cirugías:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// PUT /api/quirofanos/cirugias/:id/estado - Actualizar estado de cirugía
-router.put('/cirugias/:id/estado', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado, observaciones, motivo } = req.body;
-
-    // Verificar permisos
-    const allowedRoles = ['administrador', 'medico_especialista', 'enfermero'];
-    if (!allowedRoles.includes(req.user.rol)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tiene permisos para actualizar el estado de cirugías'
-      });
-    }
-
-    const estadosValidos = ['programada', 'en_progreso', 'completada', 'cancelada', 'reprogramada'];
-    if (!estadosValidos.includes(estado)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Estado no válido'
-      });
-    }
-
-    // Si es cancelación, requerir motivo
-    if (estado === 'cancelada' && !motivo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Se requiere un motivo para cancelar la cirugía'
-      });
-    }
-
-    const cirugia = await prisma.cirugiaQuirofano.findUnique({
-      where: { id: parseInt(id) }
-    });
-
-    if (!cirugia) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cirugía no encontrada'
-      });
-    }
-
-    const updateData = { estado };
-    
-    // Si la cirugía se inicia, actualizar el estado del quirófano
-    if (estado === 'en_progreso') {
-      await prisma.quirofano.update({
-        where: { id: cirugia.quirofanoId },
-        data: { estado: 'ocupado' }
-      });
-    }
-    
-    // Si la cirugía termina, liberar el quirófano
-    if (estado === 'completada' || estado === 'cancelada') {
-      updateData.fechaFin = new Date();
-      await prisma.quirofano.update({
-        where: { id: cirugia.quirofanoId },
-        data: { estado: 'limpieza' }
-      });
-    }
-
-    if (observaciones) {
-      updateData.observaciones = cirugia.observaciones 
-        ? `${cirugia.observaciones}\n${observaciones}` 
-        : observaciones;
-    }
-
-    const cirugiaActualizada = await prisma.cirugiaQuirofano.update({
-      where: { id: parseInt(id) },
-      data: updateData,
-      include: {
-        quirofano: true,
-        paciente: {
-          select: {
-            nombre: true,
-            apellidoPaterno: true,
-            apellidoMaterno: true
-          }
-        },
-        medico: {
-          select: {
-            nombre: true,
-            apellidoPaterno: true,
-            apellidoMaterno: true
-          }
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      data: cirugiaActualizada,
-      message: `Estado de la cirugía actualizado a ${estado}`
-    });
-  } catch (error) {
-    console.error('Error al actualizar estado de cirugía:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/quirofanos/cirugias/:id - Obtener detalle de cirugía
-router.get('/cirugias/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const cirugia = await prisma.cirugiaQuirofano.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        quirofano: true,
-        paciente: true,
-        medico: {
-          select: {
-            id: true,
-            nombre: true,
-            apellidoPaterno: true,
-            apellidoMaterno: true,
-            especialidad: true,
-            telefono: true,
-            email: true
-          }
-        }
-      }
-    });
-
-    if (!cirugia) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cirugía no encontrada'
-      });
-    }
-
-    // Si hay equipo médico, obtener sus datos
-    if (cirugia.equipoMedico && Array.isArray(cirugia.equipoMedico)) {
-      const equipoIds = cirugia.equipoMedico;
-      const equipoDetalle = await prisma.empleado.findMany({
-        where: {
-          id: {
-            in: equipoIds
-          }
-        },
-        select: {
-          id: true,
-          nombre: true,
-          apellidoPaterno: true,
-          apellidoMaterno: true,
-          cargo: true,
-          especialidad: true
-        }
-      });
-      cirugia.equipoMedicoDetalle = equipoDetalle;
-    }
-
-    res.json({
-      success: true,
-      data: cirugia
-    });
-  } catch (error) {
-    console.error('Error al obtener detalle de cirugía:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// DELETE /api/quirofanos/cirugias/:id - Cancelar cirugía
-router.delete('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { motivo } = req.body;
-
-    // Verificar permisos
-    if (req.user.rol !== 'administrador' && req.user.rol !== 'medico_especialista') {
-      return res.status(403).json({
-        success: false,
-        message: 'No tiene permisos para cancelar cirugías'
-      });
-    }
-
-    if (!motivo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Se requiere un motivo para cancelar la cirugía'
-      });
-    }
-
-    const cirugia = await prisma.cirugiaQuirofano.findUnique({
-      where: { id: parseInt(id) }
-    });
-
-    if (!cirugia) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cirugía no encontrada'
-      });
-    }
-
-    if (cirugia.estado === 'completada') {
-      return res.status(400).json({
-        success: false,
-        message: 'No se puede cancelar una cirugía completada'
-      });
-    }
-
-    const cirugiaCancelada = await prisma.cirugiaQuirofano.update({
-      where: { id: parseInt(id) },
-      data: {
-        estado: 'cancelada',
-        observaciones: cirugia.observaciones 
-          ? `${cirugia.observaciones}\n[CANCELADA - ${new Date().toISOString()}]: ${motivo}` 
-          : `[CANCELADA - ${new Date().toISOString()}]: ${motivo}`
-      }
-    });
-
-    // Liberar el quirófano si estaba ocupado
-    if (cirugia.estado === 'en_progreso') {
-      await prisma.quirofano.update({
-        where: { id: cirugia.quirofanoId },
-        data: { estado: 'disponible' }
-      });
-    }
-
-    res.json({
-      success: true,
-      data: cirugiaCancelada,
-      message: 'Cirugía cancelada exitosamente'
-    });
-  } catch (error) {
-    console.error('Error al cancelar cirugía:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
