@@ -209,7 +209,7 @@ router.get('/:id',
                 }
               }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { timestamp: 'desc' }
           }
         }
       });

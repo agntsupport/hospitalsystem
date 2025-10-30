@@ -104,65 +104,108 @@ global.testHelpers = {
   },
 
   createTestEmployee: async (employeeData = {}) => {
+    // Generate unique cedula using timestamp to avoid collisions
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const uniqueCedula = employeeData.cedulaProfesional || `CED${timestamp}${randomSuffix}`;
+
+    const createData = {
+      nombre: employeeData.nombre || 'Test',
+      apellidoPaterno: employeeData.apellidoPaterno || 'Employee',
+      tipoEmpleado: employeeData.tipoEmpleado || 'medico_especialista',
+      cedulaProfesional: uniqueCedula,
+      especialidad: employeeData.especialidad || 'Test Specialty',
+      fechaIngreso: employeeData.fechaIngreso || new Date(),
+      activo: employeeData.activo !== false,
+      ...employeeData
+    };
+
+    // Only set id if explicitly provided
+    if (employeeData.id !== undefined) {
+      createData.id = employeeData.id;
+    }
+
     return await prisma.empleado.create({
-      data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        nombre: employeeData.nombre || 'Test',
-        apellidoPaterno: employeeData.apellidoPaterno || 'Employee',
-        tipoEmpleado: employeeData.tipoEmpleado || 'medico_especialista',
-        cedulaProfesional: employeeData.cedulaProfesional || '12345678',
-        especialidad: employeeData.especialidad || 'Test Specialty',
-        fechaIngreso: employeeData.fechaIngreso || new Date(),
-        activo: employeeData.activo !== false,
-        ...employeeData
-      }
+      data: createData
     });
   },
 
   createTestPatient: async (patientData = {}) => {
+    // Generate unique telefono using timestamp to avoid collisions
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const uniqueTelefono = patientData.telefono || `555${timestamp % 10000000}`;
+
+    const createData = {
+      nombre: patientData.nombre || 'Test',
+      apellidoPaterno: patientData.apellidoPaterno || 'Patient',
+      fechaNacimiento: patientData.fechaNacimiento || new Date('1990-01-01'),
+      genero: patientData.genero || 'M',
+      telefono: uniqueTelefono,
+      ...patientData
+    };
+
+    // Only set id if explicitly provided
+    if (patientData.id !== undefined) {
+      createData.id = patientData.id;
+    }
+
     return await prisma.paciente.create({
-      data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        nombre: patientData.nombre || 'Test',
-        apellidoPaterno: patientData.apellidoPaterno || 'Patient',
-        fechaNacimiento: patientData.fechaNacimiento || new Date('1990-01-01'),
-        genero: patientData.genero || 'M',
-        telefono: patientData.telefono || '1234567890',
-        ...patientData
-      }
+      data: createData
     });
   },
 
   createTestProduct: async (productData = {}) => {
-    const randomId = 1001 + Math.floor(Math.random() * 1000);
+    // Generate unique codigo using timestamp to avoid collisions
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const uniqueCodigo = productData.codigo || `TEST-${timestamp}-${randomSuffix}`;
+
+    const createData = {
+      codigo: uniqueCodigo,
+      nombre: productData.nombre || 'Test Product',
+      categoria: productData.categoria || 'medicamento',
+      unidadMedida: productData.unidadMedida || 'pieza',
+      precioVenta: productData.precioVenta || productData.precio || 100.00,
+      stockActual: productData.stockActual || productData.stock || 10,
+      stockMinimo: productData.stockMinimo || 5,
+      proveedorId: productData.proveedor_id || productData.proveedorId || null,
+      activo: productData.activo !== false
+    };
+
+    // Only set id if explicitly provided
+    if (productData.id !== undefined) {
+      createData.id = productData.id;
+    }
+
     return await prisma.producto.create({
-      data: {
-        id: randomId,
-        codigo: productData.codigo || `TEST-${randomId}`,
-        nombre: productData.nombre || 'Test Product',
-        categoria: productData.categoria || 'medicamento',
-        unidadMedida: productData.unidadMedida || 'pieza',
-        precioVenta: productData.precioVenta || productData.precio || 100.00,
-        stockActual: productData.stockActual || productData.stock || 10,
-        stockMinimo: productData.stockMinimo || 5,
-        proveedorId: productData.proveedor_id || productData.proveedorId || null,
-        activo: productData.activo !== false
-      }
+      data: createData
     });
   },
 
   createTestSupplier: async (supplierData = {}) => {
+    // Generate unique email using timestamp to avoid collisions
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const uniqueEmail = supplierData.email || supplierData.contactoEmail || `test${timestamp}_${randomSuffix}@supplier.com`;
+
+    const createData = {
+      nombreEmpresa: supplierData.nombreEmpresa || supplierData.nombre || 'Test Supplier',
+      contactoNombre: supplierData.contactoNombre || supplierData.contacto || 'Test Contact',
+      contactoTelefono: supplierData.contactoTelefono || supplierData.telefono || '5551234567',
+      contactoEmail: uniqueEmail,
+      telefono: supplierData.telefono || '5551234567',
+      email: uniqueEmail,
+      activo: supplierData.activo !== false
+    };
+
+    // Only set id if explicitly provided
+    if (supplierData.id !== undefined) {
+      createData.id = supplierData.id;
+    }
+
     return await prisma.proveedor.create({
-      data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        nombreEmpresa: supplierData.nombreEmpresa || supplierData.nombre || 'Test Supplier',
-        contactoNombre: supplierData.contactoNombre || supplierData.contacto || 'Test Contact',
-        contactoTelefono: supplierData.contactoTelefono || supplierData.telefono || '5551234567',
-        contactoEmail: supplierData.contactoEmail || supplierData.email || 'test@supplier.com',
-        telefono: supplierData.telefono || '5551234567',
-        email: supplierData.email || 'test@supplier.com',
-        activo: supplierData.activo !== false
-      }
+      data: createData
     });
   },
 
@@ -182,13 +225,13 @@ global.testHelpers = {
   },
 
   createTestCuentaPaciente: async (accountData = {}) => {
-    const uniqueId = 5000 + Math.floor(Math.random() * 1000);
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
 
     // Create or use existing patient
     let paciente = accountData.paciente;
     if (!paciente) {
       paciente = await global.testHelpers.createTestPatient({
-        id: uniqueId,
         nombre: 'Paciente',
         apellidoPaterno: 'Test',
         apellidoMaterno: 'Solicitud'
@@ -199,41 +242,45 @@ global.testHelpers = {
     let cajeroId = accountData.cajeroAperturaId;
     if (!cajeroId) {
       const cajero = await global.testHelpers.createTestUser({
-        id: uniqueId + 10,
-        username: `cajero_test_${uniqueId}`,
+        username: `cajero_test_${timestamp}_${randomSuffix}`,
         rol: 'cajero'
       });
       cajeroId = cajero.id;
     }
 
     // Create patient account
+    const createData = {
+      pacienteId: paciente.id,
+      tipoAtencion: accountData.tipoAtencion || 'urgencia',
+      cajeroAperturaId: cajeroId,
+      anticipo: accountData.anticipo || 0,
+      totalServicios: accountData.totalServicios || 0,
+      totalProductos: accountData.totalProductos || 0,
+      totalCuenta: accountData.totalCuenta || 0,
+      saldoPendiente: accountData.saldoPendiente || 0,
+      fechaApertura: accountData.fechaApertura || new Date()
+    };
+
+    // Only set id if explicitly provided
+    if (accountData.id !== undefined) {
+      createData.id = accountData.id;
+    }
+
     const cuenta = await prisma.cuentaPaciente.create({
-      data: {
-        id: uniqueId,
-        pacienteId: paciente.id,
-        tipoAtencion: accountData.tipoAtencion || 'urgencia',
-        cajeroAperturaId: cajeroId,
-        anticipo: accountData.anticipo || 0,
-        totalServicios: accountData.totalServicios || 0,
-        totalProductos: accountData.totalProductos || 0,
-        totalCuenta: accountData.totalCuenta || 0,
-        saldoPendiente: accountData.saldoPendiente || 0,
-        fechaApertura: accountData.fechaApertura || new Date()
-      }
+      data: createData
     });
 
     return { cuenta, paciente };
   },
 
   createTestSolicitud: async (solicitudData = {}) => {
-    const uniqueId = 6000 + Math.floor(Math.random() * 1000);
     const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
 
     // Create paciente if not provided
     let paciente = solicitudData.paciente;
     if (!paciente) {
       paciente = await global.testHelpers.createTestPatient({
-        id: uniqueId,
         nombre: 'Paciente',
         apellidoPaterno: 'Solicitud',
         apellidoMaterno: 'Test'
@@ -245,16 +292,14 @@ global.testHelpers = {
     if (!solicitante) {
       // Create usuario for solicitante (enfermero or medico)
       solicitante = await global.testHelpers.createTestUser({
-        id: uniqueId,
-        username: `solicitante_${uniqueId}`,
+        username: `solicitante_${timestamp}_${randomSuffix}`,
         rol: 'enfermero'
       });
     }
 
     // Create cajero usuario for cuenta if needed
     const cajero = await global.testHelpers.createTestUser({
-      id: uniqueId + 10,
-      username: `cajero_sol_${uniqueId}`,
+      username: `cajero_sol_${timestamp}_${randomSuffix}`,
       rol: 'cajero'
     });
 
@@ -263,7 +308,6 @@ global.testHelpers = {
     if (!cuenta) {
       cuenta = await prisma.cuentaPaciente.create({
         data: {
-          id: uniqueId,
           pacienteId: paciente.id,
           tipoAtencion: solicitudData.tipoAtencion || 'hospitalizacion',
           cajeroAperturaId: cajero.id,
@@ -281,26 +325,30 @@ global.testHelpers = {
     let producto = solicitudData.producto;
     if (!producto) {
       producto = await global.testHelpers.createTestProduct({
-        id: uniqueId,
-        codigo: `TEST-PROD-${uniqueId}`,
         nombre: 'Producto Test Solicitud',
         stockActual: solicitudData.stockActual || 100
       });
     }
 
     // Create solicitud with correct schema
+    const solicitudCreateData = {
+      numero: `SP-${timestamp}-${randomSuffix}`,
+      pacienteId: paciente.id,
+      cuentaPacienteId: cuenta.id,
+      solicitanteId: solicitante.id,
+      estado: solicitudData.estado || 'SOLICITADO',
+      prioridad: solicitudData.prioridad || 'NORMAL',
+      observaciones: solicitudData.observaciones || 'Solicitud de prueba',
+      fechaSolicitud: solicitudData.fechaSolicitud || new Date()
+    };
+
+    // Only set id if explicitly provided
+    if (solicitudData.id !== undefined) {
+      solicitudCreateData.id = solicitudData.id;
+    }
+
     const solicitud = await prisma.solicitudProductos.create({
-      data: {
-        id: uniqueId,
-        numero: `SP-${timestamp}`,
-        pacienteId: paciente.id,
-        cuentaPacienteId: cuenta.id,
-        solicitanteId: solicitante.id,
-        estado: solicitudData.estado || 'SOLICITADO',
-        prioridad: solicitudData.prioridad || 'NORMAL',
-        observaciones: solicitudData.observaciones || 'Solicitud de prueba',
-        fechaSolicitud: solicitudData.fechaSolicitud || new Date()
-      }
+      data: solicitudCreateData
     });
 
     // Create detalle if cantidad and productoId provided
