@@ -52,27 +52,24 @@ describe('Sistema de Solicitudes de Productos', () => {
   beforeEach(async () => {
     await cleanSolicitudesTestData();
 
-    // Create test users with unique IDs per test run
-    // Use timestamp-based IDs >= 5000 to ensure cleanup and avoid collisions
-    const baseId = 5000 + Math.floor(Math.random() * 900); // 5000-5899
+    // Create test users without specifying ID - let Prisma auto-generate
+    // Use unique timestamp-based usernames to avoid collisions
+    const timestamp = Date.now();
 
     enfermero = await createTestUser({
-      id: baseId + 1,
-      username: `enfermero_sol_${baseId}`,
+      username: `enfermero_sol_${timestamp}`,
       password: 'enfermero123',
       rol: 'enfermero'
     });
 
     almacenista = await createTestUser({
-      id: baseId + 2,
-      username: `almacenista_sol_${baseId}`,
+      username: `almacenista_sol_${timestamp}`,
       password: 'almacen123',
       rol: 'almacenista'
     });
 
     admin = await createTestUser({
-      id: baseId + 3,
-      username: `admin_sol_${baseId}`,
+      username: `admin_sol_${timestamp}`,
       password: 'admin123',
       rol: 'administrador'
     });

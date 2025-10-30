@@ -77,21 +77,29 @@ global.testHelpers = {
     // Remove password from userData to avoid conflicts
     const { password, ...userDataWithoutPassword } = userData;
 
-    // Generate unique email if not provided
-    const randomId = 1001 + Math.floor(Math.random() * 10000);
-    const uniqueEmail = userDataWithoutPassword.email || `test${randomId}@test.com`;
-    const uniqueUsername = userDataWithoutPassword.username || `testuser${randomId}`;
+    // Generate unique identifiers using timestamp to avoid collisions
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const uniqueEmail = userDataWithoutPassword.email || `test${timestamp}_${randomSuffix}@test.com`;
+    const uniqueUsername = userDataWithoutPassword.username || `testuser${timestamp}_${randomSuffix}`;
+
+    // Only include ID if explicitly provided
+    const createData = {
+      username: uniqueUsername,
+      email: uniqueEmail,
+      passwordHash,
+      rol: userDataWithoutPassword.rol || 'administrador',
+      activo: userDataWithoutPassword.activo !== false,
+      ...userDataWithoutPassword
+    };
+
+    // Only set id if explicitly provided in userData
+    if (userDataWithoutPassword.id !== undefined) {
+      createData.id = userDataWithoutPassword.id;
+    }
 
     return await prisma.usuario.create({
-      data: {
-        id: randomId,
-        username: uniqueUsername,
-        email: uniqueEmail,
-        passwordHash,
-        rol: userDataWithoutPassword.rol || 'administrador',
-        activo: userDataWithoutPassword.activo !== false,
-        ...userDataWithoutPassword
-      }
+      data: createData
     });
   },
 
@@ -311,17 +319,41 @@ global.testHelpers = {
 
   cleanSolicitudesTestData: async () => {
     try {
+      // Find test users by username pattern
+      const testUsers = await prisma.usuario.findMany({
+        where: {
+          username: {
+            contains: '_sol_'
+          }
+        },
+        select: { id: true }
+      });
+      const testUserIds = testUsers.map(u => u.id);
+
+      if (testUserIds.length === 0) return;
+
       // Clean in correct order respecting FK constraints
-      await prisma.detalleSolicitudProducto.deleteMany({ where: { solicitudId: { gte: 5000 } } });
-      await prisma.historialSolicitud.deleteMany({ where: { solicitudId: { gte: 5000 } } });
-      await prisma.notificacionSolicitud.deleteMany({ where: { solicitudId: { gte: 5000 } } });
-      await prisma.solicitudProductos.deleteMany({ where: { id: { gte: 5000 } } });
-      await prisma.transaccionCuenta.deleteMany({ where: { id: { gte: 5000 } } });
-      await prisma.cuentaPaciente.deleteMany({ where: { id: { gte: 5000 } } });
-      await prisma.producto.deleteMany({ where: { id: { gte: 5000 } } });
-      await prisma.paciente.deleteMany({ where: { id: { gte: 5000 } } });
-      await prisma.empleado.deleteMany({ where: { id: { gte: 5000 } } });
-      await prisma.usuario.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.detalleSolicitudProducto.deleteMany({});
+      await prisma.historialSolicitud.deleteMany({});
+      await prisma.notificacionSolicitud.deleteMany({});
+      await prisma.solicitudProductos.deleteMany({
+        where: { solicitanteId: { in: testUserIds } }
+      });
+      await prisma.transaccionCuenta.deleteMany({});
+      await prisma.cuentaPaciente.deleteMany({});
+      await prisma.movimientoInventario.deleteMany({
+        where: { usuarioId: { in: testUserIds } }
+      });
+      await prisma.producto.deleteMany({
+        where: { codigo: { startsWith: 'TEST-' } }
+      });
+      await prisma.paciente.deleteMany({
+        where: { nombre: 'Paciente' }
+      });
+      await prisma.empleado.deleteMany({});
+      await prisma.usuario.deleteMany({
+        where: { id: { in: testUserIds } }
+      });
     } catch (error) {
       console.warn('Warning: Error cleaning solicitudes test data:', error.message);
     }
