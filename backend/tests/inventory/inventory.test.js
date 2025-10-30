@@ -54,9 +54,9 @@ describe('Inventory Endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('items');
+        expect(response.body.data).toHaveProperty('products');
         expect(response.body.data).toHaveProperty('pagination');
-        expect(Array.isArray(response.body.data.items)).toBe(true);
+        expect(Array.isArray(response.body.data.products)).toBe(true);
       });
 
       it('should filter products by search term', async () => {
@@ -66,7 +66,7 @@ describe('Inventory Endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.items).toEqual(
+        expect(response.body.data.products).toEqual(
           expect.arrayContaining([
             expect.objectContaining({
               nombre: 'Test Medicine'
@@ -82,7 +82,7 @@ describe('Inventory Endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.items.every(item => item.categoria === 'medicamento')).toBe(true);
+        expect(response.body.data.products.every(item => item.categoria === 'medicamento')).toBe(true);
       });
 
       it('should filter products with low stock', async () => {
@@ -97,17 +97,19 @@ describe('Inventory Endpoints', () => {
 
     describe('POST /api/inventory/products', () => {
       const validProductData = {
+        codigo: 'TEST-NEW-001',
         nombre: 'New Test Product',
-        precio: 15.75,
-        stock: 50,
+        categoria: 'material_medico',
+        unidadMedida: 'pieza',
+        precioVenta: 15.75,
+        stockActual: 50,
         stockMinimo: 5,
-        categoria: 'material',
         descripcion: 'Test product description',
-        proveedor_id: null // Will be set dynamically
+        proveedorId: null // Will be set dynamically
       };
 
       beforeEach(() => {
-        validProductData.proveedor_id = testSupplier.id;
+        validProductData.proveedorId = testSupplier.id;
       });
 
       it('should create a new product with valid data', async () => {
@@ -118,10 +120,10 @@ describe('Inventory Endpoints', () => {
 
         expect(response.status).toBe(201);
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('id');
-        expect(response.body.data.nombre).toBe(validProductData.nombre);
-        expect(response.body.data.precio).toBe(validProductData.precio);
-        expect(response.body.data.stock).toBe(validProductData.stock);
+        expect(response.body.data.producto).toHaveProperty('id');
+        expect(response.body.data.producto.nombre).toBe(validProductData.nombre);
+        expect(response.body.data.producto.precioVenta).toBe(validProductData.precioVenta);
+        expect(response.body.data.producto.stockActual).toBe(validProductData.stockActual);
       });
 
       it('should fail with missing required fields', async () => {
@@ -142,7 +144,7 @@ describe('Inventory Endpoints', () => {
       it('should fail with invalid price', async () => {
         const invalidData = {
           ...validProductData,
-          precio: -10 // Negative price
+          precioVenta: -10 // Negative price
         };
 
         const response = await request(app)
