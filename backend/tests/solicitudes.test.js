@@ -59,19 +59,17 @@ describe('Sistema de Solicitudes de Productos', () => {
   beforeEach(async () => {
     await cleanSolicitudesTestData();
 
-    // Create test users
-    enfermero = await createTestEmployee({
+    // Create test users (Usuario, not Empleado) - needed for solicitanteId FK
+    enfermero = await createTestUser({
       id: 9001,
-      nombre: 'Enfermero',
-      apellidoPaterno: 'Test',
-      tipoEmpleado: 'enfermero'
+      username: 'enfermero_test',
+      rol: 'enfermero'
     });
 
-    almacenista = await createTestEmployee({
+    almacenista = await createTestUser({
       id: 9002,
-      nombre: 'Almacenista',
-      apellidoPaterno: 'Test',
-      tipoEmpleado: 'almacenista'
+      username: 'almacenista_test',
+      rol: 'almacenista'
     });
 
     // Create test patient and account
@@ -98,7 +96,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const nuevaSolicitud = {
         pacienteId: paciente.id,
         cuentaPacienteId: cuenta.id,
-        prioridad: 'alta',
+        prioridad: 'ALTA',
         observaciones: 'Solicitud urgente para paciente en UCI',
         productos: [
           {
@@ -117,7 +115,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('id');
-      expect(response.body.data.estado).toBe('pendiente');
+      expect(response.body.data.estado).toBe('SOLICITADO');
       expect(response.body.data.prioridad).toBe('alta');
 
       solicitud = response.body.data;
@@ -127,7 +125,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const solicitudInvalida = {
         pacienteId: paciente.id,
         cuentaPacienteId: cuenta.id,
-        prioridad: 'normal',
+        prioridad: 'NORMAL',
         productos: []
       };
 
@@ -144,7 +142,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const nuevaSolicitud = {
         pacienteId: paciente.id,
         cuentaPacienteId: cuenta.id,
-        prioridad: 'normal',
+        prioridad: 'NORMAL',
         productos: [
           {
             productoId: producto.id,
@@ -172,7 +170,7 @@ describe('Sistema de Solicitudes de Productos', () => {
         solicitante: enfermero,
         producto: producto,
         cantidad: 10,
-        estado: 'pendiente'
+        estado: 'SOLICITADO'
       });
       solicitud = testData.solicitud;
     });
@@ -194,7 +192,7 @@ describe('Sistema de Solicitudes de Productos', () => {
         .set('Authorization', 'Bearer enfermero-token');
 
       expect(response.status).toBe(200);
-      const todasPendientes = response.body.data.every(s => s.estado === 'pendiente');
+      const todasPendientes = response.body.data.every(s => s.estado === 'SOLICITADO');
       expect(todasPendientes).toBe(true);
     });
 
@@ -203,15 +201,15 @@ describe('Sistema de Solicitudes de Productos', () => {
       await createTestSolicitud({
         solicitante: enfermero,
         producto: producto,
-        prioridad: 'alta'
+        prioridad: 'ALTA'
       });
 
       const response = await request(app)
-        .get('/api/solicitudes?prioridad=alta')
+        .get('/api/solicitudes?prioridad=ALTA')
         .set('Authorization', 'Bearer enfermero-token');
 
       expect(response.status).toBe(200);
-      const todasAlta = response.body.data.every(s => s.prioridad === 'alta');
+      const todasAlta = response.body.data.every(s => s.prioridad === 'ALTA');
       expect(todasAlta).toBe(true);
     });
   });
@@ -257,7 +255,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const testData = await createTestSolicitud({
         solicitante: enfermero,
         producto: producto,
-        estado: 'pendiente'
+        estado: 'SOLICITADO'
       });
       solicitud = testData.solicitud;
     });
@@ -266,10 +264,10 @@ describe('Sistema de Solicitudes de Productos', () => {
       const response = await request(app)
         .put(`/api/solicitudes/${solicitud.id}`)
         .set('Authorization', 'Bearer almacenista-token')
-        .send({ estado: 'en_preparacion' });
+        .send({ estado: 'PREPARANDO' });
 
       expect(response.status).toBe(200);
-      expect(response.body.data.estado).toBe('en_preparacion');
+      expect(response.body.data.estado).toBe('PREPARANDO');
     });
 
     test('Debe validar transiciones de estado válidas', async () => {
@@ -277,7 +275,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const response = await request(app)
         .put(`/api/solicitudes/${solicitud.id}`)
         .set('Authorization', 'Bearer almacenista-token')
-        .send({ estado: 'completada' });
+        .send({ estado: 'RECIBIDO' });
 
       expect(response.status).toBe(400);
       expect(response.body.error).toBeDefined();
@@ -298,7 +296,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const solicitudExcesiva = {
         pacienteId: paciente.id,
         cuentaPacienteId: cuenta.id,
-        prioridad: 'normal',
+        prioridad: 'NORMAL',
         productos: [
           {
             productoId: productoPocoStock.id,
@@ -334,7 +332,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       await request(app)
         .put(`/api/solicitudes/${testData.solicitud.id}`)
         .set('Authorization', 'Bearer almacenista-token')
-        .send({ estado: 'completada' });
+        .send({ estado: 'RECIBIDO' });
 
       // Verify stock was reduced
       const productoActualizado = await prisma.producto.findUnique({
@@ -354,7 +352,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const testData = await createTestSolicitud({
         solicitante: enfermero,
         producto: producto,
-        estado: 'pendiente'
+        estado: 'SOLICITADO'
       });
       solicitud = testData.solicitud;
     });
@@ -378,7 +376,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       // Update to completed
       await prisma.solicitudProductos.update({
         where: { id: solicitud.id },
-        data: { estado: 'completada' }
+        data: { estado: 'RECIBIDO' }
       });
 
       const response = await request(app)
@@ -386,7 +384,7 @@ describe('Sistema de Solicitudes de Productos', () => {
         .set('Authorization', 'Bearer admin-token');
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('completada');
+      expect(response.body.error).toContain('RECIBIDO');
     });
   });
 
@@ -407,7 +405,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const nuevaSolicitud = {
         pacienteId: paciente.id,
         cuentaPacienteId: cuenta.id,
-        prioridad: 'normal',
+        prioridad: 'NORMAL',
         productos: [{ productoId: producto.id, cantidad: 5 }]
       };
 
@@ -423,7 +421,7 @@ describe('Sistema de Solicitudes de Productos', () => {
       const response = await request(app)
         .put(`/api/solicitudes/${solicitud.id}`)
         .set('Authorization', 'Bearer almacenista-token')
-        .send({ estado: 'en_preparacion' });
+        .send({ estado: 'PREPARANDO' });
 
       expect(response.status).toBe(200);
     });

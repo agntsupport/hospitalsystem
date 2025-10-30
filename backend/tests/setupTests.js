@@ -219,15 +219,53 @@ global.testHelpers = {
 
   createTestSolicitud: async (solicitudData = {}) => {
     const uniqueId = 6000 + Math.floor(Math.random() * 1000);
+    const timestamp = Date.now();
 
-    // Create solicitante (empleado) if not provided
+    // Create paciente if not provided
+    let paciente = solicitudData.paciente;
+    if (!paciente) {
+      paciente = await global.testHelpers.createTestPatient({
+        id: uniqueId,
+        nombre: 'Paciente',
+        apellidoPaterno: 'Solicitud',
+        apellidoMaterno: 'Test'
+      });
+    }
+
+    // Create solicitante (Usuario) if not provided
     let solicitante = solicitudData.solicitante;
     if (!solicitante) {
-      solicitante = await global.testHelpers.createTestEmployee({
+      // Create usuario for solicitante (enfermero or medico)
+      solicitante = await global.testHelpers.createTestUser({
         id: uniqueId,
-        nombre: 'Empleado',
-        apellidoPaterno: 'Test',
-        tipoEmpleado: 'almacenista'
+        username: `solicitante_${uniqueId}`,
+        rol: 'enfermero'
+      });
+    }
+
+    // Create cajero usuario for cuenta if needed
+    const cajero = await global.testHelpers.createTestUser({
+      id: uniqueId + 10,
+      username: `cajero_sol_${uniqueId}`,
+      rol: 'cajero'
+    });
+
+    // Create cuenta paciente if not provided
+    let cuenta = solicitudData.cuenta;
+    if (!cuenta) {
+      cuenta = await prisma.cuentaPaciente.create({
+        data: {
+          id: uniqueId,
+          pacienteId: paciente.id,
+          tipoAtencion: solicitudData.tipoAtencion || 'hospitalizacion',
+          cajeroAperturaId: cajero.id,
+          anticipo: 0,
+          totalServicios: 0,
+          totalProductos: 0,
+          totalCuenta: 0,
+          saldoPendiente: 0,
+          fechaApertura: new Date()
+        }
       });
     }
 
@@ -237,31 +275,46 @@ global.testHelpers = {
       producto = await global.testHelpers.createTestProduct({
         id: uniqueId,
         codigo: `TEST-PROD-${uniqueId}`,
-        nombre: 'Producto Test',
+        nombre: 'Producto Test Solicitud',
         stockActual: solicitudData.stockActual || 100
       });
     }
 
-    // Create solicitud
+    // Create solicitud with correct schema
     const solicitud = await prisma.solicitudProductos.create({
       data: {
         id: uniqueId,
+        numero: `SP-${timestamp}`,
+        pacienteId: paciente.id,
+        cuentaPacienteId: cuenta.id,
         solicitanteId: solicitante.id,
-        productoId: producto.id,
-        cantidad: solicitudData.cantidad || 10,
-        estado: solicitudData.estado || 'pendiente',
-        prioridad: solicitudData.prioridad || 'media',
+        estado: solicitudData.estado || 'SOLICITADO',
+        prioridad: solicitudData.prioridad || 'NORMAL',
         observaciones: solicitudData.observaciones || 'Solicitud de prueba',
         fechaSolicitud: solicitudData.fechaSolicitud || new Date()
       }
     });
 
-    return { solicitud, solicitante, producto };
+    // Create detalle if cantidad and productoId provided
+    const cantidad = solicitudData.cantidad || 10;
+    await prisma.detalleSolicitudProducto.create({
+      data: {
+        solicitudId: solicitud.id,
+        productoId: producto.id,
+        cantidadSolicitada: cantidad,
+        estado: 'PENDIENTE'
+      }
+    });
+
+    return { solicitud, solicitante, paciente, cuenta, producto, cajero };
   },
 
   cleanSolicitudesTestData: async () => {
     try {
       // Clean in correct order respecting FK constraints
+      await prisma.detalleSolicitudProducto.deleteMany({ where: { solicitudId: { gte: 5000 } } });
+      await prisma.historialSolicitud.deleteMany({ where: { solicitudId: { gte: 5000 } } });
+      await prisma.notificacionSolicitud.deleteMany({ where: { solicitudId: { gte: 5000 } } });
       await prisma.solicitudProductos.deleteMany({ where: { id: { gte: 5000 } } });
       await prisma.transaccionCuenta.deleteMany({ where: { id: { gte: 5000 } } });
       await prisma.cuentaPaciente.deleteMany({ where: { id: { gte: 5000 } } });
