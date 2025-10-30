@@ -7,6 +7,14 @@ const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require
 const { sanitizeSearch } = require('../utils/helpers');
 const { getSafeSelect, validateSelect } = require('../utils/schema-validator');
 const logger = require('../utils/logger');
+const {
+  validateProducto,
+  validateProductoUpdate,
+  validateProveedor,
+  validateProveedorUpdate,
+  validateMovimiento,
+  validateIdParam
+} = require('../validators/inventory.validators');
 
 // ==============================================
 // ENDPOINTS DE INVENTARIO
@@ -85,7 +93,7 @@ router.get('/suppliers', validatePagination, async (req, res) => {
 });
 
 // POST /suppliers - Crear proveedor
-router.post('/suppliers', authenticateToken, auditMiddleware('inventario'), validateRequired(['nombreEmpresa']), async (req, res) => {
+router.post('/suppliers', authenticateToken, auditMiddleware('inventario'), validateProveedor, async (req, res) => {
   try {
     const {
       nombreEmpresa,
@@ -152,7 +160,7 @@ router.post('/suppliers', authenticateToken, auditMiddleware('inventario'), vali
 });
 
 // PUT /suppliers/:id - Actualizar proveedor
-router.put('/suppliers/:id', authenticateToken, auditMiddleware('inventario'), captureOriginalData('proveedor'), async (req, res) => {
+router.put('/suppliers/:id', authenticateToken, auditMiddleware('inventario'), validateProveedorUpdate, captureOriginalData('proveedor'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -359,7 +367,7 @@ router.get('/products', validatePagination, async (req, res) => {
 });
 
 // POST /products - Crear nuevo producto
-router.post('/products', authenticateToken, auditMiddleware('inventario'), validateRequired(['nombre', 'categoria', 'precioVenta']), async (req, res) => {
+router.post('/products', authenticateToken, auditMiddleware('inventario'), validateProducto, async (req, res) => {
   try {
     const {
       codigo,
@@ -422,7 +430,7 @@ router.post('/products', authenticateToken, auditMiddleware('inventario'), valid
 });
 
 // PUT /products/:id - Actualizar producto
-router.put('/products/:id', authenticateToken, auditMiddleware('inventario'), captureOriginalData('producto'), async (req, res) => {
+router.put('/products/:id', authenticateToken, auditMiddleware('inventario'), validateProductoUpdate, captureOriginalData('producto'), async (req, res) => {
   try {
     const { id } = req.params;
     const productoId = parseInt(id);
@@ -603,7 +611,7 @@ router.get('/movements', validatePagination, async (req, res) => {
 });
 
 // POST /movements - Crear movimiento de inventario
-router.post('/movements', authenticateToken, auditMiddleware('inventario'), validateRequired(['productoId', 'tipo', 'cantidad', 'motivo']), async (req, res) => {
+router.post('/movements', authenticateToken, auditMiddleware('inventario'), validateMovimiento, async (req, res) => {
   try {
     const {
       productoId,
