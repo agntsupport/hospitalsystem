@@ -1,7 +1,7 @@
 const request = require('supertest');
 const express = require('express');
 const { authenticateToken, authorizeRoles } = require('../../middleware/auth.middleware');
-const auditMiddleware = require('../../middleware/audit.middleware');
+const { auditMiddleware } = require('../../middleware/audit.middleware');
 const testHelpers = require('../setupTests');
 
 describe('Middleware Tests', () => {
