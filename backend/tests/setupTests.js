@@ -171,6 +171,107 @@ global.testHelpers = {
         ...quirofanoData
       }
     });
+  },
+
+  createTestCuentaPaciente: async (accountData = {}) => {
+    const uniqueId = 5000 + Math.floor(Math.random() * 1000);
+
+    // Create or use existing patient
+    let paciente = accountData.paciente;
+    if (!paciente) {
+      paciente = await global.testHelpers.createTestPatient({
+        id: uniqueId,
+        nombre: 'Paciente',
+        apellidoPaterno: 'Test',
+        apellidoMaterno: 'Solicitud'
+      });
+    }
+
+    // Create cajero usuario if needed
+    let cajeroId = accountData.cajeroAperturaId;
+    if (!cajeroId) {
+      const cajero = await global.testHelpers.createTestUser({
+        id: uniqueId + 10,
+        username: `cajero_test_${uniqueId}`,
+        rol: 'cajero'
+      });
+      cajeroId = cajero.id;
+    }
+
+    // Create patient account
+    const cuenta = await prisma.cuentaPaciente.create({
+      data: {
+        id: uniqueId,
+        pacienteId: paciente.id,
+        tipoAtencion: accountData.tipoAtencion || 'urgencia',
+        cajeroAperturaId: cajeroId,
+        anticipo: accountData.anticipo || 0,
+        totalServicios: accountData.totalServicios || 0,
+        totalProductos: accountData.totalProductos || 0,
+        totalCuenta: accountData.totalCuenta || 0,
+        saldoPendiente: accountData.saldoPendiente || 0,
+        fechaApertura: accountData.fechaApertura || new Date()
+      }
+    });
+
+    return { cuenta, paciente };
+  },
+
+  createTestSolicitud: async (solicitudData = {}) => {
+    const uniqueId = 6000 + Math.floor(Math.random() * 1000);
+
+    // Create solicitante (empleado) if not provided
+    let solicitante = solicitudData.solicitante;
+    if (!solicitante) {
+      solicitante = await global.testHelpers.createTestEmployee({
+        id: uniqueId,
+        nombre: 'Empleado',
+        apellidoPaterno: 'Test',
+        tipoEmpleado: 'almacenista'
+      });
+    }
+
+    // Create producto if not provided
+    let producto = solicitudData.producto;
+    if (!producto) {
+      producto = await global.testHelpers.createTestProduct({
+        id: uniqueId,
+        codigo: `TEST-PROD-${uniqueId}`,
+        nombre: 'Producto Test',
+        stockActual: solicitudData.stockActual || 100
+      });
+    }
+
+    // Create solicitud
+    const solicitud = await prisma.solicitudProductos.create({
+      data: {
+        id: uniqueId,
+        solicitanteId: solicitante.id,
+        productoId: producto.id,
+        cantidad: solicitudData.cantidad || 10,
+        estado: solicitudData.estado || 'pendiente',
+        prioridad: solicitudData.prioridad || 'media',
+        observaciones: solicitudData.observaciones || 'Solicitud de prueba',
+        fechaSolicitud: solicitudData.fechaSolicitud || new Date()
+      }
+    });
+
+    return { solicitud, solicitante, producto };
+  },
+
+  cleanSolicitudesTestData: async () => {
+    try {
+      // Clean in correct order respecting FK constraints
+      await prisma.solicitudProductos.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.transaccionCuenta.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.cuentaPaciente.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.producto.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.paciente.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.empleado.deleteMany({ where: { id: { gte: 5000 } } });
+      await prisma.usuario.deleteMany({ where: { id: { gte: 5000 } } });
+    } catch (error) {
+      console.warn('Warning: Error cleaning solicitudes test data:', error.message);
+    }
   }
 };
 
