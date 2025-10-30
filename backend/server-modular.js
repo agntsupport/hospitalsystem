@@ -1058,52 +1058,55 @@ app.use((err, req, res, next) => {
 // INICIAR SERVIDOR
 // ==============================================
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🏥 Servidor Hospital con Arquitectura Modular iniciado`);
-  console.log(`🚀 Ejecutándose en: http://localhost:${PORT}`);
-  console.log(`🗄️  Base de datos: PostgreSQL con Prisma ORM`);
-  console.log(`🏗️  Arquitectura: Rutas Modulares`);
-  console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
-  console.log(`\n📚 Credenciales de prueba (desde BD):`);
-  console.log(`   👨‍💼 admin / admin123`);
-  console.log(`   💰 cajero1 / cajero123`);
-  console.log(`   👩‍⚕️ enfermero1 / enfermero123`);
-  console.log(`   👨‍⚕️ especialista1 / medico123`);
-  console.log(`   👩‍⚕️ residente1 / residente123`);
-  console.log(`   📦 almacen1 / almacen123`);
-  console.log(`   👔 socio1 / socio123`);
-  console.log(`\n🎯 Rutas disponibles:`);
-  console.log(`   📋 /api/auth/* - Autenticación`);
-  console.log(`   👥 /api/patients/* - Pacientes`);
-  console.log(`   👨‍⚕️ /api/employees/* - Empleados`);
-  console.log(`   📦 /api/inventory/* - Inventario`);
-  console.log(`   🏠 /api/rooms/* - Habitaciones`);
-  console.log(`   🏢 /api/offices/* - Consultorios`);
-  console.log(`   🏥 /api/quirofanos/* - Quirófanos`);
-  console.log(`   💰 /api/billing/* - Facturación`);
-  console.log(`   🏥 /api/hospitalization/* - Hospitalización`);
-  console.log(`   💳 /api/pos/* - Punto de Venta`);
-  console.log(`   📊 /api/reports/* - Reportes`);
-});
-
-// Manejo de señales para cierre correcto
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM recibido, cerrando servidor...');
-  server.close(async () => {
-    await prisma.$disconnect();
-    console.log('Servidor cerrado correctamente');
-    process.exit(0);
+// Solo iniciar servidor si no estamos en modo test
+if (require.main === module) {
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🏥 Servidor Hospital con Arquitectura Modular iniciado`);
+    console.log(`🚀 Ejecutándose en: http://localhost:${PORT}`);
+    console.log(`🗄️  Base de datos: PostgreSQL con Prisma ORM`);
+    console.log(`🏗️  Arquitectura: Rutas Modulares`);
+    console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+    console.log(`\n📚 Credenciales de prueba (desde BD):`);
+    console.log(`   👨‍💼 admin / admin123`);
+    console.log(`   💰 cajero1 / cajero123`);
+    console.log(`   👩‍⚕️ enfermero1 / enfermero123`);
+    console.log(`   👨‍⚕️ especialista1 / medico123`);
+    console.log(`   👩‍⚕️ residente1 / residente123`);
+    console.log(`   📦 almacen1 / almacen123`);
+    console.log(`   👔 socio1 / socio123`);
+    console.log(`\n🎯 Rutas disponibles:`);
+    console.log(`   📋 /api/auth/* - Autenticación`);
+    console.log(`   👥 /api/patients/* - Pacientes`);
+    console.log(`   👨‍⚕️ /api/employees/* - Empleados`);
+    console.log(`   📦 /api/inventory/* - Inventario`);
+    console.log(`   🏠 /api/rooms/* - Habitaciones`);
+    console.log(`   🏢 /api/offices/* - Consultorios`);
+    console.log(`   🏥 /api/quirofanos/* - Quirófanos`);
+    console.log(`   💰 /api/billing/* - Facturación`);
+    console.log(`   🏥 /api/hospitalization/* - Hospitalización`);
+    console.log(`   💳 /api/pos/* - Punto de Venta`);
+    console.log(`   📊 /api/reports/* - Reportes`);
   });
-});
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT recibido, cerrando servidor...');
-  server.close(async () => {
-    await prisma.$disconnect();
-    console.log('Servidor cerrado correctamente');
-    process.exit(0);
+  // Manejo de señales para cierre correcto
+  process.on('SIGTERM', async () => {
+    console.log('SIGTERM recibido, cerrando servidor...');
+    server.close(async () => {
+      await prisma.$disconnect();
+      console.log('Servidor cerrado correctamente');
+      process.exit(0);
+    });
   });
-});
+
+  process.on('SIGINT', async () => {
+    console.log('SIGINT recibido, cerrando servidor...');
+    server.close(async () => {
+      await prisma.$disconnect();
+      console.log('Servidor cerrado correctamente');
+      process.exit(0);
+    });
+  });
+}
 
 // Exportar para testing
 module.exports = { app };

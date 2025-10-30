@@ -1,13 +1,13 @@
 const request = require('supertest');
 const express = require('express');
 const patientsRoutes = require('../../routes/patients.routes');
-const authMiddleware = require('../../middleware/auth.middleware');
-const { testHelpers } = require('../setupTests');
+const { authenticateToken } = require('../../middleware/auth.middleware');
+const testHelpers = require('../setupTests');
 
 // Create test app
 const app = express();
 app.use(express.json());
-app.use('/api/patients', authMiddleware, patientsRoutes);
+app.use('/api/patients', authenticateToken, patientsRoutes);
 
 describe('Patients Endpoints', () => {
   let testUser, authToken, testPatient;
@@ -15,7 +15,7 @@ describe('Patients Endpoints', () => {
   beforeEach(async () => {
     // Create test user and get auth token
     testUser = await testHelpers.createTestUser({
-      nombreUsuario: 'testdoctor',
+      username: 'testdoctor',
       rol: 'medico_especialista'
     });
 
@@ -74,7 +74,7 @@ describe('Patients Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.pagination.page).toBe(1);
+      expect(response.body.data.pagination.currentPage).toBe(1);
       expect(response.body.data.pagination.limit).toBe(5);
     });
 
@@ -110,9 +110,9 @@ describe('Patients Endpoints', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('id');
-      expect(response.body.data.nombre).toBe(validPatientData.nombre);
-      expect(response.body.data.apellidoPaterno).toBe(validPatientData.apellidoPaterno);
+      expect(response.body.data.paciente).toHaveProperty('id');
+      expect(response.body.data.paciente.nombre).toBe(validPatientData.nombre);
+      expect(response.body.data.paciente.apellidoPaterno).toBe(validPatientData.apellidoPaterno);
     });
 
     it('should fail with missing required fields', async () => {
@@ -169,8 +169,8 @@ describe('Patients Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.id).toBe(testPatient.id);
-      expect(response.body.data.nombre).toBe('Juan');
+      expect(response.body.data.paciente.id).toBe(testPatient.id);
+      expect(response.body.data.paciente.nombre).toBe('Juan');
     });
 
     it('should return 404 for non-existent patient', async () => {
@@ -206,8 +206,8 @@ describe('Patients Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.telefono).toBe(updateData.telefono);
-      expect(response.body.data.email).toBe(updateData.email);
+      expect(response.body.data.paciente.telefono).toBe(updateData.telefono);
+      expect(response.body.data.paciente.email).toBe(updateData.email);
     });
 
     it('should return 404 for non-existent patient', async () => {
@@ -250,9 +250,9 @@ describe('Patients Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('totalPacientes');
-      expect(response.body.data).toHaveProperty('pacientesActivos');
-      expect(typeof response.body.data.totalPacientes).toBe('number');
+      expect(response.body.data.resumen).toHaveProperty('totalPacientes');
+      expect(response.body.data.resumen).toHaveProperty('pacientesActivos');
+      expect(typeof response.body.data.resumen.totalPacientes).toBe('number');
     });
   });
 });

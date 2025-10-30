@@ -1,13 +1,13 @@
 const request = require('supertest');
 const express = require('express');
 const quirofanosRoutes = require('../../routes/quirofanos.routes');
-const authMiddleware = require('../../middleware/auth.middleware');
-const { testHelpers } = require('../setupTests');
+const { authenticateToken } = require('../../middleware/auth.middleware');
+const testHelpers = require('../setupTests');
 
 // Create test app
 const app = express();
 app.use(express.json());
-app.use('/api/quirofanos', authMiddleware, quirofanosRoutes);
+app.use('/api/quirofanos', authenticateToken, quirofanosRoutes);
 
 describe('Quirófanos Endpoints', () => {
   let testUser, authToken, testQuirofano, testEmployee, testPatient;
@@ -15,7 +15,7 @@ describe('Quirófanos Endpoints', () => {
   beforeEach(async () => {
     // Create test user and get auth token
     testUser = await testHelpers.createTestUser({
-      nombreUsuario: 'testdoctor',
+      username: 'testdoctor',
       rol: 'medico_especialista'
     });
 
@@ -585,7 +585,7 @@ describe('Quirófanos Endpoints', () => {
 
     beforeEach(async () => {
       const enfermero = await testHelpers.createTestUser({
-        nombreUsuario: 'testenfermero',
+        username: 'testenfermero',
         rol: 'enfermero'
       });
 

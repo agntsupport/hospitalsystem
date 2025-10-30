@@ -1,6 +1,6 @@
 const request = require('supertest');
 const { PrismaClient } = require('@prisma/client');
-const app = require('../server-modular');
+const { app } = require('../server-modular');
 
 const prisma = new PrismaClient();
 

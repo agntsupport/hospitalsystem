@@ -1,13 +1,13 @@
 const request = require('supertest');
 const express = require('express');
 const inventoryRoutes = require('../../routes/inventory.routes');
-const authMiddleware = require('../../middleware/auth.middleware');
-const { testHelpers } = require('../setupTests');
+const { authenticateToken } = require('../../middleware/auth.middleware');
+const testHelpers = require('../setupTests');
 
 // Create test app
 const app = express();
 app.use(express.json());
-app.use('/api/inventory', authMiddleware, inventoryRoutes);
+app.use('/api/inventory', authenticateToken, inventoryRoutes);
 
 describe('Inventory Endpoints', () => {
   let testUser, authToken, testProduct, testSupplier;
@@ -15,7 +15,7 @@ describe('Inventory Endpoints', () => {
   beforeEach(async () => {
     // Create test user and get auth token
     testUser = await testHelpers.createTestUser({
-      nombreUsuario: 'testalmacenista',
+      username: 'testalmacenista',
       rol: 'almacenista'
     });
 
@@ -27,14 +27,11 @@ describe('Inventory Endpoints', () => {
     );
 
     // Create test supplier
-    testSupplier = await testHelpers.prisma.proveedores.create({
-      data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        nombre: 'Test Supplier',
-        contacto: 'Test Contact',
-        telefono: '5551234567',
-        email: 'supplier@test.com'
-      }
+    testSupplier = await testHelpers.createTestSupplier({
+      nombre: 'Test Supplier',
+      contacto: 'Test Contact',
+      telefono: '5551234567',
+      email: 'supplier@test.com'
     });
 
     // Create test product
@@ -457,7 +454,7 @@ describe('Inventory Endpoints', () => {
     beforeEach(async () => {
       // Create enfermero user (should have read-only access)
       const enfermero = await testHelpers.createTestUser({
-        nombreUsuario: 'testenfermero',
+        username: 'testenfermero',
         rol: 'enfermero'
       });
 

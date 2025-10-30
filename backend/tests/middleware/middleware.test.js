@@ -1,15 +1,15 @@
 const request = require('supertest');
 const express = require('express');
-const authMiddleware = require('../../middleware/auth.middleware');
+const { authenticateToken, authorizeRoles } = require('../../middleware/auth.middleware');
 const auditMiddleware = require('../../middleware/audit.middleware');
-const { testHelpers } = require('../setupTests');
+const testHelpers = require('../setupTests');
 
 describe('Middleware Tests', () => {
   let testUser, validToken, invalidToken;
 
   beforeEach(async () => {
     testUser = await testHelpers.createTestUser({
-      nombreUsuario: 'testmiddleware',
+      username: 'testmiddleware',
       rol: 'administrador'
     });
 
@@ -31,7 +31,7 @@ describe('Middleware Tests', () => {
       app.use(express.json());
       
       // Protected route for testing
-      app.get('/protected', authMiddleware, (req, res) => {
+      app.get('/protected', authenticateToken, (req, res) => {
         res.json({
           success: true,
           message: 'Access granted',
@@ -112,7 +112,7 @@ describe('Middleware Tests', () => {
     it('should handle inactive user token', async () => {
       // Create inactive user
       const inactiveUser = await testHelpers.createTestUser({
-        nombreUsuario: 'inactivetest',
+        username: 'inactivetest',
         rol: 'administrador',
         activo: false
       });
@@ -140,9 +140,9 @@ describe('Middleware Tests', () => {
     beforeEach(() => {
       app = express();
       app.use(express.json());
-      
+
       // Add auth middleware first (audit depends on user info)
-      app.use(authMiddleware);
+      app.use(authenticateToken);
       app.use(auditMiddleware);
 
       // Test routes with different operations
@@ -315,7 +315,7 @@ describe('Middleware Tests', () => {
     beforeEach(() => {
       app = express();
       app.use(express.json());
-      app.use(authMiddleware);
+      app.use(authenticateToken);
 
       // Admin-only route
       app.get('/admin-only', requireRole(['administrador']), (req, res) => {
@@ -344,7 +344,7 @@ describe('Middleware Tests', () => {
 
     it('should deny non-admin access to admin-only routes', async () => {
       const enfermero = await testHelpers.createTestUser({
-        nombreUsuario: 'testenfermero',
+        username: 'testenfermero',
         rol: 'enfermero'
       });
 
@@ -366,7 +366,7 @@ describe('Middleware Tests', () => {
 
     it('should allow medical staff access to medical routes', async () => {
       const doctor = await testHelpers.createTestUser({
-        nombreUsuario: 'testdoctor',
+        username: 'testdoctor',
         rol: 'medico_especialista'
       });
 
@@ -387,7 +387,7 @@ describe('Middleware Tests', () => {
 
     it('should handle multi-role authorization correctly', async () => {
       const cajero = await testHelpers.createTestUser({
-        nombreUsuario: 'testcajero',
+        username: 'testcajero',
         rol: 'cajero'
       });
 

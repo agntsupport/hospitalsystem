@@ -14,9 +14,9 @@ describe('Auth Endpoints', () => {
   beforeEach(async () => {
     // Create test user for login tests
     testUser = await testHelpers.createTestUser({
-      nombreUsuario: 'testadmin',
+      username: 'testadmin',
       email: 'testadmin@hospital.com',
-      contrasena: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password: 'admin123'
+      password: 'admin123', // Will be hashed by createTestUser
       rol: 'administrador'
     });
   });
@@ -26,43 +26,43 @@ describe('Auth Endpoints', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          nombreUsuario: 'testadmin',
-          contrasena: 'admin123'
+          username: 'testadmin',
+          password: 'admin123'
         });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('token');
-      expect(response.body.data).toHaveProperty('usuario');
-      expect(response.body.data.usuario.nombreUsuario).toBe('testadmin');
-      expect(response.body.data.usuario.rol).toBe('administrador');
-      expect(response.body.data.usuario).not.toHaveProperty('contrasena');
+      expect(response.body.data).toHaveProperty('user');
+      expect(response.body.data.user.username).toBe('testadmin');
+      expect(response.body.data.user.rol).toBe('administrador');
+      expect(response.body.data.user).not.toHaveProperty('passwordHash');
     });
 
     it('should fail with invalid username', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          nombreUsuario: 'nonexistent',
-          contrasena: 'admin123'
+          username: 'nonexistent',
+          password: 'admin123'
         });
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Usuario no encontrado');
+      expect(response.body.message).toContain('Credenciales inválidas');
     });
 
     it('should fail with invalid password', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          nombreUsuario: 'testadmin',
-          contrasena: 'wrongpassword'
+          username: 'testadmin',
+          password: 'wrongpassword'
         });
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Contraseña incorrecta');
+      expect(response.body.message).toContain('Credenciales inválidas');
     });
 
     it('should fail with missing credentials', async () => {
@@ -77,9 +77,9 @@ describe('Auth Endpoints', () => {
     it('should fail with inactive user', async () => {
       // Create inactive user
       await testHelpers.createTestUser({
-        nombreUsuario: 'inactiveuser',
+        username: 'inactiveuser',
         email: 'inactive@hospital.com',
-        contrasena: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+        password: 'admin123', // Will be hashed by createTestUser
         rol: 'administrador',
         activo: false
       });
@@ -87,13 +87,13 @@ describe('Auth Endpoints', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          nombreUsuario: 'inactiveuser',
-          contrasena: 'admin123'
+          username: 'inactiveuser',
+          password: 'admin123'
         });
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('inactivo');
+      expect(response.body.message).toContain('Credenciales inválidas');
     });
   });
 
@@ -105,10 +105,10 @@ describe('Auth Endpoints', () => {
       const loginResponse = await request(app)
         .post('/api/auth/login')
         .send({
-          nombreUsuario: 'testadmin',
-          contrasena: 'admin123'
+          username: 'testadmin',
+          password: 'admin123'
         });
-      
+
       authToken = loginResponse.body.data.token;
     });
 
@@ -120,7 +120,7 @@ describe('Auth Endpoints', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data.valid).toBe(true);
-      expect(response.body.data.usuario).toHaveProperty('nombreUsuario', 'testadmin');
+      expect(response.body.data.user).toHaveProperty('username', 'testadmin');
     });
 
     it('should fail with invalid token', async () => {
@@ -149,10 +149,10 @@ describe('Auth Endpoints', () => {
       const loginResponse = await request(app)
         .post('/api/auth/login')
         .send({
-          nombreUsuario: 'testadmin',
-          contrasena: 'admin123'
+          username: 'testadmin',
+          password: 'admin123'
         });
-      
+
       authToken = loginResponse.body.data.token;
     });
 
@@ -163,9 +163,9 @@ describe('Auth Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('nombreUsuario', 'testadmin');
-      expect(response.body.data).toHaveProperty('rol', 'administrador');
-      expect(response.body.data).not.toHaveProperty('contrasena');
+      expect(response.body.data.user).toHaveProperty('username', 'testadmin');
+      expect(response.body.data.user).toHaveProperty('rol', 'administrador');
+      expect(response.body.data.user).not.toHaveProperty('passwordHash');
     });
 
     it('should fail with invalid token', async () => {

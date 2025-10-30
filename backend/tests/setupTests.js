@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 const path = require('path');
 
 // Load test environment variables
@@ -63,15 +64,28 @@ global.testHelpers = {
   cleanTestData,
   
   createTestUser: async (userData = {}) => {
+    // If password is provided (plain text), hash it with bcrypt
+    // If passwordHash is provided directly, use it (for legacy tests)
+    let passwordHash = userData.passwordHash;
+    if (userData.password) {
+      passwordHash = await bcrypt.hash(userData.password, 10);
+    } else if (!passwordHash) {
+      // Default test password hashed
+      passwordHash = await bcrypt.hash('testpassword123', 10);
+    }
+
+    // Remove password from userData to avoid conflicts
+    const { password, ...userDataWithoutPassword } = userData;
+
     return await prisma.usuario.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
-        username: userData.username || 'testuser',
-        email: userData.email || 'test@test.com',
-        passwordHash: userData.passwordHash || '$2a$10$hashed.password',
-        rol: userData.rol || 'administrador',
-        activo: userData.activo !== false,
-        ...userData
+        username: userDataWithoutPassword.username || 'testuser',
+        email: userDataWithoutPassword.email || 'test@test.com',
+        passwordHash,
+        rol: userDataWithoutPassword.rol || 'administrador',
+        activo: userDataWithoutPassword.activo !== false,
+        ...userDataWithoutPassword
       }
     });
   },
