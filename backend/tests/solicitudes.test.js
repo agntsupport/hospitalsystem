@@ -41,6 +41,17 @@ describe('Sistema de Solicitudes de Productos', () => {
     });
     pacienteId = paciente.id;
 
+    // Get a cajero user for cuenta creation (or use admin if no cajero exists)
+    const cajero = await prisma.usuario.findFirst({
+      where: {
+        OR: [
+          { rol: 'cajero' },
+          { rol: 'administrador' }
+        ],
+        activo: true
+      }
+    });
+
     // Crear cuenta de paciente de prueba
     const cuenta = await prisma.cuentaPaciente.create({
       data: {
@@ -52,8 +63,8 @@ describe('Sistema de Solicitudes de Productos', () => {
         totalProductos: 0,
         totalCuenta: 0,
         saldoPendiente: 0,
-        cajeroAperturaId: 1,
-        habitacionId: 1
+        cajeroAperturaId: cajero.id
+        // habitacionId is optional, omitting it for test
       }
     });
     cuentaPacienteId = cuenta.id;
