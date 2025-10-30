@@ -75,16 +75,14 @@ const authenticateToken = async (req, res, next) => {
 // Middleware opcional de autenticación (para endpoints públicos)
 const optionalAuth = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (token) {
     try {
-      const decoded = jwt.verify(
-        token, 
-        process.env.JWT_SECRET || 'super_secure_jwt_secret_key_for_hospital_system_2024'
-      );
-      
+      // Usar JWT_SECRET validado (sin fallback inseguro)
+      const decoded = jwt.verify(token, JWT_SECRET);
+
       const user = await prisma.usuario.findUnique({
-        where: { 
+        where: {
           id: decoded.userId,
           activo: true
         },
@@ -96,7 +94,7 @@ const optionalAuth = async (req, res, next) => {
           activo: true
         }
       });
-      
+
       if (user) {
         req.user = user;
       }
@@ -104,7 +102,7 @@ const optionalAuth = async (req, res, next) => {
       // En auth opcional, ignoramos errores de token y continuamos sin usuario
     }
   }
-  
+
   next();
 };
 

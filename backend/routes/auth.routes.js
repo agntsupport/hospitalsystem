@@ -145,50 +145,79 @@ router.post('/logout', authenticateToken, auditMiddleware('autenticacion'), (req
   });
 });
 
-// GET /verify-token - Verificar token
-router.get('/verify-token', (req, res) => {
+// GET /verify-token - Verificar token JWT real
+router.get('/verify-token', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (!token) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Token no proporcionado' 
-    });
-  }
-
-  // Para este servidor de prueba, aceptamos cualquier token que empiece con jwt_token_
-  if (token.startsWith('jwt_token_')) {
-    res.json({ 
-      success: true, 
-      message: 'Token válido',
-      data: { valid: true }
-    });
-  } else {
-    res.status(401).json({ 
-      success: false, 
-      message: 'Token inválido' 
-    });
-  }
-});
-
-// GET /profile - Obtener perfil del usuario autenticado
-router.get('/profile', async (req, res) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token || !token.startsWith('jwt_token_')) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'No autorizado' 
+    return res.status(401).json({
+      success: false,
+      message: 'Token no proporcionado'
     });
   }
 
   try {
-    // Extraer ID del usuario del token mock
-    const tokenParts = token.split('_');
-    const userId = parseInt(tokenParts[2]);
+    // Verificar JWT con secret validado
+    const decoded = jwt.verify(token, JWT_SECRET);
 
+    // Verificar que el usuario existe y está activo
     const user = await prisma.usuario.findUnique({
-      where: { id: userId },
+      where: {
+        id: decoded.userId,
+        activo: true
+      },
+      select: {
+        id: true,
+        username: true,
+        rol: true
+      }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no encontrado o inactivo'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Token válido',
+      data: {
+        valid: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          rol: user.rol
+        }
+      }
+    });
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expirado'
+      });
+    } else if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token inválido'
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: 'Error verificando token'
+      });
+    }
+  }
+});
+
+// GET /profile - Obtener perfil del usuario autenticado (JWT real)
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    // req.user ya está cargado por authenticateToken middleware
+    const user = await prisma.usuario.findUnique({
+      where: { id: req.user.id },
       select: {
         id: true,
         username: true,
@@ -196,14 +225,15 @@ router.get('/profile', async (req, res) => {
         rol: true,
         activo: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        ultimoAcceso: true
       }
     });
 
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Usuario no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
       });
     }
 
@@ -214,21 +244,19 @@ router.get('/profile', async (req, res) => {
       rol: user.rol,
       activo: user.activo,
       fechaRegistro: user.createdAt,
-      fechaActualizacion: user.updatedAt
+      fechaActualizacion: user.updatedAt,
+      ultimoAcceso: user.ultimoAcceso
     };
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Perfil obtenido correctamente',
       data: { user: userResponse }
     });
 
   } catch (error) {
     console.error('Error obteniendo perfil:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor' 
-    });
+    handlePrismaError(error, res);
   }
 });
 

@@ -262,9 +262,10 @@ VITE_API_URL=http://localhost:3001
 - **Middleware automático** de auditoría
 
 ### 🧪 12. Testing Framework
-- **1,422 tests totales** automatizados (827 frontend + 595 backend)
+- **338 tests unit** (187 frontend + 151 backend, 52 backend failing por configuración)
+- **19 tests E2E Playwright** (ITEM 3 & 4 validados)
 - **Jest + Testing Library** configurado
-- **Cobertura de código** y CI/CD ready
+- **Cobertura ~20%** (requiere expansión a 50%+)
 
 ## 🏗️ Arquitectura de Base de Datos
 

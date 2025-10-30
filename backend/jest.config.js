@@ -26,5 +26,8 @@ module.exports = {
     }
   },
   verbose: true,
-  testTimeout: 10000,
+  testTimeout: 30000, // Aumentado a 30 segundos para conexiones BD
+  forceExit: true, // Forzar salida después de tests
+  detectOpenHandles: true, // Detectar handles abiertos para debugging
+  maxWorkers: 1, // Ejecutar tests secuencialmente para evitar conflictos BD
 };

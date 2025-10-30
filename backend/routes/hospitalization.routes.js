@@ -4,6 +4,7 @@ const { prisma, formatPaginationResponse, handlePrismaError } = require('../util
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // FUNCIONES HELPER PARA CARGOS AUTOMÁTICOS
@@ -814,13 +815,17 @@ router.post('/admissions/:id/notes', authenticateToken, authorizeRoles(['enferme
       empleadoId = 12 // Dra. Ana por defecto
     } = req.body;
 
-    console.log('Creating medical note with data:', {
+    // Log sanitizado (información médica será redactada automáticamente)
+    logger.logOperation('CREATE_MEDICAL_NOTE', {
       hospitalizacionId: id,
       tipoNota,
       turno,
       empleadoId,
-      signos: { temperatura, presionSistolica, presionDiastolica },
-      contenido: { estadoGeneral, sintomas, examenFisico, planTratamiento }
+      // Información médica sensible será automáticamente redactada por el logger
+      estadoGeneral,
+      sintomas,
+      examenFisico,
+      planTratamiento
     });
 
     const nota = await prisma.notaHospitalizacion.create({

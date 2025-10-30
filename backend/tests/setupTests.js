@@ -35,66 +35,23 @@ beforeEach(async () => {
 async function cleanTestData() {
   try {
     // Delete test data in correct order (respecting foreign keys)
-    await prisma.auditoria_operaciones.deleteMany({
-      where: {
-        usuario_id: { gt: 1000 } // Only delete test users
-      }
-    });
-    
-    await prisma.cirugias_quirofano.deleteMany({
-      where: {
-        medico_id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.hospitalizaciones.deleteMany({
-      where: {
-        paciente_id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.transacciones_cuenta.deleteMany({
-      where: {
-        cuenta_id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.cuentas_pacientes.deleteMany({
-      where: {
-        paciente_id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.pacientes.deleteMany({
-      where: {
-        id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.empleados.deleteMany({
-      where: {
-        id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.usuarios.deleteMany({
-      where: {
-        id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.productos.deleteMany({
-      where: {
-        id: { gt: 1000 }
-      }
-    });
-    
-    await prisma.quirofanos.deleteMany({
-      where: {
-        id: { gt: 1000 }
-      }
-    });
-    
+    // Using exact Prisma Client model names (camelCase from PascalCase models)
+
+    // Silent catch for each operation - some tables might not exist in test
+    try { await prisma.auditoriaOperacion.deleteMany({ where: { usuarioId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.cirugiaQuirofano.deleteMany({ where: { medicoId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.hospitalizacion.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.cuentaPaciente.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.paciente.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.empleado.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.usuario.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.producto.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.proveedor.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.quirofano.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.solicitudProductos.deleteMany({ where: { solicitanteId: { gt: 1000 } } }); } catch (e) {}
+
   } catch (error) {
     console.warn('Warning: Error cleaning test data:', error.message);
   }
@@ -106,21 +63,21 @@ global.testHelpers = {
   cleanTestData,
   
   createTestUser: async (userData = {}) => {
-    return await prisma.usuarios.create({
+    return await prisma.usuario.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
-        nombreUsuario: userData.nombreUsuario || 'testuser',
-        email: userData.email || 'test@test.com', 
-        contrasena: userData.contrasena || '$2a$10$hashed.password',
+        username: userData.username || 'testuser',
+        email: userData.email || 'test@test.com',
+        passwordHash: userData.passwordHash || '$2a$10$hashed.password',
         rol: userData.rol || 'administrador',
         activo: userData.activo !== false,
         ...userData
       }
     });
   },
-  
+
   createTestEmployee: async (employeeData = {}) => {
-    return await prisma.empleados.create({
+    return await prisma.empleado.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
         nombre: employeeData.nombre || 'Test',
@@ -134,9 +91,9 @@ global.testHelpers = {
       }
     });
   },
-  
+
   createTestPatient: async (patientData = {}) => {
-    return await prisma.pacientes.create({
+    return await prisma.paciente.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
         nombre: patientData.nombre || 'Test',
@@ -148,9 +105,9 @@ global.testHelpers = {
       }
     });
   },
-  
+
   createTestProduct: async (productData = {}) => {
-    return await prisma.productos.create({
+    return await prisma.producto.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
         nombre: productData.nombre || 'Test Product',
@@ -162,9 +119,9 @@ global.testHelpers = {
       }
     });
   },
-  
+
   createTestSupplier: async (supplierData = {}) => {
-    return await prisma.proveedores.create({
+    return await prisma.proveedor.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
         nombre: supplierData.nombre || 'Test Supplier',
@@ -175,9 +132,9 @@ global.testHelpers = {
       }
     });
   },
-  
+
   createTestQuirofano: async (quirofanoData = {}) => {
-    return await prisma.quirofanos.create({
+    return await prisma.quirofano.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
         numero: quirofanoData.numero || Math.floor(Math.random() * 1000) + 1000,

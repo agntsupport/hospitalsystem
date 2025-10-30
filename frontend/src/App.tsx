@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CircularProgress, Box } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -9,20 +10,24 @@ import 'react-toastify/dist/ReactToastify.css';
 import { store } from '@/store/store';
 import Layout from '@/components/common/Layout';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
+
+// Eager loading solo para Login (primera página que se carga)
 import Login from '@/pages/auth/Login';
-import Dashboard from '@/pages/dashboard/Dashboard';
-import EmployeesPage from '@/pages/employees/EmployeesPage';
-import POSPage from '@/pages/pos/POSPage';
-import RoomsPage from '@/pages/rooms/RoomsPage';
-import PatientsPage from '@/pages/patients/PatientsPage';
-import InventoryPage from '@/pages/inventory/InventoryPage';
-import BillingPage from '@/pages/billing/BillingPage';
-import ReportsPage from '@/pages/reports/ReportsPage';
-import HospitalizationPage from '@/pages/hospitalization/HospitalizationPage';
-import QuirofanosPage from '@/pages/quirofanos/QuirofanosPage';
-import CirugiasPage from '@/pages/quirofanos/CirugiasPage';
-import UsersPage from '@/pages/users/UsersPage';
-import SolicitudesPage from '@/pages/solicitudes/SolicitudesPage';
+
+// Lazy loading para todas las demás páginas (Code Splitting)
+const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'));
+const EmployeesPage = lazy(() => import('@/pages/employees/EmployeesPage'));
+const POSPage = lazy(() => import('@/pages/pos/POSPage'));
+const RoomsPage = lazy(() => import('@/pages/rooms/RoomsPage'));
+const PatientsPage = lazy(() => import('@/pages/patients/PatientsPage'));
+const InventoryPage = lazy(() => import('@/pages/inventory/InventoryPage'));
+const BillingPage = lazy(() => import('@/pages/billing/BillingPage'));
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
+const HospitalizationPage = lazy(() => import('@/pages/hospitalization/HospitalizationPage'));
+const QuirofanosPage = lazy(() => import('@/pages/quirofanos/QuirofanosPage'));
+const CirugiasPage = lazy(() => import('@/pages/quirofanos/CirugiasPage'));
+const UsersPage = lazy(() => import('@/pages/users/UsersPage'));
+const SolicitudesPage = lazy(() => import('@/pages/solicitudes/SolicitudesPage'));
 
 const theme = createTheme({
   palette: {
@@ -72,6 +77,21 @@ const theme = createTheme({
   },
 });
 
+// Componente de loading para Lazy Loading
+const PageLoader: React.FC = () => (
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '400px',
+      width: '100%',
+    }}
+  >
+    <CircularProgress size={60} />
+  </Box>
+);
+
 // Componente placeholder para rutas no implementadas
 const ComingSoon: React.FC<{ title: string }> = ({ title }) => (
   <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -86,7 +106,8 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
-          <Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
             {/* Ruta pública - Login */}
             <Route path="/login" element={<Login />} />
             
@@ -219,9 +240,10 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-          </Routes>
+            </Routes>
+          </Suspense>
         </Router>
-        
+
         {/* Toast notifications */}
         <ToastContainer
           position="top-right"

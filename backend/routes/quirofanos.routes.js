@@ -3,6 +3,7 @@ const router = express.Router();
 const { prisma } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, captureOriginalData } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // RUTAS DE QUIRÓFANOS
@@ -1005,8 +1006,14 @@ router.put('/:id/estado', authenticateToken, auditMiddleware('quirofanos'), asyn
       data: { estado }
     });
 
-    // Registrar el cambio de estado para auditoría
-    console.log(`Quirófano ${quirofano.numero} cambió de estado: ${quirofano.estado} -> ${estado}`, motivo ? `Motivo: ${motivo}` : '');
+    // Registrar el cambio de estado para auditoría (motivo será redactado si contiene información sensible)
+    logger.logOperation('QUIROFANO_CAMBIO_ESTADO', {
+      quirofanoId: quirofano.id,
+      numero: quirofano.numero,
+      estadoAnterior: quirofano.estado,
+      estadoNuevo: estado,
+      motivo // Será redactado automáticamente si contiene información sensible
+    });
 
     res.json({
       success: true,
