@@ -77,11 +77,16 @@ global.testHelpers = {
     // Remove password from userData to avoid conflicts
     const { password, ...userDataWithoutPassword } = userData;
 
+    // Generate unique email if not provided
+    const randomId = 1001 + Math.floor(Math.random() * 10000);
+    const uniqueEmail = userDataWithoutPassword.email || `test${randomId}@test.com`;
+    const uniqueUsername = userDataWithoutPassword.username || `testuser${randomId}`;
+
     return await prisma.usuario.create({
       data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        username: userDataWithoutPassword.username || 'testuser',
-        email: userDataWithoutPassword.email || 'test@test.com',
+        id: randomId,
+        username: uniqueUsername,
+        email: uniqueEmail,
         passwordHash,
         rol: userDataWithoutPassword.rol || 'administrador',
         activo: userDataWithoutPassword.activo !== false,

@@ -272,9 +272,7 @@ router.get('/products', validatePagination, async (req, res) => {
     if (categoria) where.categoria = categoria;
     if (proveedor) where.proveedorId = parseInt(proveedor);
     if (conStock === 'true') where.stockActual = { gt: 0 };
-    if (stockBajo === 'true') {
-      where.stockActual = { lte: prisma.raw('stock_minimo') };
-    }
+    // stockBajo se manejará con post-filtrado ya que Prisma no soporta comparación entre campos
     
     // Filtro por IDs específicos (para validación de stock)
     if (ids) {
@@ -300,8 +298,14 @@ router.get('/products', validatePagination, async (req, res) => {
       prisma.producto.count({ where })
     ]);
 
+    // Post-filtrar por stock bajo si es necesario
+    let productosFiltrados = productos;
+    if (stockBajo === 'true') {
+      productosFiltrados = productos.filter(p => p.stockActual <= p.stockMinimo);
+    }
+
     // Formatear respuesta
-    const productosFormatted = productos.map(producto => ({
+    const productosFormatted = productosFiltrados.map(producto => ({
       id: producto.id,
       codigo: producto.codigo,
       codigoBarras: producto.codigoBarras,
