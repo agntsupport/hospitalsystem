@@ -96,15 +96,15 @@ async function generarCargosHabitacion(cuentaId, habitacionId, fechaIngreso, emp
       // Actualizar totales de la cuenta
       await actualizarTotalesCuenta(cuentaId, tx);
       
-      console.log(`✅ Generados ${cargosAGenerar} cargos de habitación para cuenta ${cuentaId}`);
+      logger.info(`✅ Generados ${cargosAGenerar} cargos de habitación para cuenta ${cuentaId}`);
       return cargosAGenerar;
     } else {
-      console.log(`ℹ️  No hay cargos pendientes para cuenta ${cuentaId} (${diasEstancia} días, ${cargosExistentes} cargos)`);
+      logger.info(`ℹ️  No hay cargos pendientes para cuenta ${cuentaId} (${diasEstancia} días, ${cargosExistentes} cargos)`);
       return 0;
     }
 
   } catch (error) {
-    console.error('Error generando cargos de habitación:', error);
+    logger.logError('GENERAR_CARGOS_HABITACION', error, { cuentaId, habitacionId });
     throw error;
   }
 }
@@ -155,11 +155,11 @@ async function actualizarTotalesCuenta(cuentaId, tx = prisma) {
       }
     });
 
-    console.log(`💰 Totales actualizados para cuenta ${cuentaId}: Servicios: $${totalServicios}, Total: $${totalCuenta}, Saldo: $${saldoPendiente}`);
+    logger.info(`💰 Totales actualizados para cuenta ${cuentaId}: Servicios: $${totalServicios}, Total: $${totalCuenta}, Saldo: $${saldoPendiente}`);
     return { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente };
 
   } catch (error) {
-    console.error('Error actualizando totales de cuenta:', error);
+    logger.logError('ACTUALIZAR_TOTALES_CUENTA', error, { cuentaId });
     throw error;
   }
 }
@@ -274,7 +274,7 @@ router.get('/admissions', validatePagination, async (req, res) => {
     res.json(formatPaginationResponse(admisionesFormatted, total, page, limit));
 
   } catch (error) {
-    console.error('Error obteniendo admisiones:', error);
+    logger.logError('GET_ADMISSIONS', error, { filters: { estado, especialidad, search } });
     handlePrismaError(error, res);
   }
 });
@@ -291,12 +291,13 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
       observaciones
     } = req.body;
     
-    console.log('Creating admission with data:', {
+    logger.logOperation('CREATE_ADMISSION', {
       pacienteId,
       habitacionId,
+      medicoTratanteId,
+      // Medical data (diagnosticoIngreso, motivoIngreso, observaciones) automatically redacted
       diagnosticoIngreso,
       motivoIngreso,
-      medicoTratanteId,
       observaciones
     });
 
@@ -414,7 +415,10 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
     });
 
   } catch (error) {
-    console.error('Error creando admisión:', error);
+    logger.logError('CREATE_ADMISSION', error, {
+      pacienteId: req.body.pacienteId,
+      habitacionId: req.body.habitacionId
+    });
     handlePrismaError(error, res);
   }
 });
@@ -468,7 +472,7 @@ router.put('/:id/discharge', authenticateToken, authorizeRoles(['enfermero', 'me
     });
 
   } catch (error) {
-    console.error('Error procesando alta:', error);
+    logger.logError('PROCESS_DISCHARGE', error, { admisionId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -612,7 +616,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas:', error);
+    logger.logError('GET_HOSPITALIZATION_STATS', error);
     handlePrismaError(error, res);
   }
 });
@@ -682,7 +686,7 @@ router.get('/admissions/:id/notes', authenticateToken, authorizeRoles(['administ
     });
 
   } catch (error) {
-    console.error('Error obteniendo notas médicas:', error);
+    logger.logError('GET_MEDICAL_NOTES', error, { hospitalizacionId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -786,7 +790,7 @@ router.get('/admissions/:id/patient-status', authenticateToken, authorizeRoles([
     });
 
   } catch (error) {
-    console.error('Error obteniendo estado del paciente:', error);
+    logger.logError('GET_PATIENT_STATUS', error, { hospitalizacionId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -891,7 +895,10 @@ router.post('/admissions/:id/notes', authenticateToken, authorizeRoles(['enferme
     });
 
   } catch (error) {
-    console.error('Error creando nota médica:', error);
+    logger.logError('CREATE_MEDICAL_NOTE_ERROR', error, {
+      hospitalizacionId: req.params.id,
+      tipoNota: req.body.tipoNota
+    });
     handlePrismaError(error, res);
   }
 });
@@ -903,8 +910,8 @@ router.post('/admissions/:id/notes', authenticateToken, authorizeRoles(['enferme
 // POST /update-room-charges - Actualizar cargos de habitación para todas las hospitalizaciones activas
 router.post('/update-room-charges', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
   try {
-    console.log('🔄 Iniciando actualización de cargos de habitación...');
-    
+    logger.info('🔄 Iniciando actualización de cargos de habitación...');
+
     // Obtener todas las hospitalizaciones activas (que no tengan alta)
     const hospitalizacionesActivas = await prisma.hospitalizacion.findMany({
       where: {
@@ -917,7 +924,7 @@ router.post('/update-room-charges', authenticateToken, authorizeRoles(['administ
       }
     });
 
-    console.log(`📊 Encontradas ${hospitalizacionesActivas.length} hospitalizaciones activas`);
+    logger.info(`📊 Encontradas ${hospitalizacionesActivas.length} hospitalizaciones activas`);
 
     let totalCargosGenerados = 0;
     const resultados = [];
@@ -944,7 +951,10 @@ router.post('/update-room-charges', authenticateToken, authorizeRoles(['administ
         });
 
       } catch (error) {
-        console.error(`❌ Error procesando hospitalización ${hospitalizacion.id}:`, error);
+        logger.logError('PROCESS_HOSPITALIZATION_CHARGES', error, {
+          hospitalizacionId: hospitalizacion.id,
+          cuentaId: hospitalizacion.cuentaPacienteId
+        });
         resultados.push({
           hospitalizacionId: hospitalizacion.id,
           cuentaId: hospitalizacion.cuentaPacienteId,
@@ -955,7 +965,7 @@ router.post('/update-room-charges', authenticateToken, authorizeRoles(['administ
       }
     }
 
-    console.log(`✅ Proceso completado: ${totalCargosGenerados} cargos generados`);
+    logger.info(`✅ Proceso completado: ${totalCargosGenerados} cargos generados`);
 
     res.json({
       success: true,
@@ -968,7 +978,7 @@ router.post('/update-room-charges', authenticateToken, authorizeRoles(['administ
     });
 
   } catch (error) {
-    console.error('❌ Error en actualización masiva de cargos:', error);
+    logger.logError('UPDATE_ROOM_CHARGES_MASS', error);
     res.status(500).json({
       success: false,
       message: 'Error al actualizar cargos de habitación',
@@ -981,8 +991,8 @@ router.post('/update-room-charges', authenticateToken, authorizeRoles(['administ
 router.post('/admissions/:id/update-charges', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
   try {
     const { id } = req.params;
-    
-    console.log(`🔄 Actualizando cargos para hospitalización ${id}...`);
+
+    logger.info(`🔄 Actualizando cargos para hospitalización ${id}...`);
 
     // Buscar la hospitalización
     const hospitalizacion = await prisma.hospitalizacion.findUnique({
@@ -1028,7 +1038,9 @@ router.post('/admissions/:id/update-charges', authenticateToken, authorizeRoles(
     });
 
   } catch (error) {
-    console.error(`❌ Error actualizando cargos para hospitalización ${id}:`, error);
+    logger.logError('UPDATE_CHARGES_SINGLE_HOSPITALIZATION', error, {
+      hospitalizacionId: req.params.id
+    });
     res.status(500).json({
       success: false,
       message: 'Error al actualizar cargos de la hospitalización',
@@ -1041,8 +1053,8 @@ router.post('/admissions/:id/update-charges', authenticateToken, authorizeRoles(
 router.post('/accounts/:id/recalculate-totals', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
   try {
     const { id } = req.params;
-    
-    console.log(`🧮 Recalculando totales para cuenta ${id}...`);
+
+    logger.info(`🧮 Recalculando totales para cuenta ${id}...`);
 
     const totales = await prisma.$transaction(async (tx) => {
       return await actualizarTotalesCuenta(parseInt(id), tx);
@@ -1058,7 +1070,7 @@ router.post('/accounts/:id/recalculate-totals', authenticateToken, authorizeRole
     });
 
   } catch (error) {
-    console.error(`❌ Error recalculando totales para cuenta ${id}:`, error);
+    logger.logError('RECALCULATE_ACCOUNT_TOTALS', error, { cuentaId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error al recalcular totales de la cuenta',

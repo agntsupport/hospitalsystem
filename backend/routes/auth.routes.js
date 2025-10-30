@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const { prisma, handlePrismaError } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 // Validar JWT_SECRET
 if (!process.env.JWT_SECRET) {
@@ -130,7 +131,7 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error en login:', error);
+    logger.logAuth('LOGIN_ERROR', error, { username: req.body.username });
     handlePrismaError(error, res);
   }
 });
@@ -255,7 +256,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo perfil:', error);
+    logger.logAuth('GET_PROFILE_ERROR', error, { userId: req.user?.id });
     handlePrismaError(error, res);
   }
 });

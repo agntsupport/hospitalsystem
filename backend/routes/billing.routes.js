@@ -5,6 +5,7 @@ const { validatePagination, validateRequired, validateDateRange } = require('../
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { generateInvoiceNumber } = require('../utils/helpers');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE FACTURACIÓN
@@ -75,7 +76,7 @@ router.get('/invoices', validatePagination, validateDateRange, async (req, res) 
     res.json(formatPaginationResponse(facturasFormatted, total, page, limit));
 
   } catch (error) {
-    console.error('Error obteniendo facturas:', error);
+    logger.logError('GET_INVOICES', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -140,7 +141,7 @@ router.post('/invoices', authenticateToken, auditMiddleware('facturacion'), vali
     });
 
   } catch (error) {
-    console.error('Error creando factura:', error);
+    logger.logError('CREATE_INVOICE', error, { pacienteId: req.body.pacienteId });
     handlePrismaError(error, res);
   }
 });
@@ -199,7 +200,7 @@ router.get('/stats', validateDateRange, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas de facturación:', error);
+    logger.logError('GET_BILLING_STATS', error);
     handlePrismaError(error, res);
   }
 });
@@ -248,7 +249,7 @@ router.get('/invoices/:id/payments', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo pagos de factura:', error);
+    logger.logError('GET_INVOICE_PAYMENTS', error, { facturaId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -341,7 +342,7 @@ router.post('/invoices/:id/payments', authenticateToken, auditMiddleware('factur
     });
 
   } catch (error) {
-    console.error('Error registrando pago:', error);
+    logger.logError('CREATE_PAYMENT', error, { facturaId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -502,7 +503,7 @@ router.get('/accounts-receivable', validateDateRange, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo cuentas por cobrar:', error);
+    logger.logError('GET_ACCOUNTS_RECEIVABLE', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });

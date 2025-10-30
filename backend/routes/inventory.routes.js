@@ -6,6 +6,7 @@ const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { sanitizeSearch } = require('../utils/helpers');
 const { getSafeSelect, validateSelect } = require('../utils/schema-validator');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE INVENTARIO
@@ -78,7 +79,7 @@ router.get('/suppliers', validatePagination, async (req, res) => {
     res.json(formatPaginationResponse(proveedoresFormatted, total, page, limit));
 
   } catch (error) {
-    console.error('Error obteniendo proveedores:', error);
+    logger.logError('GET_SUPPLIERS', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -145,7 +146,7 @@ router.post('/suppliers', authenticateToken, auditMiddleware('inventario'), vali
     });
 
   } catch (error) {
-    console.error('Error creando proveedor:', error);
+    logger.logError('CREATE_SUPPLIER', error, { nombre: req.body.nombre });
     handlePrismaError(error, res);
   }
 });
@@ -188,7 +189,7 @@ router.put('/suppliers/:id', authenticateToken, auditMiddleware('inventario'), c
     });
 
   } catch (error) {
-    console.error('Error actualizando proveedor:', error);
+    logger.logError('UPDATE_SUPPLIER', error, { proveedorId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -221,7 +222,7 @@ router.delete('/suppliers/:id', authenticateToken, auditMiddleware('inventario')
     });
 
   } catch (error) {
-    console.error('Error eliminando proveedor:', error);
+    logger.logError('DELETE_SUPPLIER', error, { proveedorId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -348,7 +349,7 @@ router.get('/products', validatePagination, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo productos:', error);
+    logger.logError('GET_PRODUCTS', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -411,7 +412,7 @@ router.post('/products', authenticateToken, auditMiddleware('inventario'), valid
     });
 
   } catch (error) {
-    console.error('Error creando producto:', error);
+    logger.logError('CREATE_PRODUCT', error, { codigo: req.body.codigo });
     handlePrismaError(error, res);
   }
 });
@@ -471,7 +472,7 @@ router.put('/products/:id', authenticateToken, auditMiddleware('inventario'), ca
     });
 
   } catch (error) {
-    console.error('Error actualizando producto:', error);
+    logger.logError('UPDATE_PRODUCT', error, { productoId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -500,7 +501,7 @@ router.delete('/products/:id', authenticateToken, auditMiddleware('inventario'),
     });
 
   } catch (error) {
-    console.error('Error eliminando producto:', error);
+    logger.logError('DELETE_PRODUCT', error, { productoId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -592,7 +593,7 @@ router.get('/movements', validatePagination, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo movimientos:', error);
+    logger.logError('GET_MOVEMENTS', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -686,7 +687,7 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
     });
 
   } catch (error) {
-    console.error('Error creando movimiento:', error);
+    logger.logError('CREATE_MOVEMENT', error, { tipo: req.body.tipo });
     if (error.message === 'Producto no encontrado' || error.message === 'Stock insuficiente') {
       return res.status(400).json({
         success: false,
@@ -772,7 +773,7 @@ router.get('/services', validatePagination, async (req, res) => {
       message: 'Servicios obtenidos correctamente'
     });
   } catch (error) {
-    console.error('Error fetching services:', error);
+    logger.logError('GET_SERVICES', error, { filters: req.query });
     res.status(500).json({
       success: false,
       message: 'Error al obtener servicios',
@@ -820,7 +821,7 @@ router.post('/services',
       message: 'Servicio creado correctamente'
     });
   } catch (error) {
-    console.error('Error creating service:', error);
+    logger.logError('CREATE_SERVICE', error, { codigo: req.body.codigo });
     res.status(500).json({
       success: false,
       message: 'Error al crear servicio',
@@ -884,7 +885,7 @@ router.put('/services/:id',
       message: 'Servicio actualizado correctamente'
     });
   } catch (error) {
-    console.error('Error updating service:', error);
+    logger.logError('UPDATE_SERVICE', error, { serviceId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error al actualizar servicio',
@@ -954,7 +955,7 @@ router.delete('/services/:id',
       message: 'Servicio eliminado permanentemente'
     });
   } catch (error) {
-    console.error('Error deleting service:', error);
+    logger.logError('DELETE_SERVICE', error, { serviceId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error al eliminar servicio',
@@ -1016,7 +1017,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas de inventario:', error);
+    logger.logError('GET_INVENTORY_STATS', error);
     handlePrismaError(error, res);
   }
 });

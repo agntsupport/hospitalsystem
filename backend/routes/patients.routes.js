@@ -5,6 +5,7 @@ const { validatePagination, validateRequired } = require('../middleware/validati
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { generateExpediente, sanitizeSearch, isValidEmail, isValidCURP } = require('../utils/helpers');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE PACIENTES
@@ -118,7 +119,7 @@ router.get('/', validatePagination, async (req, res) => {
     res.json(formatPaginationResponse(pacientesFormatted, total, page, limit));
 
   } catch (error) {
-    console.error('Error obteniendo pacientes:', error);
+    logger.logError('GET_PATIENTS', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -211,7 +212,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas de pacientes:', error);
+    logger.logError('GET_PATIENTS_STATS', error);
     handlePrismaError(error, res);
   }
 });
@@ -327,7 +328,10 @@ router.post('/', authenticateToken, auditMiddleware('pacientes'), validateRequir
     });
 
   } catch (error) {
-    console.error('Error creando paciente:', error);
+    logger.logError('CREATE_PATIENT', error, {
+      nombre: req.body.nombre,
+      apellidoPaterno: req.body.apellidoPaterno
+    });
     handlePrismaError(error, res);
   }
 });
@@ -393,7 +397,7 @@ router.get('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo paciente:', error);
+    logger.logError('GET_PATIENT_BY_ID', error, { pacienteId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -520,7 +524,7 @@ router.put('/:id', authenticateToken, auditMiddleware('pacientes'), captureOrigi
     });
 
   } catch (error) {
-    console.error('Error actualizando paciente:', error);
+    logger.logError('UPDATE_PATIENT', error, { pacienteId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -549,7 +553,7 @@ router.delete('/:id', authenticateToken, auditMiddleware('pacientes'), criticalO
     });
 
   } catch (error) {
-    console.error('Error eliminando paciente:', error);
+    logger.logError('DELETE_PATIENT', error, { pacienteId: req.params.id });
     handlePrismaError(error, res);
   }
 });

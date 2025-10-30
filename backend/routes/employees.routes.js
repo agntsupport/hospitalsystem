@@ -3,6 +3,7 @@ const router = express.Router();
 const { prisma, handlePrismaError } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE EMPLEADOS
@@ -53,7 +54,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas de empleados:', error);
+    logger.logError('GET_EMPLOYEES_STATS', error);
     handlePrismaError(error, res);
   }
 });
@@ -155,7 +156,7 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo empleados:', error);
+    logger.logError('GET_EMPLOYEES', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -202,7 +203,7 @@ router.get('/:id', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error obteniendo empleado:', error);
+    logger.logError('GET_EMPLOYEE_BY_ID', error, { employeeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -341,7 +342,7 @@ router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, re
     });
     
   } catch (error) {
-    console.error('Error creando empleado:', error);
+    logger.logError('CREATE_EMPLOYEE', error, { nombre: req.body.nombre });
     handlePrismaError(error, res);
   }
 });
@@ -445,7 +446,7 @@ router.put('/:id', authenticateToken, auditMiddleware('empleados'), captureOrigi
     });
     
   } catch (error) {
-    console.error('Error actualizando empleado:', error);
+    logger.logError('UPDATE_EMPLOYEE', error, { employeeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -479,7 +480,7 @@ router.delete('/:id', authenticateToken, auditMiddleware('empleados'), criticalO
     });
     
   } catch (error) {
-    console.error('Error desactivando empleado:', error);
+    logger.logError('DEACTIVATE_EMPLOYEE', error, { employeeId: req.params.id });
     handlePrismaError(error, res);
   }
 });

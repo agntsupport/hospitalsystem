@@ -122,7 +122,7 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error al obtener quirófanos:', error);
+    logger.logError('GET_QUIROFANOS', error, { filters: req.query });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -161,7 +161,7 @@ router.get('/available-numbers', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error obteniendo números disponibles:', error);
+    logger.logError('GET_AVAILABLE_NUMBERS', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -229,7 +229,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error al obtener estadísticas de quirófanos:', error);
+    logger.logError('GET_QUIROFANOS_STATS', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -348,7 +348,7 @@ router.post('/', authenticateToken, auditMiddleware('quirofanos'), async (req, r
         : 'Quirófano creado exitosamente'
     });
   } catch (error) {
-    console.error('Error al crear quirófano:', error);
+    logger.logError('CREATE_QUIROFANO', error, { numero: req.body.numero });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -462,7 +462,10 @@ router.post('/cirugias', authenticateToken, auditMiddleware('cirugias'), async (
       message: 'Cirugía programada exitosamente'
     });
   } catch (error) {
-    console.error('Error al programar cirugía:', error);
+    logger.logError('CREATE_SURGERY', error, {
+      quirofanoId: req.body.quirofanoId,
+      pacienteId: req.body.pacienteId
+    });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -556,7 +559,7 @@ router.get('/cirugias', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error al obtener cirugías:', error);
+    logger.logError('GET_SURGERIES', error, { filters: req.query });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -622,7 +625,7 @@ router.get('/cirugias/:id', authenticateToken, async (req, res) => {
       data: cirugia
     });
   } catch (error) {
-    console.error('Error al obtener detalle de cirugía:', error);
+    logger.logError('GET_SURGERY_DETAIL', error, { cirugiaId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -726,7 +729,10 @@ router.put('/cirugias/:id/estado', authenticateToken, auditMiddleware('cirugias'
       message: `Estado de la cirugía actualizado a ${estado}`
     });
   } catch (error) {
-    console.error('Error al actualizar estado de cirugía:', error);
+    logger.logError('UPDATE_SURGERY_STATUS', error, {
+      cirugiaId: req.params.id,
+      nuevoEstado: req.body.estado
+    });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -798,7 +804,7 @@ router.delete('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), a
       message: 'Cirugía cancelada exitosamente'
     });
   } catch (error) {
-    console.error('Error al cancelar cirugía:', error);
+    logger.logError('CANCEL_SURGERY', error, { cirugiaId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -868,7 +874,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
       data: quirofanoConDatos
     });
   } catch (error) {
-    console.error('Error al obtener quirófano:', error);
+    logger.logError('GET_QUIROFANO_BY_ID', error, { quirofanoId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -950,7 +956,7 @@ router.put('/:id', authenticateToken, captureOriginalData('quirofano'), auditMid
       message: 'Quirófano actualizado exitosamente'
     });
   } catch (error) {
-    console.error('Error al actualizar quirófano:', error);
+    logger.logError('UPDATE_QUIROFANO', error, { quirofanoId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -1021,7 +1027,10 @@ router.put('/:id/estado', authenticateToken, auditMiddleware('quirofanos'), asyn
       message: `Estado del quirófano actualizado a ${estado}`
     });
   } catch (error) {
-    console.error('Error al cambiar estado del quirófano:', error);
+    logger.logError('UPDATE_QUIROFANO_STATUS', error, {
+      quirofanoId: req.params.id,
+      nuevoEstado: req.body.estado
+    });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -1093,7 +1102,7 @@ router.delete('/:id', authenticateToken, auditMiddleware('quirofanos'), async (r
       message: 'Quirófano marcado como fuera de servicio'
     });
   } catch (error) {
-    console.error('Error al eliminar quirófano:', error);
+    logger.logError('DELETE_QUIROFANO', error, { quirofanoId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -1178,7 +1187,7 @@ router.get('/disponibles/horario', authenticateToken, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error al buscar quirófanos disponibles:', error);
+    logger.logError('GET_AVAILABLE_QUIROFANOS', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

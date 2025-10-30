@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
@@ -41,7 +42,7 @@ router.get('/services', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al obtener servicios POS:', error);
+    logger.logError('GET_POS_SERVICES', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener servicios',
@@ -55,7 +56,7 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
   try {
     // Verificar que el usuario está autenticado
     if (!req.user || !req.user.id) {
-      console.error('Usuario no autenticado correctamente:', req.user);
+      logger.error('Usuario no autenticado correctamente:', req.user);
       return res.status(401).json({
         success: false,
         message: 'Usuario no autenticado correctamente'
@@ -64,7 +65,7 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
     
     // Obtener el ID del usuario autenticado desde el token
     const cajeroId = req.user.id;
-    console.log('Usuario autenticado - ID:', cajeroId, 'Username:', req.user.username, 'Rol:', req.user.rol);
+    logger.info(`Usuario autenticado - ID: ${cajeroId}, Username: ${req.user.username}, Rol: ${req.user.rol}`);
     const { items, metodoPago, montoRecibido, observaciones } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -117,7 +118,7 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
           });
 
           // Registrar movimiento de inventario
-          console.log('Creando movimiento de inventario con usuarioId:', cajeroId, 'tipo:', typeof cajeroId);
+          logger.info(`Creando movimiento de inventario con usuarioId: ${cajeroId}, tipo: ${typeof cajeroId}`);
           if (!cajeroId || typeof cajeroId !== 'number') {
             throw new Error(`ID de usuario inválido para movimiento de inventario: ${cajeroId}`);
           }
@@ -200,7 +201,7 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
     });
 
   } catch (error) {
-    console.error('Error procesando venta rápida:', error);
+    logger.logError('PROCESS_QUICK_SALE', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Error procesando venta rápida'
@@ -302,7 +303,7 @@ router.get('/sales-history', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo historial de ventas:', error);
+    logger.logError('GET_SALES_HISTORY', error, { filters: req.query });
     res.status(500).json({
       success: false,
       message: 'Error obteniendo historial de ventas'
@@ -438,7 +439,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas POS:', error);
+    logger.logError('GET_POS_STATS', error);
     res.status(500).json({
       success: false,
       message: 'Error obteniendo estadísticas POS',
@@ -531,7 +532,7 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo transacciones de cuenta:', error);
+    logger.logError('GET_ACCOUNT_TRANSACTIONS', error, { cuentaId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error obteniendo transacciones de cuenta',
@@ -551,14 +552,14 @@ router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
       });
     }
 
-    console.log('🔧 Iniciando recálculo de todas las cuentas abiertas...');
+    logger.info('🔧 Iniciando recálculo de todas las cuentas abiertas...');
     
     // Obtener todas las cuentas abiertas
     const cuentasAbiertas = await prisma.cuentaPaciente.findMany({
       where: { estado: 'abierta' }
     });
 
-    console.log(`📋 Encontradas ${cuentasAbiertas.length} cuentas abiertas para recalcular`);
+    logger.info(`📋 Encontradas ${cuentasAbiertas.length} cuentas abiertas para recalcular`);
 
     let cuentasActualizadas = 0;
     const resultados = [];
@@ -631,7 +632,7 @@ router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error recalculando cuentas:', error);
+    logger.logError('RECALCULATE_ACCOUNTS', error);
     res.status(500).json({
       success: false,
       message: 'Error al recalcular cuentas',

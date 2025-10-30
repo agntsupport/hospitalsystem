@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { prisma, handlePrismaError } = require('../utils/database');
 const { validateDateRange } = require('../middleware/validation.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE REPORTES
@@ -73,7 +74,7 @@ router.get('/financial', validateDateRange, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error generando reporte financiero:', error);
+    logger.logError('GENERATE_FINANCIAL_REPORT', error, { dateRange: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -124,7 +125,7 @@ router.get('/operational', validateDateRange, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error generando reporte operacional:', error);
+    logger.logError('GENERATE_OPERATIONAL_REPORT', error, { dateRange: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -186,7 +187,7 @@ router.get('/executive', validateDateRange, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error generando reporte ejecutivo:', error);
+    logger.logError('GENERATE_EXECUTIVE_REPORT', error, { dateRange: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -267,7 +268,7 @@ router.get('/managerial/executive-summary', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error obteniendo resumen ejecutivo:', error);
+    logger.logError('GET_EXECUTIVE_SUMMARY', error);
     handlePrismaError(error, res);
   }
 });
@@ -445,7 +446,7 @@ router.get('/managerial/kpis', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error obteniendo KPIs:', error);
+    logger.logError('GET_KPIS', error);
     handlePrismaError(error, res);
   }
 });

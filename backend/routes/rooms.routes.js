@@ -4,6 +4,7 @@ const { prisma, formatPaginationResponse, handlePrismaError } = require('../util
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE HABITACIONES
@@ -44,7 +45,7 @@ router.get('/', validatePagination, async (req, res) => {
     res.json(formatPaginationResponse(habitacionesFormatted, total, page, limit));
 
   } catch (error) {
-    console.error('Error obteniendo habitaciones:', error);
+    logger.logError('GET_ROOMS', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -117,7 +118,7 @@ router.post('/', authenticateToken, auditMiddleware('habitaciones'), validateReq
     });
 
   } catch (error) {
-    console.error('Error creando habitación:', error);
+    logger.logError('CREATE_ROOM', error, { numero: req.body.numero });
     handlePrismaError(error, res);
   }
 });
@@ -140,7 +141,7 @@ router.put('/:id/assign', authenticateToken, auditMiddleware('habitaciones'), ca
     });
 
   } catch (error) {
-    console.error('Error asignando habitación:', error);
+    logger.logError('ASSIGN_ROOM', error, { roomId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -169,7 +170,7 @@ router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOr
     });
 
   } catch (error) {
-    console.error('Error actualizando habitación:', error);
+    logger.logError('UPDATE_ROOM', error, { roomId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -225,7 +226,7 @@ router.delete('/:id', authenticateToken, auditMiddleware('habitaciones'), critic
     });
 
   } catch (error) {
-    console.error('Error eliminando habitación:', error);
+    logger.logError('DELETE_ROOM', error, { roomId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -259,7 +260,7 @@ router.get('/available-numbers', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error obteniendo números disponibles:', error);
+    logger.logError('GET_AVAILABLE_ROOM_NUMBERS', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -303,7 +304,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas:', error);
+    logger.logError('GET_ROOMS_STATS', error);
     handlePrismaError(error, res);
   }
 });

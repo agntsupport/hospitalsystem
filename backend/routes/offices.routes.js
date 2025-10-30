@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE CONSULTORIOS (OFFICES)
@@ -48,7 +49,7 @@ router.get('/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo estadísticas de consultorios:', error);
+    logger.logError('GET_OFFICES_STATS', error);
     handlePrismaError(error, res);
   }
 });
@@ -88,7 +89,7 @@ router.get('/', validatePagination, async (req, res) => {
     res.json(formatPaginationResponse(consultoriosFormatted, total, page, limit));
 
   } catch (error) {
-    console.error('Error obteniendo consultorios:', error);
+    logger.logError('GET_OFFICES', error, { filters: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -137,7 +138,7 @@ router.post('/', validateRequired(['numero']), async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creando consultorio:', error);
+    logger.logError('CREATE_OFFICE', error, { numero: req.body.numero });
     handlePrismaError(error, res);
   }
 });
@@ -175,7 +176,7 @@ router.get('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error obteniendo consultorio:', error);
+    logger.logError('GET_OFFICE_BY_ID', error, { officeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -238,7 +239,7 @@ router.put('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error actualizando consultorio:', error);
+    logger.logError('UPDATE_OFFICE', error, { officeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -269,7 +270,7 @@ router.delete('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error eliminando consultorio:', error);
+    logger.logError('DELETE_OFFICE', error, { officeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -324,7 +325,7 @@ router.put('/:id/assign', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error asignando consultorio:', error);
+    logger.logError('ASSIGN_OFFICE', error, { officeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -371,7 +372,7 @@ router.put('/:id/release', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error liberando consultorio:', error);
+    logger.logError('RELEASE_OFFICE', error, { officeId: req.params.id });
     handlePrismaError(error, res);
   }
 });
@@ -418,7 +419,7 @@ router.put('/:id/maintenance', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error poniendo consultorio en mantenimiento:', error);
+    logger.logError('SET_OFFICE_MAINTENANCE', error, { officeId: req.params.id });
     handlePrismaError(error, res);
   }
 });

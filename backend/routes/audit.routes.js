@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { prisma } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
+const logger = require('../utils/logger');
 
 // ==============================================
 // RUTAS DE AUDITORÍA
@@ -46,7 +47,7 @@ router.get('/trail/:entityType/:entityId', authenticateToken, async (req, res) =
       data: auditRecords
     });
   } catch (error) {
-    console.error('Error getting audit trail:', error);
+    logger.logError('GET_AUDIT_TRAIL', error, { filters: req.query });
     res.status(500).json({
       success: false,
       message: 'Error al obtener el historial de auditoría'
@@ -113,7 +114,7 @@ router.get('/module/:module', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting module audit:', error);
+    logger.logError('GET_MODULE_AUDIT', error, { modulo: req.params.modulo });
     res.status(500).json({
       success: false,
       message: 'Error al obtener auditoría del módulo'
@@ -159,7 +160,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
       data: auditRecords
     });
   } catch (error) {
-    console.error('Error getting user activity:', error);
+    logger.logError('GET_USER_ACTIVITY', error, { userId: req.params.userId });
     res.status(500).json({
       success: false,
       message: 'Error al obtener actividad del usuario'
@@ -243,7 +244,7 @@ router.get('/stats', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error getting audit stats:', error);
+    logger.logError('GET_AUDIT_STATS', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener estadísticas de auditoría'
@@ -268,7 +269,7 @@ router.get('/cancellation-causes', authenticateToken, async (req, res) => {
       data: causes
     });
   } catch (error) {
-    console.error('Error getting cancellation causes:', error);
+    logger.logError('GET_CANCELLATION_CAUSES', error);
     res.status(500).json({
       success: false,
       message: 'Error al obtener causas de cancelación'

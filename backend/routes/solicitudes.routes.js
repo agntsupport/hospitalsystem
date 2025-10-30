@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const { auditMiddleware } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
@@ -127,7 +128,7 @@ router.get('/',
         totalPages: Math.ceil(total / parseInt(limit))
       });
     } catch (error) {
-      console.error('Error obteniendo solicitudes:', error);
+      logger.logError('GET_REQUESTS', error, { filters: req.query });
       res.status(500).json({ 
         error: 'Error al obtener solicitudes',
         details: error.message 
@@ -228,7 +229,7 @@ router.get('/:id',
 
       res.json(solicitud);
     } catch (error) {
-      console.error('Error obteniendo solicitud:', error);
+      logger.logError('GET_REQUEST_BY_ID', error, { requestId: req.params.id });
       res.status(500).json({ 
         error: 'Error al obtener solicitud',
         details: error.message 
@@ -389,7 +390,7 @@ router.post('/',
         solicitud
       });
     } catch (error) {
-      console.error('Error creando solicitud:', error);
+      logger.logError('CREATE_REQUEST', error, { solicitanteId: req.user.id });
       res.status(500).json({ 
         error: 'Error al crear solicitud',
         details: error.message 
@@ -482,7 +483,7 @@ router.put('/:id/asignar',
         solicitud: solicitudActualizada
       });
     } catch (error) {
-      console.error('Error asignando solicitud:', error);
+      logger.logError('ASSIGN_REQUEST', error, { requestId: req.params.id });
       res.status(500).json({ 
         error: 'Error al asignar solicitud',
         details: error.message 
@@ -657,7 +658,7 @@ router.put('/:id/entregar',
         message: 'Solicitud entregada exitosamente'
       });
     } catch (error) {
-      console.error('Error entregando solicitud:', error);
+      logger.logError('DELIVER_REQUEST', error, { requestId: req.params.id });
       res.status(500).json({ 
         error: 'Error al entregar solicitud',
         details: error.message 
@@ -735,7 +736,7 @@ router.put('/:id/confirmar',
         solicitud: solicitudActualizada
       });
     } catch (error) {
-      console.error('Error confirmando recepción:', error);
+      logger.logError('CONFIRM_RECEPTION', error, { requestId: req.params.id });
       res.status(500).json({ 
         error: 'Error al confirmar recepción',
         details: error.message 
@@ -802,7 +803,7 @@ router.get('/stats/resumen',
         solicitudesHoy
       });
     } catch (error) {
-      console.error('Error obteniendo estadísticas:', error);
+      logger.logError('GET_REQUESTS_STATS', error);
       res.status(500).json({ 
         error: 'Error al obtener estadísticas',
         details: error.message 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
+const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
@@ -72,7 +73,7 @@ router.get('/',
         totalPages: Math.ceil(total / parseInt(limit))
       });
     } catch (error) {
-      console.error('Error obteniendo notificaciones:', error);
+      logger.logError('GET_NOTIFICATIONS', error, { filters: req.query });
       res.status(500).json({ 
         error: 'Error al obtener notificaciones',
         details: error.message 
@@ -95,7 +96,7 @@ router.get('/no-leidas/count',
 
       res.json({ count });
     } catch (error) {
-      console.error('Error contando notificaciones:', error);
+      logger.logError('COUNT_NOTIFICATIONS', error, { userId: req.user.id });
       res.status(500).json({ 
         error: 'Error al contar notificaciones',
         details: error.message 
@@ -136,7 +137,7 @@ router.put('/:id/marcar-leida',
         notificacion: notificacionActualizada
       });
     } catch (error) {
-      console.error('Error marcando notificación como leída:', error);
+      logger.logError('MARK_NOTIFICATION_READ', error, { notificationId: req.params.id });
       res.status(500).json({ 
         error: 'Error al marcar notificación como leída',
         details: error.message 
@@ -165,7 +166,7 @@ router.put('/marcar-todas-leidas',
         message: `${result.count} notificaciones marcadas como leídas`
       });
     } catch (error) {
-      console.error('Error marcando todas las notificaciones como leídas:', error);
+      logger.logError('MARK_ALL_NOTIFICATIONS_READ', error, { userId: req.user.id });
       res.status(500).json({ 
         error: 'Error al marcar todas las notificaciones como leídas',
         details: error.message 
@@ -201,7 +202,7 @@ router.delete('/:id',
         message: 'Notificación eliminada exitosamente'
       });
     } catch (error) {
-      console.error('Error eliminando notificación:', error);
+      logger.logError('DELETE_NOTIFICATION', error, { notificationId: req.params.id });
       res.status(500).json({ 
         error: 'Error al eliminar notificación',
         details: error.message 
@@ -226,7 +227,7 @@ router.get('/tipos',
 
       res.json(tipos);
     } catch (error) {
-      console.error('Error obteniendo tipos de notificaciones:', error);
+      logger.logError('GET_NOTIFICATION_TYPES', error);
       res.status(500).json({ 
         error: 'Error al obtener tipos de notificaciones',
         details: error.message 

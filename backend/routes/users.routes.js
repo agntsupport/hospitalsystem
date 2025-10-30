@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const { auditMiddleware } = require('../middleware/audit.middleware');
+const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
@@ -76,7 +77,7 @@ router.get('/',
         totalPages: Math.ceil(total / parseInt(limit))
       });
     } catch (error) {
-      console.error('Error obteniendo usuarios:', error);
+      logger.logError('GET_USERS', error, { filters: req.query });
       res.status(500).json({ 
         error: 'Error al obtener usuarios',
         details: error.message 
@@ -121,7 +122,7 @@ router.get('/:id',
 
       res.json(usuario);
     } catch (error) {
-      console.error('Error obteniendo usuario:', error);
+      logger.logError('GET_USER_BY_ID', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al obtener usuario',
         details: error.message 
@@ -217,7 +218,7 @@ router.post('/',
         usuario: nuevoUsuario
       });
     } catch (error) {
-      console.error('Error creando usuario:', error);
+      logger.logError('CREATE_USER', error, { username: req.body.username });
       res.status(500).json({ 
         error: 'Error al crear usuario',
         details: error.message 
@@ -338,7 +339,7 @@ router.put('/:id',
         usuario: usuarioActualizado
       });
     } catch (error) {
-      console.error('Error actualizando usuario:', error);
+      logger.logError('UPDATE_USER', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al actualizar usuario',
         details: error.message 
@@ -394,7 +395,7 @@ router.delete('/:id',
         }
       });
     } catch (error) {
-      console.error('Error desactivando usuario:', error);
+      logger.logError('DEACTIVATE_USER', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al desactivar usuario',
         details: error.message 
@@ -450,7 +451,7 @@ router.put('/:id/reactivate',
         }
       });
     } catch (error) {
-      console.error('Error reactivando usuario:', error);
+      logger.logError('REACTIVATE_USER', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al reactivar usuario',
         details: error.message 
@@ -507,7 +508,7 @@ router.put('/:id/reset-password',
         message: 'Contraseña reseteada exitosamente'
       });
     } catch (error) {
-      console.error('Error reseteando contraseña:', error);
+      logger.logError('RESET_PASSWORD', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al resetear contraseña',
         details: error.message 
@@ -532,7 +533,7 @@ router.get('/:id/role-history',
 
       res.json(historial);
     } catch (error) {
-      console.error('Error obteniendo historial de roles:', error);
+      logger.logError('GET_ROLE_HISTORY', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al obtener historial de roles',
         details: error.message 
@@ -579,7 +580,7 @@ router.get('/stats/summary',
         usuariosCreados30Dias
       });
     } catch (error) {
-      console.error('Error obteniendo estadísticas:', error);
+      logger.logError('GET_USERS_STATS', error);
       res.status(500).json({ 
         error: 'Error al obtener estadísticas',
         details: error.message 
