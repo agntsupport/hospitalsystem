@@ -10,12 +10,20 @@ app.use('/api/auth', authRoutes);
 
 describe('Auth Endpoints', () => {
   let testUser;
+  let uniqueUsername;
+  let uniqueEmail;
 
   beforeEach(async () => {
+    // Generate unique credentials with timestamp
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    uniqueUsername = `testadmin_${timestamp}_${randomSuffix}`;
+    uniqueEmail = `testadmin_${timestamp}_${randomSuffix}@hospital.com`;
+
     // Create test user for login tests
     testUser = await testHelpers.createTestUser({
-      username: 'testadmin',
-      email: 'testadmin@hospital.com',
+      username: uniqueUsername,
+      email: uniqueEmail,
       password: 'admin123', // Will be hashed by createTestUser
       rol: 'administrador'
     });
@@ -26,7 +34,7 @@ describe('Auth Endpoints', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          username: 'testadmin',
+          username: uniqueUsername,
           password: 'admin123'
         });
 
@@ -34,7 +42,7 @@ describe('Auth Endpoints', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('token');
       expect(response.body.data).toHaveProperty('user');
-      expect(response.body.data.user.username).toBe('testadmin');
+      expect(response.body.data.user.username).toBe(uniqueUsername);
       expect(response.body.data.user.rol).toBe('administrador');
       expect(response.body.data.user).not.toHaveProperty('passwordHash');
     });
@@ -56,7 +64,7 @@ describe('Auth Endpoints', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          username: 'testadmin',
+          username: uniqueUsername,
           password: 'wrongpassword'
         });
 
@@ -75,10 +83,15 @@ describe('Auth Endpoints', () => {
     });
 
     it('should fail with inactive user', async () => {
-      // Create inactive user
+      // Create inactive user with unique credentials
+      const timestamp = Date.now();
+      const randomSuffix = Math.floor(Math.random() * 1000);
+      const inactiveUsername = `inactiveuser_${timestamp}_${randomSuffix}`;
+      const inactiveEmail = `inactive_${timestamp}_${randomSuffix}@hospital.com`;
+
       await testHelpers.createTestUser({
-        username: 'inactiveuser',
-        email: 'inactive@hospital.com',
+        username: inactiveUsername,
+        email: inactiveEmail,
         password: 'admin123', // Will be hashed by createTestUser
         rol: 'administrador',
         activo: false
@@ -87,7 +100,7 @@ describe('Auth Endpoints', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          username: 'inactiveuser',
+          username: inactiveUsername,
           password: 'admin123'
         });
 
@@ -101,11 +114,11 @@ describe('Auth Endpoints', () => {
     let authToken;
 
     beforeEach(async () => {
-      // Get auth token
+      // Get auth token using unique username
       const loginResponse = await request(app)
         .post('/api/auth/login')
         .send({
-          username: 'testadmin',
+          username: uniqueUsername,
           password: 'admin123'
         });
 
@@ -120,7 +133,7 @@ describe('Auth Endpoints', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data.valid).toBe(true);
-      expect(response.body.data.user).toHaveProperty('username', 'testadmin');
+      expect(response.body.data.user).toHaveProperty('username', uniqueUsername);
     });
 
     it('should fail with invalid token', async () => {
@@ -145,11 +158,11 @@ describe('Auth Endpoints', () => {
     let authToken;
 
     beforeEach(async () => {
-      // Get auth token
+      // Get auth token using unique username
       const loginResponse = await request(app)
         .post('/api/auth/login')
         .send({
-          username: 'testadmin',
+          username: uniqueUsername,
           password: 'admin123'
         });
 
@@ -163,7 +176,7 @@ describe('Auth Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.user).toHaveProperty('username', 'testadmin');
+      expect(response.body.data.user).toHaveProperty('username', uniqueUsername);
       expect(response.body.data.user).toHaveProperty('rol', 'administrador');
       expect(response.body.data.user).not.toHaveProperty('passwordHash');
     });

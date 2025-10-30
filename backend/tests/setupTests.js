@@ -2,8 +2,11 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const path = require('path');
 
-// Load test environment variables
-require('dotenv').config({ path: path.join(__dirname, '../.env.test') });
+// Load test environment variables with override
+require('dotenv').config({
+  path: path.join(__dirname, '../.env.test'),
+  override: true // Ensure test env vars override existing ones
+});
 
 // Test database configuration
 process.env.NODE_ENV = 'test';
