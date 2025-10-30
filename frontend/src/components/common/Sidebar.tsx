@@ -252,9 +252,11 @@ const Sidebar: React.FC = () => {
   return (
     <Box
       component="nav"
-      sx={{ 
-        width: { md: sidebarOpen ? drawerWidth : 0 }, 
-        flexShrink: { md: 0 } 
+      id="navigation"
+      aria-label="Main navigation"
+      sx={{
+        width: { md: sidebarOpen ? drawerWidth : 0 },
+        flexShrink: { md: 0 }
       }}
     >
       {/* Mobile drawer */}

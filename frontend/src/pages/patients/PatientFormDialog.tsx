@@ -912,30 +912,19 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
         {activeStep === steps.length - 1 ? (
           <Button
             variant="contained"
-            onClick={async (e) => {
+            onClick={handleSubmit(async (validatedData) => {
               console.log('🔘 Botón Guardar Paciente clickeado');
+              console.log('✅ Datos validados por react-hook-form:', validatedData);
               console.log('📊 Estado del formulario:', { errors, isValid });
-              console.log('❌ Errores detallados:', JSON.stringify(errors, null, 2));
-              console.log('🧪 Valores actuales:', JSON.stringify(watchedValues, null, 2));
-              
-              // Validar todo el formulario manualmente
-              const allFieldsValid = await trigger();
-              console.log('🔍 Validación manual del formulario completo:', allFieldsValid);
-              
-              // Si la validación manual falla, forzar el submit de todas formas
-              // ya que los datos están completos
-              if (!allFieldsValid) {
-                console.log('⚠️ Validación falló pero los datos parecen completos, forzando submit');
-                onFormSubmit(watchedValues);
-              } else {
-                handleSubmit(onFormSubmit)(e);
-              }
-            }}
+
+              // react-hook-form ya validó los datos, proceder con el submit
+              await onFormSubmit(validatedData);
+            })}
             disabled={loading}
             startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
           >
-            {loading 
-              ? (editingPatient ? 'Actualizando...' : 'Guardando...') 
+            {loading
+              ? (editingPatient ? 'Actualizando...' : 'Guardando...')
               : (editingPatient ? 'Actualizar Paciente' : 'Guardar Paciente')
             }
           </Button>

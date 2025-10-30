@@ -47,7 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const dispatch = useDispatch();
   const { user, logout } = useAuth();
   const { sidebarOpen } = useSelector((state: RootState) => state.ui);
-  
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(anchorEl);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -79,6 +79,54 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex' }}>
+      {/* Skip Links for WCAG 2.1 AA accessibility */}
+      <Box
+        component="a"
+        href="#main-content"
+        sx={{
+          position: 'absolute',
+          left: '-9999px',
+          zIndex: 9999,
+          padding: '1rem',
+          backgroundColor: '#1976d2',
+          color: 'white',
+          textDecoration: 'none',
+          borderRadius: '0 0 4px 0',
+          fontWeight: 600,
+          '&:focus': {
+            left: 0,
+            top: 0,
+            outline: '3px solid #ff9800',
+            outlineOffset: '2px',
+          },
+        }}
+      >
+        Saltar al contenido principal
+      </Box>
+      <Box
+        component="a"
+        href="#navigation"
+        sx={{
+          position: 'absolute',
+          left: '-9999px',
+          top: '3rem',
+          zIndex: 9999,
+          padding: '1rem',
+          backgroundColor: '#1976d2',
+          color: 'white',
+          textDecoration: 'none',
+          borderRadius: '0 0 4px 0',
+          fontWeight: 600,
+          '&:focus': {
+            left: 0,
+            top: '3rem',
+            outline: '3px solid #ff9800',
+            outlineOffset: '2px',
+          },
+        }}
+      >
+        Saltar a la navegación
+      </Box>
       {/* App Bar */}
       <AppBar
         position="fixed"
@@ -186,6 +234,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Contenido Principal */}
       <Box
         component="main"
+        id="main-content"
+        role="main"
+        aria-label="Main content"
         sx={{
           flexGrow: 1,
           backgroundColor: '#f5f5f5',
