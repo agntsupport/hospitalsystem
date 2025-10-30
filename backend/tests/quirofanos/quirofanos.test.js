@@ -150,7 +150,7 @@ describe('Quirófanos Endpoints', () => {
 
         expect(response.status).toBe(400);
         expect(response.body.success).toBe(false);
-        expect(response.body.message).toContain('número ya existe');
+        expect(response.body.message).toContain('Ya existe un quirófano con el número');
       });
 
       it('should fail with invalid tipo', async () => {
@@ -230,7 +230,7 @@ describe('Quirófanos Endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.message).toContain('eliminado');
+        expect(response.body.message).toContain('fuera de servicio');
       });
 
       it('should return 404 for non-existent quirófano', async () => {
@@ -269,8 +269,9 @@ describe('Quirófanos Endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('available');
+        expect(response.body.data).toHaveProperty('existingNumbers');
         expect(response.body.data).toHaveProperty('suggestions');
+        expect(response.body.data).toHaveProperty('total');
         expect(Array.isArray(response.body.data.suggestions)).toBe(true);
       });
     });
@@ -455,7 +456,7 @@ describe('Quirófanos Endpoints', () => {
 
       beforeEach(async () => {
         const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        testCirugia = await testHelpers.prisma.cirugias_quirofano.create({
+        testCirugia = await testHelpers.prisma.cirugiaQuirofano.create({
           data: {
             id: 1001 + Math.floor(Math.random() * 1000),
             quirofanoId: testQuirofano.id,
@@ -498,7 +499,7 @@ describe('Quirófanos Endpoints', () => {
 
       beforeEach(async () => {
         const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        testCirugia = await testHelpers.prisma.cirugias_quirofano.create({
+        testCirugia = await testHelpers.prisma.cirugiaQuirofano.create({
           data: {
             id: 1001 + Math.floor(Math.random() * 1000),
             quirofanoId: testQuirofano.id,
@@ -539,7 +540,7 @@ describe('Quirófanos Endpoints', () => {
 
       beforeEach(async () => {
         const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        testCirugia = await testHelpers.prisma.cirugias_quirofano.create({
+        testCirugia = await testHelpers.prisma.cirugiaQuirofano.create({
           data: {
             id: 1001 + Math.floor(Math.random() * 1000),
             quirofanoId: testQuirofano.id,

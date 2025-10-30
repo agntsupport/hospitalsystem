@@ -159,10 +159,11 @@ global.testHelpers = {
   },
 
   createTestQuirofano: async (quirofanoData = {}) => {
-    const randomNum = Math.floor(Math.random() * 1000) + 1000;
+    // Generate unique numero using timestamp + random to avoid collisions
+    const uniqueNumero = quirofanoData.numero || `Q${Date.now()}${Math.floor(Math.random() * 1000)}`;
     return await prisma.quirofano.create({
       data: {
-        numero: quirofanoData.numero || randomNum.toString(),
+        numero: uniqueNumero,
         tipo: quirofanoData.tipo || 'cirugia_general',
         estado: quirofanoData.estado || 'disponible',
         equipamiento: quirofanoData.equipamiento || 'Equipamiento básico',
