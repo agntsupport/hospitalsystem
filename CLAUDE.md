@@ -24,8 +24,8 @@ cd backend && npx prisma studio  # Interface BD
 cd backend && npx prisma db seed  # Resetear datos
 
 # Testing
-cd frontend && npm test           # 9 tests frontend automatizados
-cd backend && npm test            # 7 tests backend core + API
+cd frontend && npm test           # 187 tests frontend automatizados
+cd backend && npm test            # 151 tests backend (52 failing, necesitan fix)
 ```
 
 ## 📁 Arquitectura del Sistema
@@ -101,7 +101,7 @@ VITE_API_URL=http://localhost:3001
 9. ✅ **Hospitalización** - Ingresos con anticipo automático, altas, notas médicas, control por roles
 10. ✅ **Quirófanos** - Gestión completa y cirugías programadas con **cargos automáticos**
 11. ✅ **Auditoría** - Sistema completo de trazabilidad
-12. ✅ **Testing** - 16 tests implementados (9 frontend + 7 backend)
+12. ⚠️ **Testing** - 338 tests reales (187 frontend + 151 backend, cobertura ~20%)
 13. ✅ **Cargos Automáticos** - Habitaciones y quirófanos con servicios auto-generados
 14. ✅ **Notificaciones y Solicitudes** - Sistema de comunicación interna
 
@@ -267,10 +267,11 @@ npm run dev
 - **🔐 Control de UI por roles**: Botones y secciones visibles según permisos
 - **♿ Accesibilidad mejorada**: Solucionados warnings aria-hidden en dialogs
 
-### Testing Framework Completo
-- **✅ 16 tests implementados**: 9 frontend automatizados + 7 backend core con BD real
-- **📋 Plan E2E documentado**: Cypress configurado y listo para implementación
-- **🔧 CI/CD preparado**: Scripts de testing automatizados
+### Testing Framework (Estado Real - Octubre 2025)
+- **⚠️ 338 tests implementados**: 187 frontend + 151 backend (52 failing por configuración)
+- **📊 Cobertura real**: ~20% del sistema (requiere expansión a 50%+)
+- **📋 Plan E2E documentado**: Cypress NO implementado (solo documentado)
+- **❌ CI/CD**: No implementado (pendiente configuración GitHub Actions)
 
 ### Base de Datos
 - **🗄️ Estructura consolidada**: 37 modelos/entidades verificadas incluyendo migraciones
@@ -356,13 +357,13 @@ psql -d hospital_management -c "SELECT 1;"
 - **Arquitectura Modular**: El sistema usa `server-modular.js` con rutas separadas por módulo
 - **Base de Datos**: PostgreSQL 14.18 con 30 tablas relacionales via Prisma ORM
 - **Comando Unificado**: `npm run dev` inicia backend (puerto 3001) y frontend (puerto 3000) automáticamente
-- **Testing Completo**: 16 tests automatizados (9 frontend + 7 backend) con plan E2E documentado
+- **Testing en Progreso**: 338 tests reales (187 frontend + 151 backend), cobertura ~20%
 - **Auditoría Total**: Sistema completo de trazabilidad con middleware automático en todas las operaciones
 - **Validación Robusta**: Números únicos con sugerencias automáticas y validaciones TypeScript
 - **UI Profesional**: Material-UI v5.14.5 con overflow protection, tooltips y diseño responsive
 - **CRUD Completo**: Todos los módulos tienen funcionalidad completa de crear, leer, actualizar y eliminar con soft delete
 - **Roles Granulares**: 7 roles especializados con permisos específicos por módulo
-- **API REST**: 100+ endpoints con validaciones robustas y documentación completa
+- **API REST**: 115 endpoints verificados con validaciones robustas
 
 ## 📚 Documentación Completa
 
@@ -385,8 +386,8 @@ psql -d hospital_management -c "SELECT 1;"
 **🏥 Sistema de Gestión Hospitalaria Integral**  
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes  
 **🏢 Empresa:** agnt_ - Software Development Company  
-**📅 Última actualización:** 15 de agosto de 2025  
-**✅ Estado:** Sistema 100% Funcional + Testing Completo + Plan E2E + Documentación Consolidada
+**📅 Última actualización:** 29 de octubre de 2025
+**✅ Estado:** Sistema Funcional (75% completo) | Testing 20% | Requiere Optimización (6-8 semanas)
 
 ---
 *© 2025 agnt_ Software Development Company. Todos los derechos reservados.*
