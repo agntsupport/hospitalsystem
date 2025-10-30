@@ -121,15 +121,19 @@ global.testHelpers = {
   },
 
   createTestProduct: async (productData = {}) => {
+    const randomId = 1001 + Math.floor(Math.random() * 1000);
     return await prisma.producto.create({
       data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
+        id: randomId,
+        codigo: productData.codigo || `TEST-${randomId}`,
         nombre: productData.nombre || 'Test Product',
-        precio: productData.precio || 100.00,
-        stock: productData.stock || 10,
-        stockMinimo: productData.stockMinimo || 5,
         categoria: productData.categoria || 'medicamento',
-        ...productData
+        unidadMedida: productData.unidadMedida || 'pieza',
+        precioVenta: productData.precioVenta || productData.precio || 100.00,
+        stockActual: productData.stockActual || productData.stock || 10,
+        stockMinimo: productData.stockMinimo || 5,
+        proveedorId: productData.proveedor_id || productData.proveedorId || null,
+        activo: productData.activo !== false
       }
     });
   },
@@ -138,11 +142,13 @@ global.testHelpers = {
     return await prisma.proveedor.create({
       data: {
         id: 1001 + Math.floor(Math.random() * 1000),
-        nombre: supplierData.nombre || 'Test Supplier',
-        contacto: supplierData.contacto || 'Test Contact',
+        nombreEmpresa: supplierData.nombreEmpresa || supplierData.nombre || 'Test Supplier',
+        contactoNombre: supplierData.contactoNombre || supplierData.contacto || 'Test Contact',
+        contactoTelefono: supplierData.contactoTelefono || supplierData.telefono || '5551234567',
+        contactoEmail: supplierData.contactoEmail || supplierData.email || 'test@supplier.com',
         telefono: supplierData.telefono || '5551234567',
         email: supplierData.email || 'test@supplier.com',
-        ...supplierData
+        activo: supplierData.activo !== false
       }
     });
   },
