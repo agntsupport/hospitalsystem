@@ -25,7 +25,7 @@ cd backend && npx prisma db seed  # Resetear datos
 
 # Testing
 cd frontend && npm test           # 187 tests frontend automatizados
-cd backend && npm test            # 151 tests backend (91 passing, 60 failing - 60.3%)
+cd backend && npm test            # 141 tests backend (73 passing, 64 failing, 4 skipped - 52% success)
 
 # Testing E2E (Playwright)
 cd frontend && npm run test:e2e        # Tests E2E completos (requiere backend)
