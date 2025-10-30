@@ -2,23 +2,29 @@ const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const prisma = new PrismaClient();
 
+// Validar que JWT_SECRET esté definido al inicio
+if (!process.env.JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET no está definido en variables de entorno');
+  console.error('Por favor defina JWT_SECRET en el archivo .env');
+  process.exit(1); // Detener servidor si no hay JWT_SECRET
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
 // Middleware de autenticación centralizado con JWT real
 const authenticateToken = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (!token) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Token no proporcionado' 
+    return res.status(401).json({
+      success: false,
+      message: 'Token no proporcionado'
     });
   }
 
   try {
-    // Verificar JWT real
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'super_secure_jwt_secret_key_for_hospital_system_2024'
-    );
+    // Verificar JWT real con secret validado
+    const decoded = jwt.verify(token, JWT_SECRET);
     
     // Cargar datos completos del usuario desde PostgreSQL
     const user = await prisma.usuario.findUnique({

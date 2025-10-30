@@ -5,6 +5,8 @@ export interface Room {
   precioPorDia: number;
   estado: 'disponible' | 'ocupada' | 'mantenimiento';
   descripcion: string;
+  piso?: string; // Piso de la habitación
+  caracteristicas?: string; // Características adicionales
   pacienteActual?: {
     id: number;
     nombre: string;

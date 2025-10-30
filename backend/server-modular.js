@@ -1,5 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const { prisma } = require('./utils/database');
 const { authenticateToken } = require('./middleware/auth.middleware');
 
@@ -10,14 +13,49 @@ const { authenticateToken } = require('./middleware/auth.middleware');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware global
+// ==============================================
+// SEGURIDAD: HELMET
+// ==============================================
+// Configurar headers de seguridad HTTP
+app.use(helmet({
+  contentSecurityPolicy: false, // Deshabilitado para desarrollo, habilitar en producción
+  crossOriginEmbedderPolicy: false
+}));
+
+// ==============================================
+// COMPRESIÓN GZIP
+// ==============================================
+// Comprimir respuestas HTTP para reducir bandwidth
+app.use(compression());
+
+// ==============================================
+// CORS
+// ==============================================
+// Middleware global de CORS
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173'],
   credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// ==============================================
+// PARSERS DE BODY
+// ==============================================
+app.use(express.json({ limit: '1mb' })); // Reducido de 10mb a 1mb por seguridad
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ==============================================
+// RATE LIMITING GLOBAL
+// ==============================================
+// Limitar requests generales a 100 por 15 minutos por IP
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // 100 requests por ventana
+  message: 'Demasiadas solicitudes desde esta IP, por favor intente después de 15 minutos',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', generalLimiter);
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -66,6 +104,25 @@ const usersRoutes = require('./routes/users.routes');
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 const notificacionesRoutes = require('./routes/notificaciones.routes');
 
+// ==============================================
+// RATE LIMITING ESPECÍFICO PARA LOGIN
+// ==============================================
+// Limitar intentos de login a 5 por 15 minutos para prevenir brute force
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // 5 intentos de login por ventana
+  message: 'Demasiados intentos de inicio de sesión desde esta IP, por favor intente después de 15 minutos',
+  skipSuccessfulRequests: true, // No contar logins exitosos
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Aplicar rate limiter específico al endpoint de login
+app.use('/api/auth/login', loginLimiter);
+
+// ==============================================
+// CONFIGURACIÓN DE RUTAS
+// ==============================================
 // Configurar rutas con prefijos y auditoría
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientsRoutes);

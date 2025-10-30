@@ -6,6 +6,13 @@ const { prisma, handlePrismaError } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware } = require('../middleware/audit.middleware');
 
+// Validar JWT_SECRET
+if (!process.env.JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET no está definido en variables de entorno');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
+
 // ==============================================
 // ENDPOINTS DE AUTENTICACIÓN
 // ==============================================
@@ -100,8 +107,8 @@ router.post('/login', async (req, res) => {
     };
 
     const token = jwt.sign(
-      tokenPayload, 
-      process.env.JWT_SECRET || 'super_secure_jwt_secret_key_for_hospital_system_2024',
+      tokenPayload,
+      JWT_SECRET,
       { expiresIn: '24h' }
     );
 

@@ -23,6 +23,7 @@ export interface Product {
   unidadMedida: string;
   precioCompra?: number;
   precioVenta: number;
+  precio?: number; // Alias de precioVenta para compatibilidad
   stockMinimo: number;
   stockActual: number;
   activo: boolean;
@@ -49,7 +50,8 @@ export interface PatientAccount {
   fechaCierre?: string;
   observaciones?: string;
   transacciones: Transaction[];
-  
+  facturada?: boolean; // Indica si la cuenta fue facturada
+
   // Datos enriquecidos desde la API
   paciente?: Patient;
   medicoTratante?: Employee;
@@ -90,6 +92,7 @@ export interface AddTransactionData {
 
 export interface CloseAccountData {
   montoRecibido?: number;
+  metodoPago?: string;
 }
 
 export interface POSStats {

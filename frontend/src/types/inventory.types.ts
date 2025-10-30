@@ -317,3 +317,37 @@ export const PRODUCT_CATEGORIES = [
   { id: 'material_medico', nombre: 'Material Médico', descripcion: 'Material médico desechable' },
   { id: 'insumo', nombre: 'Insumos', descripcion: 'Insumos generales' }
 ] as const;
+
+// Interfaces adicionales para compatibilidad con diferentes formatos de respuesta
+export interface ServicesResponseAlt {
+  success: boolean;
+  data: {
+    items?: Service[];
+    servicios?: Service[];
+    services?: Service[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+  message?: string;
+}
+
+export interface ProductsResponseAlt {
+  success: boolean;
+  data: {
+    items?: Product[];
+    products?: Product[];
+    productos?: Product[];
+    total: number;
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+  message?: string;
+}
