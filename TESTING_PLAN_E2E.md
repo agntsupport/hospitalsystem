@@ -1,8 +1,31 @@
 # Plan de Testing End-to-End (E2E)
-**Sistema de Gestión Hospitalaria Integral**  
-**Fecha:** 13 de agosto de 2025  
+**Sistema de Gestión Hospitalaria Integral**
+**Fecha Original:** 13 de agosto de 2025
+**Actualización:** 29 de octubre de 2025
 
-## 🎯 Objetivo
+---
+
+## ✅ ESTADO ACTUAL: IMPLEMENTADO CON PLAYWRIGHT
+
+**Fecha de Implementación:** 29 de octubre de 2025
+
+Este documento es **HISTÓRICO** y muestra el plan original que proponía Cypress.
+
+**✅ IMPLEMENTACIÓN REAL:**
+- **Framework elegido:** Playwright (en lugar de Cypress)
+- **19 tests E2E implementados:** 6 tests ITEM 3 + 13 tests ITEM 4
+- **Documentación actualizada:** Ver `frontend/e2e/README.md`
+- **Script automatizado:** `test-e2e-full.sh`
+- **Configuración:** `frontend/playwright.config.ts`
+
+**Para información actualizada sobre tests E2E, consultar:**
+- `frontend/e2e/README.md` - Documentación completa E2E
+- `frontend/e2e/item3-patient-form-validation.spec.ts` - Tests validación
+- `frontend/e2e/item4-skip-links-wcag.spec.ts` - Tests accesibilidad
+
+---
+
+## 🎯 Objetivo Original (Agosto 2025)
 
 Crear un plan completo de testing E2E que integre la base de datos PostgreSQL con el frontend React, asegurando que el sistema funcione correctamente en escenarios reales de usuario.
 

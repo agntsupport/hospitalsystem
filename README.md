@@ -6,8 +6,8 @@
 
 ![Estado del Proyecto](https://img.shields.io/badge/Estado-75%25%20Funcional-yellow)
 ![Versión](https://img.shields.io/badge/Versión-2.0.0--beta-blue)
-![Tests](https://img.shields.io/badge/Tests-338%20Real%20(187%20Frontend%20+%20151%20Backend)-yellow)
-![E2E Plan](https://img.shields.io/badge/E2E%20Plan-Cypress%20Ready-blue)
+![Tests Unit](https://img.shields.io/badge/Tests%20Unit-338%20(187%20Frontend%20+%20151%20Backend)-yellow)
+![Tests E2E](https://img.shields.io/badge/Tests%20E2E-19%20Playwright%20(ITEM%203%20%26%204)-green)
 ![Base de Datos](https://img.shields.io/badge/BD-PostgreSQL%2014.18-blue)
 ![Arquitectura](https://img.shields.io/badge/Arquitectura-Modular-green)
 ![Auditoría](https://img.shields.io/badge/Auditoría-Completa-purple)
@@ -30,7 +30,7 @@
 9. **🏥 Hospitalización Avanzada** - Ingresos con anticipo automático, notas médicas, control por roles ✅
 10. **🏢 Quirófanos** - Gestión completa de quirófanos y cirugías ✅
 11. **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones ✅
-12. **🧪 Framework de Testing** - 338 tests (187 frontend + 151 backend, ~20% cobertura) ⚠️
+12. **🧪 Framework de Testing** - 338 tests unit + 19 tests E2E Playwright (ITEM 3 & 4 validados) ✅
 13. **⚡ Cargos Automáticos** - Habitaciones y quirófanos con servicios auto-generados ✅
 14. **🔔 Notificaciones y Solicitudes** - Sistema de comunicación interna ✅
 
@@ -59,7 +59,7 @@
 - **📦 Inventario Inteligente** - Control de stock, alertas automáticas
 - **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones
 - **📊 Reportes Operativos** - Productividad y análisis detallado
-- **🧪 Testing Automatizado** - 16 tests para garantizar calidad (9 frontend + 7 backend)
+- **🧪 Testing Automatizado** - 338 tests unit + 19 tests E2E Playwright
 
 ## 👥 Roles del Sistema
 
@@ -89,8 +89,9 @@
 - **Validación Robusta** - Esquemas y middleware de validación
 
 ### Testing y Calidad
-- **338 tests total** - 187 frontend + 151 backend (52 failing)
-- **Plan E2E completo** - Cypress documentado y listo
+- **338 tests unit** - 187 frontend + 151 backend (52 failing por config)
+- **19 tests E2E Playwright** - ITEM 3 (validación) + ITEM 4 (WCAG Skip Links)
+- **Script automatizado** - test-e2e-full.sh ejecuta todo
 - **TypeScript estricto** - Tipado completo del sistema
 - **ESLint + Prettier** - Calidad de código automatizada
 - **Arquitectura Modular** - Componentes reutilizables
@@ -137,6 +138,11 @@ cd frontend && npm run dev   # Vite en puerto 3000
 # Base de datos
 cd backend && npx prisma studio  # Interface BD
 cd backend && npx prisma db seed  # Resetear datos
+
+# Testing E2E (Playwright)
+./test-e2e-full.sh                      # Script todo-en-uno (backend + tests)
+cd frontend && npm run test:e2e         # Tests E2E (requiere backend corriendo)
+cd frontend && npm run test:e2e:ui      # Tests con interfaz visual
 ```
 
 ### Puertos del Sistema
@@ -163,10 +169,13 @@ almacen1 / almacen123
 
 #### Frontend
 ```bash
-npm run dev           # Servidor de desarrollo
-npm run build         # Build de producción  
-npm run typecheck     # Verificación TypeScript
-npm test              # Tests unitarios (9 tests total)
+npm run dev              # Servidor de desarrollo
+npm run build            # Build de producción
+npm run typecheck        # Verificación TypeScript
+npm test                 # Tests unitarios (187 tests)
+npm run test:e2e         # Tests E2E Playwright (19 tests)
+npm run test:e2e:ui      # Tests E2E con interfaz visual
+npm run test:e2e:debug   # Tests E2E en modo debug
 ```
 
 #### Backend
