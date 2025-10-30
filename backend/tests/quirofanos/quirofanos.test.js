@@ -15,8 +15,8 @@ describe('Quirófanos Endpoints', () => {
   beforeEach(async () => {
     // Create test user and get auth token
     testUser = await testHelpers.createTestUser({
-      username: 'testdoctor',
-      rol: 'medico_especialista'
+      username: 'testadmin',
+      rol: 'administrador'
     });
 
     const jwt = require('jsonwebtoken');
@@ -41,16 +41,10 @@ describe('Quirófanos Endpoints', () => {
     });
 
     // Create test quirófano
-    testQuirofano = await testHelpers.prisma.quirofanos.create({
-      data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        numero: Math.floor(Math.random() * 1000) + 1000,
-        tipo: 'general',
-        estado: 'disponible',
-        equipamiento: 'Equipamiento básico de cirugía',
-        capacidad: 6,
-        ubicacion: 'Piso 2, Ala Norte'
-      }
+    testQuirofano = await testHelpers.createTestQuirofano({
+      tipo: 'cirugia_general',
+      estado: 'disponible',
+      equipamiento: 'Equipamiento básico de cirugía'
     });
   });
 
@@ -80,12 +74,12 @@ describe('Quirófanos Endpoints', () => {
 
       it('should filter quirófanos by tipo', async () => {
         const response = await request(app)
-          .get('/api/quirofanos?tipo=general')
+          .get('/api/quirofanos?tipo=cirugia_general')
           .set('Authorization', `Bearer ${authToken}`);
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.items.every(item => item.tipo === 'general')).toBe(true);
+        expect(response.body.data.items.every(item => item.tipo === 'cirugia_general')).toBe(true);
       });
 
       it('should search quirófanos by numero', async () => {
@@ -107,11 +101,11 @@ describe('Quirófanos Endpoints', () => {
 
     describe('POST /api/quirofanos', () => {
       const validQuirofanoData = {
-        numero: Math.floor(Math.random() * 1000) + 2000,
-        tipo: 'especializado',
+        numero: (Math.floor(Math.random() * 1000) + 2000).toString(),
+        tipo: 'cirugia_cardiaca',
         equipamiento: 'Equipamiento especializado',
-        capacidad: 8,
-        ubicacion: 'Piso 3, Ala Sur'
+        capacidadEquipo: 8,
+        descripcion: 'Quirófano especializado - Piso 3, Ala Sur'
       };
 
       it('should create a new quirófano with valid data', async () => {
@@ -122,15 +116,15 @@ describe('Quirófanos Endpoints', () => {
 
         expect(response.status).toBe(201);
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('id');
-        expect(response.body.data.numero).toBe(validQuirofanoData.numero);
-        expect(response.body.data.tipo).toBe(validQuirofanoData.tipo);
-        expect(response.body.data.estado).toBe('disponible'); // Default estado
+        expect(response.body.data.quirofano).toHaveProperty('id');
+        expect(response.body.data.quirofano.numero).toBe(validQuirofanoData.numero);
+        expect(response.body.data.quirofano.tipo).toBe(validQuirofanoData.tipo);
+        expect(response.body.data.quirofano.estado).toBe('disponible'); // Default estado
       });
 
       it('should fail with missing required fields', async () => {
         const incompleteData = {
-          tipo: 'general'
+          tipo: 'cirugia_general'
           // Missing numero
         };
 
@@ -179,8 +173,8 @@ describe('Quirófanos Endpoints', () => {
       it('should update quirófano successfully', async () => {
         const updateData = {
           equipamiento: 'Equipamiento actualizado',
-          capacidad: 10,
-          ubicacion: 'Nueva ubicación'
+          capacidadEquipo: 10,
+          descripcion: 'Descripción actualizada'
         };
 
         const response = await request(app)
@@ -191,7 +185,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
         expect(response.body.data.equipamiento).toBe(updateData.equipamiento);
-        expect(response.body.data.capacidad).toBe(updateData.capacidad);
+        expect(response.body.data.capacidadEquipo).toBe(updateData.capacidadEquipo);
       });
 
       it('should return 404 for non-existent quirófano', async () => {
@@ -259,11 +253,11 @@ describe('Quirófanos Endpoints', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('totalQuirofanos');
-        expect(response.body.data).toHaveProperty('quirofanosDisponibles');
-        expect(response.body.data).toHaveProperty('quirofanosOcupados');
-        expect(response.body.data).toHaveProperty('quirofanosMantenimiento');
-        expect(typeof response.body.data.totalQuirofanos).toBe('number');
+        expect(response.body.data.resumen).toHaveProperty('totalQuirofanos');
+        expect(response.body.data.resumen).toHaveProperty('disponibles');
+        expect(response.body.data.resumen).toHaveProperty('ocupados');
+        expect(response.body.data.resumen).toHaveProperty('mantenimiento');
+        expect(typeof response.body.data.resumen.totalQuirofanos).toBe('number');
       });
     });
 

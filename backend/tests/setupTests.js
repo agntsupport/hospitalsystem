@@ -159,15 +159,14 @@ global.testHelpers = {
   },
 
   createTestQuirofano: async (quirofanoData = {}) => {
+    const randomNum = Math.floor(Math.random() * 1000) + 1000;
     return await prisma.quirofano.create({
       data: {
-        id: 1001 + Math.floor(Math.random() * 1000),
-        numero: quirofanoData.numero || Math.floor(Math.random() * 1000) + 1000,
-        tipo: quirofanoData.tipo || 'general',
+        numero: quirofanoData.numero || randomNum.toString(),
+        tipo: quirofanoData.tipo || 'cirugia_general',
         estado: quirofanoData.estado || 'disponible',
         equipamiento: quirofanoData.equipamiento || 'Equipamiento básico',
-        capacidad: quirofanoData.capacidad || 6,
-        ubicacion: quirofanoData.ubicacion || 'Piso 2',
+        capacidadEquipo: quirofanoData.capacidadEquipo || 6,
         ...quirofanoData
       }
     });
