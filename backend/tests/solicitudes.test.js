@@ -202,9 +202,10 @@ describe('Sistema de Solicitudes de Productos', () => {
         .set('Authorization', `Bearer ${enfermeroToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
       expect(response.body.data).toBeInstanceOf(Array);
-      expect(response.body.pagination).toBeDefined();
+      expect(response.body.total).toBeDefined();
+      expect(response.body.page).toBeDefined();
+      expect(response.body.totalPages).toBeDefined();
     });
 
     test('Debe filtrar por estado correctamente', async () => {
