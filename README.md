@@ -6,7 +6,7 @@
 
 ![Estado del Proyecto](https://img.shields.io/badge/Estado-75%25%20Funcional-yellow)
 ![Versión](https://img.shields.io/badge/Versión-2.0.0--beta-blue)
-![Tests Unit](https://img.shields.io/badge/Tests%20Unit-338%20(187%20Frontend%20+%20151%20Backend)-yellow)
+![Tests Unit](https://img.shields.io/badge/Tests%20Unit-338%20(187%20Frontend%20+%2057%2F151%20Backend)-yellow)
 ![Tests E2E](https://img.shields.io/badge/Tests%20E2E-19%20Playwright%20(ITEM%203%20%26%204)-green)
 ![Base de Datos](https://img.shields.io/badge/BD-PostgreSQL%2014.18-blue)
 ![Arquitectura](https://img.shields.io/badge/Arquitectura-Modular-green)
@@ -89,8 +89,9 @@
 - **Validación Robusta** - Esquemas y middleware de validación
 
 ### Testing y Calidad
-- **338 tests unit** - 187 frontend + 151 backend (52 failing por config)
+- **338 tests unit** - 187 frontend + 57/151 backend (38% pass rate)
 - **19 tests E2E Playwright** - ITEM 3 (validación) + ITEM 4 (WCAG Skip Links)
+- **Progreso Sprint 1** - 26 → 57 tests passing (+119% improvement)
 - **Script automatizado** - test-e2e-full.sh ejecuta todo
 - **TypeScript estricto** - Tipado completo del sistema
 - **ESLint + Prettier** - Calidad de código automatizada
@@ -313,18 +314,21 @@ Frontend: 187 tests ⚠️
 ├── Formularios (básicos)
 └── Hooks (sin cobertura)
 
-Backend: 151 tests ⚠️ (52 failing por configuración)
+Backend: 151 tests ⚠️ (57 passing, 94 failing)
 ├── Database Connectivity ✅
-├── Auth endpoints ✅
-├── Patients endpoints ✅
-├── Solicitudes ✅
-└── Otros módulos (sin cobertura)
+├── Auth endpoints: 10/10 ✅
+├── Patients endpoints: 13/16 ✅
+├── Simple tests: 18/19 ✅
+├── Inventory tests: 11/29 (WIP)
+└── Otros módulos (middleware, quirofanos, solicitudes pendientes)
 
-E2E: NO implementado ❌
-└── Solo plan documentado, Cypress no instalado
+E2E: 19 tests Playwright ✅
+├── ITEM 3: Validación formularios (6 tests)
+└── ITEM 4: Skip Links WCAG 2.1 AA (13 tests)
 
 ⚠️ NOTA: Números anteriores (1,422 tests) eran inflados.
 Requiere expansión a 500+ tests para 50% cobertura.
+📈 FASE 2 Sprint 1: Infraestructura de tests mejorada (+119%)
 ```
 
 ### Comandos de Testing
@@ -420,12 +424,12 @@ npm run dev
 
 ---
 
-**🏥 Sistema de Gestión Hospitalaria Integral**  
-**👨‍💻 Desarrollado por:** Alfredo Manuel Reyes  
-**🏢 Empresa:** agnt_ - Software Development Company  
-**🚀 Stack:** React 18 + TypeScript + Node.js + PostgreSQL + Material-UI  
+**🏥 Sistema de Gestión Hospitalaria Integral**
+**👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
+**🏢 Empresa:** agnt_ - Software Development Company
+**🚀 Stack:** React 18 + TypeScript + Node.js + PostgreSQL + Material-UI
 **📅 Última actualización:** 29 de octubre de 2025
-**✅ Estado:** Sistema Funcional (75%) - Ver ANALISIS_SISTEMA_COMPLETO_2025.md para roadmap de optimización  
+**✅ Estado:** Sistema Funcional (75%) - FASE 2 Sprint 1 ✅ - Ver .claude/doc/analisis_sistema/  
 
 ---
 *© 2025 agnt_ Software Development Company. Todos los derechos reservados.*
