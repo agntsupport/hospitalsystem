@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -126,7 +126,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
     }
   }, [page, filters, historyTab]);
 
-  const loadClosedAccounts = async () => {
+  const loadClosedAccounts = useCallback(async () => {
     setLoading(true);
     try {
       // Aquí llamaríamos a un endpoint específico para cuentas cerradas con filtros
@@ -143,9 +143,9 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadQuickSales = async () => {
+  const loadQuickSales = useCallback(async () => {
     setLoading(true);
     try {
       const params: any = {
@@ -178,18 +178,18 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, filters]);
 
-  const handleExpandAccount = async (accountId: number) => {
+  const handleExpandAccount = useCallback(async (accountId: number) => {
     if (expandedAccount === accountId) {
       setExpandedAccount(null);
     } else {
       setExpandedAccount(accountId);
       // Cargar transacciones detalladas si no las tenemos
     }
-  };
+  }, [expandedAccount]);
 
-  const handleViewDetails = async (account: PatientAccount) => {
+  const handleViewDetails = useCallback(async (account: PatientAccount) => {
     try {
       const response = await posService.getPatientAccountById(account.id);
       if (response.success && response.data) {
@@ -199,22 +199,22 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
     } catch (error) {
       console.error('Error loading account details:', error);
     }
-  };
+  }, []);
 
-  const handleExpandSale = (saleId: number) => {
+  const handleExpandSale = useCallback((saleId: number) => {
     if (expandedSale === saleId) {
       setExpandedSale(null);
     } else {
       setExpandedSale(saleId);
     }
-  };
+  }, [expandedSale]);
 
-  const handleViewSaleDetails = (sale: QuickSale) => {
+  const handleViewSaleDetails = useCallback((sale: QuickSale) => {
     setSelectedSale(sale);
     setSaleDetailsOpen(true);
-  };
+  }, []);
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = useCallback(() => {
     setPage(1);
     if (historyTab === 0) {
       loadClosedAccounts();
@@ -222,15 +222,15 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
       loadQuickSales();
     }
     setShowFilters(false);
-  };
+  }, [historyTab, loadClosedAccounts, loadQuickSales]);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setFilters({});
     setSearchTerm('');
     setPage(1);
-  };
+  }, []);
 
-  const handleExportData = () => {
+  const handleExportData = useCallback(() => {
     if (historyTab === 0) {
       // Exportar cuentas cerradas
       const csvData = closedAccounts.map(account => ({
@@ -260,16 +260,16 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
       console.log('Exportando ventas rápidas:', csvData);
       alert(`Exportando ${csvData.length} ventas rápidas`);
     }
-  };
+  }, [historyTab, closedAccounts, quickSales]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
     }).format(amount);
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'short',
@@ -277,16 +277,16 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
+  }, []);
 
-  const getAttentionTypeColor = (tipo: string) => {
+  const getAttentionTypeColor = useCallback((tipo: string) => {
     switch (tipo) {
       case 'consulta_general': return 'primary';
       case 'urgencia': return 'error';
       case 'hospitalizacion': return 'warning';
       default: return 'default';
     }
-  };
+  }, []);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>

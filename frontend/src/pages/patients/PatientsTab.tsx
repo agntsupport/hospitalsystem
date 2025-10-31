@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -81,7 +81,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
     loadPatients();
   }, [filters, page, rowsPerPage]);
 
-  const loadPatients = async () => {
+  const loadPatients = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -111,17 +111,17 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, rowsPerPage, page]);
 
-  const handleFilterChange = (field: keyof PatientFilters, value: string | number | boolean | undefined) => {
+  const handleFilterChange = useCallback((field: keyof PatientFilters, value: string | number | boolean | undefined) => {
     setFilters(prev => ({
       ...prev,
       [field]: value === '' ? undefined : value
     }));
     setPage(0); // Reset page when filters change
-  };
+  }, []);
 
-  const handleDeletePatient = async () => {
+  const handleDeletePatient = useCallback(async () => {
     if (!selectedPatient) return;
 
     try {
@@ -139,65 +139,65 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
       const errorMessage = error?.message || error?.error || 'Error al eliminar paciente';
       toast.error(errorMessage);
     }
-  };
+  }, [selectedPatient, loadPatients, onStatsChange]);
 
-  const handleOpenViewDialog = (patient: Patient) => {
+  const handleOpenViewDialog = useCallback((patient: Patient) => {
     setSelectedPatient(patient);
     setViewDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseViewDialog = () => {
+  const handleCloseViewDialog = useCallback(() => {
     setViewDialogOpen(false);
     setSelectedPatient(null);
-  };
+  }, []);
 
-  const handleOpenDeleteDialog = (patient: Patient) => {
+  const handleOpenDeleteDialog = useCallback((patient: Patient) => {
     setSelectedPatient(patient);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseDeleteDialog = () => {
+  const handleCloseDeleteDialog = useCallback(() => {
     setDeleteDialogOpen(false);
     setSelectedPatient(null);
-  };
+  }, []);
 
-  const handleOpenEditDialog = (patient: Patient) => {
+  const handleOpenEditDialog = useCallback((patient: Patient) => {
     setSelectedPatient(patient);
     setEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseEditDialog = () => {
+  const handleCloseEditDialog = useCallback(() => {
     setEditDialogOpen(false);
     setSelectedPatient(null);
-  };
+  }, []);
 
-  const handlePatientUpdated = () => {
+  const handlePatientUpdated = useCallback(() => {
     loadPatients();
     onStatsChange();
     onPatientCreated(); // Notify parent to refresh
     handleCloseEditDialog();
-  };
+  }, [loadPatients, onStatsChange, onPatientCreated, handleCloseEditDialog]);
 
-  const handleOpenAuditTrail = (patient: Patient) => {
+  const handleOpenAuditTrail = useCallback((patient: Patient) => {
     setAuditEntityId(patient.id);
     setAuditTrailOpen(true);
-  };
+  }, []);
 
-  const handleCloseAuditTrail = () => {
+  const handleCloseAuditTrail = useCallback(() => {
     setAuditTrailOpen(false);
     setAuditEntityId(0);
-  };
+  }, []);
 
-  const handleChangePage = (_event: unknown, newPage: number) => {
+  const handleChangePage = useCallback((_event: unknown, newPage: number) => {
     setPage(newPage);
-  };
+  }, []);
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
+  }, []);
 
-  const getGenderIcon = (gender: string) => {
+  const getGenderIcon = useCallback((gender: string) => {
     switch (gender) {
       case 'M':
         return <MaleIcon color="info" fontSize="small" />;
@@ -206,26 +206,26 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
       default:
         return <PersonIcon color="action" fontSize="small" />;
     }
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     // Convertir fecha ISO a formato local seguro
     const date = new Date(dateString);
     const year = date.getUTCFullYear();
     const month = date.getUTCMonth() + 1;
     const day = date.getUTCDate();
-    
+
     return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
-  };
+  }, []);
 
-  const formatPatientName = (patient: Patient) => {
+  const formatPatientName = useCallback((patient: Patient) => {
     return `${patient.nombre} ${patient.apellidoPaterno} ${patient.apellidoMaterno || ''}`.trim();
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({});
     setPage(0);
-  };
+  }, []);
 
   return (
     <Box sx={{ p: 3 }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
@@ -110,11 +110,11 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
 
   const watchedValues = watch();
 
-  const steps = [
+  const steps = useMemo(() => [
     'Datos Personales',
     'Información de Contacto',
     'Información Médica'
-  ];
+  ], []);
 
   useEffect(() => {
     if (open) {
@@ -168,16 +168,16 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     }
   }, [open, editingPatient, reset]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setActiveStep(0);
     setError(null);
     setUseAddressAutocomplete(true);
     // Doble reset para asegurar limpieza completa
     reset();
     setTimeout(() => reset(defaultValues), 0);
-  };
+  }, [reset, defaultValues]);
 
-  const handleAddressSelected = (addressInfo: {
+  const handleAddressSelected = useCallback((addressInfo: {
     codigoPostal: string;
     estado: string;
     ciudad: string;
@@ -193,15 +193,15 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
       const currentDireccion = watchedValues.direccion;
       setValue('direccion', `${addressInfo.colonia}, ${addressInfo.municipio}`);
     }
-  };
+  }, [setValue, watchedValues.direccion]);
 
-  const validateStep = async (step: number): Promise<boolean> => {
+  const validateStep = useCallback(async (step: number): Promise<boolean> => {
     const fieldsToValidate = getFieldsForStep(step);
     const result = await trigger(fieldsToValidate);
     return result;
-  };
+  }, [trigger]);
 
-  const getFieldsForStep = (step: number): (keyof PatientFormValues)[] => {
+  const getFieldsForStep = useCallback((step: number): (keyof PatientFormValues)[] => {
     switch (step) {
       case 0:
         return ['nombre', 'apellidoPaterno', 'fechaNacimiento', 'genero'];
@@ -212,9 +212,9 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
       default:
         return [];
     }
-  };
+  }, []);
 
-  const handleNext = async () => {
+  const handleNext = useCallback(async () => {
     console.log('➡️ Navegando al siguiente step. Step actual:', activeStep);
     console.log('📝 Valores antes de validar:', JSON.stringify(watchedValues, null, 2));
     
@@ -236,14 +236,14 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     } else {
       setError('Por favor complete los campos requeridos y corrija los errores');
     }
-  };
+  }, [activeStep, validateStep, watchedValues, watch]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
     setError(null);
-  };
+  }, []);
 
-  const onFormSubmit = async (data: PatientFormValues) => {
+  const onFormSubmit = useCallback(async (data: PatientFormValues) => {
     console.log('🚀 onFormSubmit ejecutándose con data:', data);
     setLoading(true);
     setError(null);
@@ -292,7 +292,7 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [editingPatient, onPatientCreated, onClose]);
 
   const renderStepContent = (step: number) => {
     switch (step) {

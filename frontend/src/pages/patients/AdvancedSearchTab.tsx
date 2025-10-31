@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -113,7 +113,7 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
     }
   }, []);
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -145,26 +145,26 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, rowsPerPage, page]);
 
-  const handleFilterChange = (field: keyof PatientFilters, value: string | number | boolean) => {
+  const handleFilterChange = useCallback((field: keyof PatientFilters, value: string | number | boolean) => {
     setFilters(prev => ({
       ...prev,
       [field]: value === '' ? undefined : value
     }));
     setPage(0); // Reset page when filters change
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({});
     setPatients([]);
     setTotalCount(0);
     setHasSearched(false);
     setPage(0);
     setError(null);
-  };
+  }, []);
 
-  const saveCurrentSearch = () => {
+  const saveCurrentSearch = useCallback(() => {
     if (!searchName.trim()) {
       toast.error('Por favor ingrese un nombre para la búsqueda');
       return;
@@ -184,21 +184,21 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
     setSearchName('');
     setSaveSearchDialogOpen(false);
     toast.success('Búsqueda guardada exitosamente');
-  };
+  }, [searchName, filters, savedSearches]);
 
-  const loadSavedSearch = (savedSearch: SavedSearch) => {
+  const loadSavedSearch = useCallback((savedSearch: SavedSearch) => {
     setFilters(savedSearch.filters);
     toast.info(`Búsqueda "${savedSearch.name}" cargada`);
-  };
+  }, []);
 
-  const deleteSavedSearch = (searchId: string) => {
+  const deleteSavedSearch = useCallback((searchId: string) => {
     const updatedSearches = savedSearches.filter(s => s.id !== searchId);
     setSavedSearches(updatedSearches);
     localStorage.setItem('savedPatientSearches', JSON.stringify(updatedSearches));
     toast.success('Búsqueda eliminada');
-  };
+  }, [savedSearches]);
 
-  const exportResults = () => {
+  const exportResults = useCallback(() => {
     if (patients.length === 0) {
       toast.warning('No hay resultados para exportar');
       return;
@@ -230,11 +230,11 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
     link.download = `pacientes_busqueda_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    
-    toast.success('Resultados exportados exitosamente');
-  };
 
-  const getGenderIcon = (gender: string) => {
+    toast.success('Resultados exportados exitosamente');
+  }, [patients]);
+
+  const getGenderIcon = useCallback((gender: string) => {
     switch (gender) {
       case 'M':
         return <MaleIcon color="info" fontSize="small" />;
@@ -243,57 +243,57 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
       default:
         return <PersonIcon color="action" fontSize="small" />;
     }
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     // Convertir fecha ISO a formato local seguro
     const date = new Date(dateString);
     const year = date.getUTCFullYear();
     const month = date.getUTCMonth() + 1;
     const day = date.getUTCDate();
-    
+
     return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
-  };
+  }, []);
 
-  const formatPatientName = (patient: Patient) => {
+  const formatPatientName = useCallback((patient: Patient) => {
     return `${patient.nombre} ${patient.apellidoPaterno} ${patient.apellidoMaterno || ''}`.trim();
-  };
+  }, []);
 
-  const handleOpenViewDialog = (patient: Patient) => {
+  const handleOpenViewDialog = useCallback((patient: Patient) => {
     setSelectedPatient(patient);
     setViewDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseViewDialog = () => {
+  const handleCloseViewDialog = useCallback(() => {
     setViewDialogOpen(false);
     setSelectedPatient(null);
-  };
+  }, []);
 
-  const handleOpenEditDialog = (patient: Patient) => {
+  const handleOpenEditDialog = useCallback((patient: Patient) => {
     setSelectedPatient(patient);
     setEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseEditDialog = () => {
+  const handleCloseEditDialog = useCallback(() => {
     setEditDialogOpen(false);
     setSelectedPatient(null);
-  };
+  }, []);
 
-  const handlePatientUpdated = () => {
+  const handlePatientUpdated = useCallback(() => {
     handleSearch(); // Re-ejecutar búsqueda para actualizar resultados
     onStatsChange();
     onPatientCreated();
     handleCloseEditDialog();
-  };
+  }, [handleSearch, onStatsChange, onPatientCreated, handleCloseEditDialog]);
 
-  const handleChangePage = (_event: unknown, newPage: number) => {
+  const handleChangePage = useCallback((_event: unknown, newPage: number) => {
     setPage(newPage);
-  };
+  }, []);
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
+  }, []);
 
   // Re-ejecutar búsqueda cuando cambie la paginación
   useEffect(() => {

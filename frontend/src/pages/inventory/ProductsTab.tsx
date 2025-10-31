@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -81,7 +81,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ suppliers, onRefreshSuppliers
     requiereReceta: undefined
   });
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -105,18 +105,18 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ suppliers, onRefreshSuppliers
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, rowsPerPage, page]);
 
   useEffect(() => {
     loadProducts();
-  }, [page, rowsPerPage, filters]);
+  }, [page, rowsPerPage, filters, loadProducts]);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setPage(0);
     loadProducts();
-  };
+  }, [loadProducts]);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setFilters({
       search: '',
       categoriaId: undefined,
@@ -127,33 +127,33 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ suppliers, onRefreshSuppliers
       requiereReceta: undefined
     });
     setPage(0);
-  };
+  }, []);
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = useCallback((event: unknown, newPage: number) => {
     setPage(newPage);
-  };
+  }, []);
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
+  }, []);
 
-  const handleOpenForm = (product?: Product) => {
+  const handleOpenForm = useCallback((product?: Product) => {
     setSelectedProduct(product || null);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleCloseForm = () => {
+  const handleCloseForm = useCallback(() => {
     setIsFormOpen(false);
     setSelectedProduct(null);
-  };
+  }, []);
 
-  const handleFormSubmit = () => {
+  const handleFormSubmit = useCallback(() => {
     handleCloseForm();
     loadProducts();
-  };
+  }, [handleCloseForm, loadProducts]);
 
-  const handleDeleteProduct = async (productId: number) => {
+  const handleDeleteProduct = useCallback(async (productId: number) => {
     if (!window.confirm('¿Está seguro de que desea eliminar este producto?')) {
       return;
     }
@@ -165,9 +165,9 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ suppliers, onRefreshSuppliers
       setError('Error al eliminar producto');
       console.error('Error deleting product:', err);
     }
-  };
+  }, [loadProducts]);
 
-  const getStockStatus = (product: Product) => {
+  const getStockStatus = useCallback((product: Product) => {
     if (product.stockActual <= 0) {
       return { color: 'error', label: 'Sin Stock', icon: <WarningIcon fontSize="small" /> };
     } else if (product.stockActual <= product.stockMinimo) {
@@ -175,19 +175,19 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ suppliers, onRefreshSuppliers
     } else {
       return { color: 'success', label: 'En Stock', icon: <InventoryIcon fontSize="small" /> };
     }
-  };
+  }, []);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
     }).format(amount);
-  };
+  }, []);
 
-  const getCategoryName = (categoria: string) => {
+  const getCategoryName = useCallback((categoria: string) => {
     const category = PRODUCT_CATEGORIES.find(cat => cat.id === categoria);
     return category?.nombre || 'Sin categoría';
-  };
+  }, []);
 
   return (
     <Box>
