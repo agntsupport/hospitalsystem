@@ -61,7 +61,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '@/hooks/useAuth';
 import hospitalizationService from '@/services/hospitalizationService';
 import { toast } from 'react-toastify';
-import { HospitalAdmission } from '@/types/hospitalization.types';
+import { HospitalAdmission, DischargeType, HospitalDischargeForm } from '@/types/hospitalization.types';
 import dayjs, { Dayjs } from 'dayjs';
 import { dischargeFormSchema, DischargeFormValues } from '@/schemas/hospitalization.schemas';
 
@@ -235,17 +235,17 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
     setLoading(true);
     try {
       const response = await hospitalizationService.createDischarge(admission.id, {
-        tipoAlta: data.tipoAlta,
-        condicionAlta: data.condicionAlta,
-        diagnosticoEgreso: data.diagnosticoFinal,
-        resumenEstancia: data.resumenEstancia,
-        planSeguimiento: data.planSeguimiento,
-        medicamentosAlta: data.medicamentosAlta,
-        recomendaciones: data.recomendaciones,
-        citaControl: data.citaControl,
-        requiereCirugia: data.requiereCirugia,
-        requiereRehabilitacion: data.requiereRehabilitacion,
-      });
+        tipoAlta: data.tipoAlta as DischargeType,
+        estadoAlta: data.condicionAlta as 'mejorado' | 'curado' | 'igual' | 'empeorado',
+        diagnosticoEgreso: data.diagnosticoFinal || '',
+        diagnosticosSecundarios: [],
+        procedimientosRealizados: [],
+        resumenEstancia: data.resumenEstancia || '',
+        medicamentosAlta: [],
+        recomendacionesGenerales: data.recomendaciones || '',
+        cuidadosDomiciliarios: [],
+        signosAlarma: []
+      } as HospitalDischargeForm);
       
       if (response.success) {
         toast.success('Alta hospitalaria procesada exitosamente');

@@ -1,7 +1,7 @@
 import { api } from '@/utils/api';
-import { 
-  Supplier, 
-  CreateSupplierRequest, 
+import {
+  Supplier,
+  CreateSupplierRequest,
   UpdateSupplierRequest,
   SupplierFilters,
   SuppliersResponse,
@@ -16,6 +16,7 @@ import {
   StockMovementsResponse,
   InventoryStats,
   ProductCategory,
+  CategoriaProducto,
   ApiResponse,
   Service,
   CreateServiceRequest,
@@ -435,12 +436,14 @@ class InventoryService {
         message: error?.message || 'Error al obtener estadísticas del inventario',
         data: {
           totalProducts: 0,
-          lowStockProducts: 0,
-          outOfStockProducts: 0,
-          expiringProducts: 0,
+          totalSuppliers: 0,
           totalValue: 0,
-          categoriesCount: 0,
-          suppliersCount: 0
+          lowStockProducts: 0,
+          expiredProducts: 0,
+          productsByCategory: {},
+          topProducts: [],
+          recentMovements: [],
+          monthlyMovements: {}
         }
       };
     }

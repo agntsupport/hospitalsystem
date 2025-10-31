@@ -46,7 +46,8 @@ import solicitudesService, {
 } from '../../services/solicitudesService';
 import { inventoryService } from '../../services/inventoryService';
 import { Product } from '../../types/inventory.types';
-import { patientsService, Patient } from '../../services/patientsService';
+import { patientsService } from '../../services/patientsService';
+import { Patient } from '../../types/patients.types';
 import hospitalizationService from '../../services/hospitalizationService';
 
 interface SolicitudFormDialogProps {

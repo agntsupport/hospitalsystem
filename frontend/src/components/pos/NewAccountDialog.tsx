@@ -82,7 +82,7 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     try {
       const response = await patientsService.searchPatients(query, 10);
       if (response.success) {
-        setPatients(response.data?.patients || []);
+        setPatients(response.data?.items || []);
       }
     } catch (error) {
       console.error('Error searching patients:', error);
@@ -96,7 +96,7 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     
     try {
       const response = await employeeService.searchEmployees(query, 10);
-      if (response.success) {
+      if (response.success && response.data) {
         // Filtrar solo médicos
         const medicDoctors = response.data.employees.filter(
           emp => emp.tipoEmpleado === 'medico_especialista' || emp.tipoEmpleado === 'medico_residente'
@@ -120,7 +120,7 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     try {
       const accountData: PatientAccountFormData = {
         pacienteId: selectedPatient.id,
-        tipoAtencion: data.tipoAtencion,
+        tipoAtencion: data.tipoAtencion as AttentionType,
         anticipo: data.anticipo || 0,
         medicoTratanteId: selectedDoctor?.id,
         observaciones: data.observaciones || '',

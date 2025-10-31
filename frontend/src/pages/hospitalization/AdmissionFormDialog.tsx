@@ -39,6 +39,7 @@ import { toast } from 'react-toastify';
 import { Patient } from '@/types/patients.types';
 import { Room } from '@/types/rooms.types';
 import { Employee } from '@/types/employee.types';
+import { AdmissionType } from '@/types/hospitalization.types';
 import { admissionFormSchema, AdmissionFormValues } from '@/schemas/hospitalization.schemas';
 
 interface AdmissionFormDialogProps {
@@ -143,9 +144,9 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       // Cargar médicos - corregido para usar response.data.items
       const employeesResponse = await employeeService.getEmployees({ limit: 100 });
       console.log('Employees response:', employeesResponse);
-      if (employeesResponse.success) {
+      if (employeesResponse.success && employeesResponse.data) {
         // Filtrar solo médicos activos
-        const allEmployees = Array.isArray(employeesResponse.data) ? employeesResponse.data : (employeesResponse.data?.items || []);
+        const allEmployees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
         const medicos = allEmployees.filter(
           (emp: any) => emp.activo && (emp.tipoEmpleado === 'medico_especialista' || emp.tipoEmpleado === 'medico_residente')
         ) || [];
@@ -171,14 +172,14 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
         // Filtrar por tipo según nivel de cuidado
         if (watchedValues.requiereAislamiento) {
-          filteredRooms = filteredRooms.filter((room: Room) => 
-            room.tipo === 'individual' || room.tipo === 'aislamiento'
+          filteredRooms = filteredRooms.filter((room: Room) =>
+            room.tipo === 'individual'
           );
         }
 
         if (watchedValues.nivelCuidado === 'intensivo') {
-          filteredRooms = filteredRooms.filter((room: Room) => 
-            room.tipo === 'terapia_intensiva'
+          filteredRooms = filteredRooms.filter((room: Room) =>
+            room.tipo === 'cuidados_intensivos'
           );
         }
 
@@ -215,14 +216,11 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
         medicoTratanteId: data.medicoTratanteId,
         motivoIngreso: data.motivoIngreso,
         diagnosticoIngreso: data.diagnosticoIngreso,
-        tipoHospitalizacion: data.tipoIngreso,
+        tipoHospitalizacion: data.tipoIngreso as AdmissionType,
         especialidad: medicoSeleccionado?.especialidad || 'Medicina General',
-        nivelCuidado: data.nivelCuidado,
-        requiereAislamiento: data.requiereAislamiento,
         observacionesIngreso: data.observaciones,
-        autorizacion: data.autorizacionSeguro,
-        contactoEmergencia: data.contactoEmergencia,
-      });
+        autorizacion: data.autorizacionSeguro
+      } as any);
 
       toast.success('Ingreso hospitalario registrado exitosamente');
       onSuccess();

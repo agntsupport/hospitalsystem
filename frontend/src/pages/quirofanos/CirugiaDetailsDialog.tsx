@@ -80,7 +80,7 @@ const CirugiaDetailsDialog: React.FC<CirugiaDetailsDialogProps> = ({
       ]);
 
       setCirugia(cirugiaData.data);
-      setAuditoria(auditData.data || []);
+      setAuditoria((auditData as any).data || auditData || []);
     } catch (error: any) {
       setError(error.message || 'Error al cargar los detalles');
     } finally {

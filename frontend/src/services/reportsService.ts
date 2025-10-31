@@ -435,26 +435,32 @@ class ReportsService {
         // Crear datos de rotación de inventario basados en movimientos
         const inventoryData: InventoryTurnoverReport[] = [
           {
-            productoId: 1,
-            nombreProducto: 'Medicamentos Generales',
-            categoria: 'Farmacia',
-            stockPromedio: 500,
-            ventasPerido: Math.floor(response.data.inventario?.movimientos * 0.6 || 0),
-            rotacionInventario: 4.2,
+            producto: {
+              id: 1,
+              nombre: 'Medicamentos Generales',
+              categoria: 'Farmacia'
+            },
+            stockInicial: 500,
+            stockFinal: 520,
+            consumido: Math.floor(response.data.inventario?.movimientos * 0.6 || 0),
+            rotacion: 4.2,
             diasInventario: 87,
-            valorInventario: 15000,
-            margenBruto: 25.5
+            costoInventario: 15000,
+            valorRotacion: 63000
           },
           {
-            productoId: 2,
-            nombreProducto: 'Material Médico',
-            categoria: 'Suministros',
-            stockPromedio: 200,
-            ventasPerido: Math.floor(response.data.inventario?.movimientos * 0.4 || 0),
-            rotacionInventario: 3.8,
+            producto: {
+              id: 2,
+              nombre: 'Material Médico',
+              categoria: 'Suministros'
+            },
+            stockInicial: 200,
+            stockFinal: 210,
+            consumido: Math.floor(response.data.inventario?.movimientos * 0.4 || 0),
+            rotacion: 3.8,
             diasInventario: 96,
-            valorInventario: 8500,
-            margenBruto: 18.2
+            costoInventario: 8500,
+            valorRotacion: 32300
           }
         ];
 
@@ -496,32 +502,18 @@ class ReportsService {
       if (response.success && response.data) {
         // Transformar datos operacionales en flujo de pacientes
         const patientFlowReport: PatientFlowReport = {
-          totalPacientesAtendidos: response.data.atencionPacientes?.pacientesAtendidos || 0,
           nuevosIngresos: response.data.atencionPacientes?.admisionesHospitalarias || 0,
-          altasMedicas: Math.floor((response.data.atencionPacientes?.admisionesHospitalarias || 0) * 0.8),
+          altas: Math.floor((response.data.atencionPacientes?.admisionesHospitalarias || 0) * 0.8),
           pacientesActivos: response.data.atencionPacientes?.pacientesAtendidos || 0,
-          tiempoPromedioAtencion: 45, // minutos - estimado
-          tiempoPromedioEstancia: 3.2, // días - estimado
+          promedioEstancia: 3.2, // días - estimado
           tasaReingreso: 8.5, // porcentaje - estimado
           satisfaccionPromedio: 4.3, // sobre 5 - estimado
-          flujoPorHora: [
-            { hora: '08:00', pacientes: 12 },
-            { hora: '09:00', pacientes: 18 },
-            { hora: '10:00', pacientes: 24 },
-            { hora: '11:00', pacientes: 28 },
-            { hora: '12:00', pacientes: 15 },
-            { hora: '13:00', pacientes: 10 },
-            { hora: '14:00', pacientes: 20 },
-            { hora: '15:00', pacientes: 25 },
-            { hora: '16:00', pacientes: 22 },
-            { hora: '17:00', pacientes: 16 }
-          ],
-          distribucionPorServicio: {
-            'Consulta General': 45,
-            'Emergencias': 25,
-            'Especialidades': 20,
-            'Hospitalización': 10
-          }
+          consultasPorTipo: [
+            { tipo: 'Consulta General', cantidad: 45, porcentaje: 45 },
+            { tipo: 'Emergencias', cantidad: 25, porcentaje: 25 },
+            { tipo: 'Especialidades', cantidad: 20, porcentaje: 20 },
+            { tipo: 'Hospitalización', cantidad: 10, porcentaje: 10 }
+          ]
         };
 
         return {

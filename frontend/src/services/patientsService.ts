@@ -33,7 +33,12 @@ export const patientsService = {
         pacientesHospitalizados: resumen?.pacientesHospitalizados || 0,
         pacientesAmbulatorios: resumen?.pacientesAmbulatorios || 0,
         patientsByGender: distribucion?.genero || { M: 0, F: 0, Otro: 0 },
-        patientsByAgeGroup: distribucion?.edad || { '0-17': 0, '18-35': 0, '36-55': 0, '56+': 0 }
+        patientsByAgeGroup: distribucion?.edad || { '0-17': 0, '18-35': 0, '36-55': 0, '56+': 0 },
+        growth: {
+          total: 0,
+          weekly: 0,
+          monthly: 0
+        }
       };
 
       return {
@@ -54,7 +59,12 @@ export const patientsService = {
         pacientesHospitalizados: 0,
         pacientesAmbulatorios: 0,
         patientsByGender: { M: 0, F: 0, Otro: 0 },
-        patientsByAgeGroup: { '0-17': 0, '18-35': 0, '36-55': 0, '56+': 0 }
+        patientsByAgeGroup: { '0-17': 0, '18-35': 0, '36-55': 0, '56+': 0 },
+        growth: {
+          total: 0,
+          weekly: 0,
+          monthly: 0
+        }
       }
     };
   },

@@ -250,13 +250,13 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
 
     try {
       // Clean up empty fields
-      const cleanFormData = { ...data };
-      
+      const cleanFormData: any = { ...data };
+
       // Remove empty contact emergency if no data
       if (!cleanFormData.contactoEmergencia?.nombre) {
         delete cleanFormData.contactoEmergencia;
       }
-      
+
       // Remove empty insurance if no data
       if (!cleanFormData.seguroMedico?.aseguradora) {
         delete cleanFormData.seguroMedico;

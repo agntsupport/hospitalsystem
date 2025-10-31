@@ -183,16 +183,7 @@ class BillingService {
           // Top patients (placeholder data since backend doesn't provide this yet)
           topPacientes: [],
           
-          // Payment methods distribution
-          distribucionMetodos: distribucion?.estados ? 
-            Object.entries(distribucion.estados).reduce((acc, [estado, data]: [string, any]) => {
-              acc[estado] = {
-                cantidad: data.cantidad || 0,
-                monto: data.monto || 0,
-                porcentaje: resumen?.totalFacturado > 0 ? (data.monto / resumen.totalFacturado) * 100 : 0
-              };
-              return acc;
-            }, {} as any) : {}
+          // Payment methods distribution removed - not part of BillingStats interface
         };
 
         return {

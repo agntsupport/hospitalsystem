@@ -192,8 +192,8 @@ const QuirofanoDetailsDialog: React.FC<Props> = ({
                       </Typography>
                       <Chip
                         label={getEstadoLabel(quirofano.estado)}
-                        color={getEstadoColor(quirofano.estado)}
-                        size="large"
+                        color={getEstadoColor(quirofano.estado) as any}
+                        size="medium"
                         sx={{ mb: 1 }}
                       />
                     </Box>

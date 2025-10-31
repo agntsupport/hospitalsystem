@@ -38,13 +38,13 @@ describe('patientsService (Simple Tests)', () => {
       const mockResponse = { success: true, data: { items: [], pagination: {} } };
       mockedApi.get.mockResolvedValue(mockResponse);
 
-      await patientsService.getPatients({ 
+      await patientsService.getPatients({
         search: 'Juan',
-        page: 2,
-        limit: 10 
+        offset: 20,
+        limit: 10
       });
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/patients?search=Juan&page=2&limit=10');
+      expect(mockedApi.get).toHaveBeenCalledWith('/patients?search=Juan&offset=20&limit=10');
     });
 
     it('should handle empty parameters', async () => {
@@ -76,7 +76,7 @@ describe('patientsService (Simple Tests)', () => {
       const mockResponse = { success: true, data: { id: 1 } };
       mockedApi.get.mockResolvedValue(mockResponse);
 
-      await patientsService.getPatientById('123');
+      await patientsService.getPatientById(123);
 
       expect(mockedApi.get).toHaveBeenCalledWith('/patients/123');
     });
@@ -280,20 +280,20 @@ describe('patientsService (Simple Tests)', () => {
       const mockResponse = { success: true, data: { items: [], pagination: {} } };
       mockedApi.get.mockResolvedValue(mockResponse);
 
-      await patientsService.getPatients({ page: 0, limit: 0 });
+      await patientsService.getPatients({ offset: 0, limit: 0 });
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/patients?page=0&limit=0');
+      expect(mockedApi.get).toHaveBeenCalledWith('/patients?offset=0&limit=0');
     });
 
     it('should skip undefined values', async () => {
       const mockResponse = { success: true, data: { items: [], pagination: {} } };
       mockedApi.get.mockResolvedValue(mockResponse);
 
-      await patientsService.getPatients({ 
+      await patientsService.getPatients({
         search: 'Juan',
-        page: undefined,
+        offset: undefined,
         limit: undefined,
-        genero: undefined 
+        genero: undefined
       });
 
       expect(mockedApi.get).toHaveBeenCalledWith('/patients?search=Juan');

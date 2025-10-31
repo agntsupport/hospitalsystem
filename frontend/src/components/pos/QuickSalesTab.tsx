@@ -101,7 +101,7 @@ const QuickSalesTab: React.FC<QuickSalesTabProps> = ({ onRefresh }) => {
       // Cargar servicios disponibles
       const servicesResponse = await posService.getAvailableServices();
       if (servicesResponse.success) {
-        const servicesData = servicesResponse.data?.items || [] || servicesResponse.data?.services || [] || [];
+        const servicesData = servicesResponse.data?.services || [];
         setServices(servicesData);
       }
 

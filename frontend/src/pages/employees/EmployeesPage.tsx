@@ -87,7 +87,7 @@ const EmployeesPage: React.FC = () => {
   const loadStats = async () => {
     try {
       const response = await employeeService.getStats();
-      if (response.success) {
+      if (response.success && response.data) {
         setStats(response.data);
       }
     } catch (error) {
@@ -122,7 +122,7 @@ const EmployeesPage: React.FC = () => {
   const handleViewEmployee = async (id: number) => {
     try {
       const response = await employeeService.getEmployeeById(id);
-      if (response.success) {
+      if (response.success && response.data) {
         setSelectedEmployee(response.data);
         setViewEmployeeId(id);
       }
@@ -490,7 +490,6 @@ const EmployeesPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            icon={getEmployeeTypeIcon(employee.tipoEmpleado)}
                             label={EMPLOYEE_TYPE_LABELS[employee.tipoEmpleado]}
                             color={getEmployeeTypeColor(employee.tipoEmpleado)}
                             size="small"
@@ -584,7 +583,6 @@ const EmployeesPage: React.FC = () => {
                     {selectedEmployee.nombre} {selectedEmployee.apellidoPaterno} {selectedEmployee.apellidoMaterno}
                   </Typography>
                   <Chip
-                    icon={getEmployeeTypeIcon(selectedEmployee.tipoEmpleado)}
                     label={EMPLOYEE_TYPE_LABELS[selectedEmployee.tipoEmpleado]}
                     color={getEmployeeTypeColor(selectedEmployee.tipoEmpleado)}
                   />

@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 
 import { billingService } from '@/services/billingService';
-import { Invoice, CreatePaymentRequest, PAYMENT_METHODS } from '@/types/billing.types';
+import { Invoice, CreatePaymentRequest, PaymentMethod, PAYMENT_METHODS } from '@/types/billing.types';
 import { paymentFormSchema, PaymentFormValues } from '@/schemas/billing.schemas';
 
 interface PaymentDialogProps {
@@ -110,7 +110,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       const paymentRequest: CreatePaymentRequest = {
         facturaId: data.facturaId,
         monto: data.monto,
-        metodoPago: data.metodoPago,
+        metodoPago: data.metodoPago as PaymentMethod,
         fechaPago: data.fechaPago,
         referencia: data.referencia || '',
         banco: data.banco || '',

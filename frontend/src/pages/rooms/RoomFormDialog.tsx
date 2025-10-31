@@ -87,9 +87,9 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
     try {
       let response;
       if (isEditing) {
-        response = await roomsService.updateRoom(editingRoom!.id, data);
+        response = await roomsService.updateRoom(editingRoom!.id, data as any);
       } else {
-        response = await roomsService.createRoom(data);
+        response = await roomsService.createRoom(data as any);
       }
 
       if (response.success) {

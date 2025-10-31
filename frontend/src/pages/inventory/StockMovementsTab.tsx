@@ -108,7 +108,7 @@ const StockMovementsTab: React.FC<StockMovementsTabProps> = ({ onDataChange }) =
 
   const handleClearFilters = () => {
     setFilters({
-      tipoMovimiento: undefined,
+      tipo: undefined,
       fechaInicio: undefined,
       fechaFin: undefined,
       productoId: undefined,
@@ -408,7 +408,7 @@ const StockMovementsTab: React.FC<StockMovementsTabProps> = ({ onDataChange }) =
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="body2">
-                      {formatCurrency(movement.costo || 0)}
+                      {formatCurrency((movement as any).costo || 0)}
                     </Typography>
                   </TableCell>
                   <TableCell align="center">

@@ -148,9 +148,9 @@ const SupplierFormDialog: React.FC<SupplierFormDialogProps> = ({
 
       let response;
       if (isEditing) {
-        response = await inventoryService.updateSupplier(editingSupplier!.id, cleanFormData);
+        response = await inventoryService.updateSupplier(editingSupplier!.id, cleanFormData as any);
       } else {
-        response = await inventoryService.createSupplier(cleanFormData);
+        response = await inventoryService.createSupplier(cleanFormData as any);
       }
 
       if (response.success) {

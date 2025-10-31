@@ -94,7 +94,7 @@ const SolicitudDetailDialog: React.FC<SolicitudDetailDialogProps> = ({
       COMPLETADO: <CheckIcon />,
       CANCELADO: <CancelIcon />
     };
-    return icons[estado];
+    return icons[estado as keyof typeof icons];
   };
 
   const getEstadoColor = (estado: EstadoSolicitud) => {
@@ -105,7 +105,7 @@ const SolicitudDetailDialog: React.FC<SolicitudDetailDialogProps> = ({
       COMPLETADO: 'success',
       CANCELADO: 'error'
     } as const;
-    return colors[estado];
+    return colors[estado as keyof typeof colors];
   };
 
   const getTimelineIcon = (estado: EstadoSolicitud) => {
@@ -116,7 +116,7 @@ const SolicitudDetailDialog: React.FC<SolicitudDetailDialogProps> = ({
       COMPLETADO: <CheckIcon />,
       CANCELADO: <CancelIcon />
     };
-    return icons[estado];
+    return icons[estado as keyof typeof icons];
   };
 
   const getAccionesDisponibles = (): string[] => {

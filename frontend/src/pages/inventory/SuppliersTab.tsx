@@ -101,7 +101,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange, onEditSupplie
     }
   };
 
-  const handleFilterChange = (field: keyof SupplierFilters, value: string | boolean) => {
+  const handleFilterChange = (field: keyof SupplierFilters, value: string | boolean | undefined) => {
     setFilters(prev => ({
       ...prev,
       [field]: value === '' ? undefined : value
@@ -258,7 +258,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ onDataChange, onEditSupplie
                 <FormControl fullWidth size="small">
                   <InputLabel>Estado</InputLabel>
                   <Select
-                    value={filters.activo !== undefined ? filters.activo.toString() : ''}
+                    value={filters.activo !== undefined ? String(filters.activo) : ''}
                     label="Estado"
                     onChange={(e) => handleFilterChange('activo', e.target.value === '' ? undefined : e.target.value === 'true')}
                   >

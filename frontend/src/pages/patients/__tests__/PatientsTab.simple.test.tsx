@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import authSlice from '@/store/slices/authSlice';
 import uiSlice from '@/store/slices/uiSlice';
 import patientsSlice from '@/store/slices/patientsSlice';
+import type { PatientStats } from '@/types/patients.types';
 
 // Mock PatientsTab component for testing
 const MockPatientsTab = () => {
@@ -91,7 +92,7 @@ const createTestStore = () => {
             weekly: 3,
             monthly: 3
           }
-        },
+        } as PatientStats,
         loading: false,
         error: null,
         filters: {

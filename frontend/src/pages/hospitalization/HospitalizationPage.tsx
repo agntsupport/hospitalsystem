@@ -118,9 +118,9 @@ const HospitalizationPage: React.FC = () => {
       ]);
 
       if (admissionsResponse.success && admissionsResponse.data) {
-        setAdmissions(admissionsResponse.data?.items || [] || []);
-        setTotalItems(admissionsResponse.data.pagination?.total || 0);
-        setTotalPages(admissionsResponse.data.pagination?.totalPages || 1);
+        setAdmissions(admissionsResponse.data?.items || []);
+        setTotalItems(admissionsResponse.data?.total || 0);
+        setTotalPages(admissionsResponse.data?.totalPaginas || 1);
       } else {
         setError(admissionsResponse.message || 'Error al cargar hospitalizaciones');
       }
@@ -725,7 +725,7 @@ const HospitalizationPage: React.FC = () => {
                   Habitación y Médico
                 </Typography>
                 <Typography><strong>Habitación:</strong> {selectedAdmission.habitacion?.numero || 'No asignada'} {selectedAdmission.habitacion?.tipo ? `(${selectedAdmission.habitacion.tipo})` : ''}</Typography>
-                <Typography><strong>Médico Tratante:</strong> {selectedAdmission.medicoTratante?.nombre || selectedAdmission.medicoTratante?.username || 'No asignado'}</Typography>
+                <Typography><strong>Médico Tratante:</strong> {selectedAdmission.medicoTratante?.nombre || 'No asignado'}</Typography>
                 <Typography><strong>Especialidad:</strong> {selectedAdmission.medicoTratante?.especialidad || 'No especificada'}</Typography>
               </Grid>
 

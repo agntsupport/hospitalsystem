@@ -78,7 +78,8 @@ const OfficesTab: React.FC<OfficesTabProps> = ({ onStatsChange }) => {
       const response = await roomsService.getOffices(filters);
       if (response.success) {
         // El servicio ya transforma la respuesta y devuelve los items en data
-        setOffices(response.data || []);
+        const data = response.data as any;
+        setOffices(data?.offices || data || []);
       } else {
         throw new Error(response.message);
       }

@@ -174,8 +174,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
 
       const response = await posService.closeAccount(account.id, {
         montoRecibido: finalBalance > 0 ? finalAmount : 0,
-        metodoPago: paymentMethod,
-        diagnosticoAlta: 'Alta médica autorizada'
+        metodoPago: paymentMethod
       });
 
       if (response.success) {
@@ -464,7 +463,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                     value={amountReceived}
                     onChange={(e) => setAmountReceived(e.target.value)}
                     type="number"
-                    size="large"
+                    size="medium"
                     InputProps={{
                       startAdornment: <InputAdornment position="start">$</InputAdornment>
                     }}

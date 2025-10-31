@@ -91,7 +91,7 @@ const ServiceFormDialog: React.FC<ServiceFormDialogProps> = ({
     formState: { errors, isSubmitting },
     watch,
   } = useForm<ServiceFormValues>({
-    resolver: yupResolver(serviceSchema),
+    resolver: yupResolver(serviceSchema) as any,
     defaultValues: {
       codigo: '',
       nombre: '',
@@ -182,7 +182,7 @@ const ServiceFormDialog: React.FC<ServiceFormDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit as any)}>
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ServiceIcon />

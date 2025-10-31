@@ -74,7 +74,7 @@ const ExecutiveDashboardTab: React.FC<ExecutiveDashboardTabProps> = ({
       ]);
 
       if (summaryResponse.success) {
-        setExecutiveSummary(summaryResponse.data);
+        setExecutiveSummary(summaryResponse.data || null);
       } else {
         console.error('Error en resumen ejecutivo:', summaryResponse.message);
       }

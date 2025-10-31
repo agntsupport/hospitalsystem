@@ -37,7 +37,7 @@ import {
 } from '@mui/icons-material';
 
 import { posService } from '@/services/posService';
-import { PatientAccount, Service, Product, CartItem } from '@/types/pos.types';
+import { PatientAccount, Service, Product, CartItem, AddTransactionData } from '@/types/pos.types';
 import { cartSchema, CartFormValues } from '@/schemas/pos.schemas';
 
 interface POSTransactionDialogProps {
@@ -105,8 +105,8 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
         activo: true, 
         stockMinimo: 1 // Solo productos con stock disponible
       });
-      if (response.success) {
-        setProducts(response.data?.items || response.data?.products || []);
+      if (response.success && response.data) {
+        setProducts(response.data.products || []);
       }
     } catch (error) {
       console.error('Error loading products:', error);
@@ -204,7 +204,7 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
           )
         };
 
-        await posService.addTransaction(account.id, transactionData);
+        await posService.addTransaction(account.id, transactionData as AddTransactionData);
       }
 
       onTransactionAdded();

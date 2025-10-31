@@ -214,7 +214,7 @@ const SolicitudesPage: React.FC = () => {
       COMPLETADO: <CheckIcon fontSize="small" />,
       CANCELADO: <CancelIcon fontSize="small" />
     };
-    return icons[estado];
+    return icons[estado as keyof typeof icons];
   };
 
   const getPrioridadIcon = (prioridad: PrioridadSolicitud) => {
@@ -280,7 +280,7 @@ const SolicitudesPage: React.FC = () => {
                   En Proceso
                 </Typography>
                 <Typography variant="h4" sx={{ color: 'info.main' }}>
-                  {stats.solicitudesPorEstado.find(s => s.estado === 'EN_PREPARACION')?.cantidad || 0}
+                  {stats.solicitudesPorEstado.find(s => s.estado === ('EN_PREPARACION' as EstadoSolicitud))?.cantidad || 0}
                 </Typography>
               </CardContent>
             </Card>
@@ -454,10 +454,10 @@ const SolicitudesPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        icon={getPrioridadIcon(solicitud.prioridad)}
+                        icon={getPrioridadIcon(solicitud.prioridad) || undefined}
                         label={solicitudesService.getPrioridadLabel(solicitud.prioridad)}
                         size="small"
-                        color={solicitud.prioridad === 'URGENTE' ? 'error' : 
+                        color={solicitud.prioridad === 'URGENTE' ? 'error' :
                                solicitud.prioridad === 'ALTA' ? 'warning' : 'default'}
                         variant={solicitud.prioridad === 'NORMAL' || solicitud.prioridad === 'BAJA' ? 'outlined' : 'filled'}
                       />

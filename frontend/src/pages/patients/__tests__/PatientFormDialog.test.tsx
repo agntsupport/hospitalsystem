@@ -126,6 +126,7 @@ describe('PatientFormDialog', () => {
     jest.clearAllMocks();
     mockedPatientsService.createPatient.mockResolvedValue({
       success: true,
+      message: 'Paciente creado exitosamente',
       data: {
         id: 1,
         numeroExpediente: 'EXP-001',
@@ -149,6 +150,7 @@ describe('PatientFormDialog', () => {
 
     mockedPatientsService.updatePatient.mockResolvedValue({
       success: true,
+      message: 'Paciente actualizado exitosamente',
       data: {
         id: 1,
         numeroExpediente: 'EXP-001',
@@ -411,6 +413,7 @@ describe('PatientFormDialog', () => {
       mockedPatientsService.createPatient.mockImplementation(
         () => new Promise(resolve => setTimeout(() => resolve({
           success: true,
+          message: 'Paciente creado exitosamente',
           data: { id: 1, nombre: 'Test', apellidoPaterno: 'Patient' } as any
         }), 100))
       );

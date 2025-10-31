@@ -145,7 +145,7 @@ describe('patientsService', () => {
 
       mockedApi.get.mockResolvedValue(mockResponse);
 
-      await patientsService.getPatientById('1');
+      await patientsService.getPatientById(1);
 
       expect(mockedApi.get).toHaveBeenCalledWith(API_ROUTES.PATIENTS.BY_ID('1'));
     });
@@ -252,7 +252,7 @@ describe('patientsService', () => {
 
       mockedApi.put.mockResolvedValue(mockResponse);
 
-      await patientsService.updatePatient('1', updateData);
+      await patientsService.updatePatient(1, updateData);
 
       expect(mockedApi.put).toHaveBeenCalledWith(API_ROUTES.PATIENTS.BY_ID('1'), updateData);
     });
@@ -281,7 +281,7 @@ describe('patientsService', () => {
 
       mockedApi.delete.mockResolvedValue(mockResponse);
 
-      await patientsService.deletePatient('1');
+      await patientsService.deletePatient(1);
 
       expect(mockedApi.delete).toHaveBeenCalledWith(API_ROUTES.PATIENTS.BY_ID('1'));
     });
@@ -493,10 +493,10 @@ describe('patientsService', () => {
       const mockResponse = { success: true, data: { items: [], pagination: {} } };
       mockedApi.get.mockResolvedValue(mockResponse);
 
-      await patientsService.getPatients({ page: 0, limit: 0 });
+      await patientsService.getPatients({ offset: 0, limit: 0 });
 
       expect(mockedApi.get).toHaveBeenCalledWith(
-        `${API_ROUTES.PATIENTS.BASE}?page=0&limit=0`
+        `${API_ROUTES.PATIENTS.BASE}?offset=0&limit=0`
       );
     });
   });

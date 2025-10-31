@@ -99,10 +99,10 @@ const OfficeFormDialog: React.FC<OfficeFormDialogProps> = ({
       if (isEditing) {
         response = await roomsService.updateOffice(editingOffice!.id, {
           ...submitData,
-          estado: data.estado
-        });
+          estado: data.estado as any
+        } as any);
       } else {
-        response = await roomsService.createOffice(submitData);
+        response = await roomsService.createOffice(submitData as any);
       }
 
       if (response.success) {

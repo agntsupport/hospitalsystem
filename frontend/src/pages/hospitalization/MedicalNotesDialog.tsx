@@ -175,12 +175,11 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
     setLoading(true);
     try {
       const response = await hospitalizationService.createMedicalNote(admission.id, {
-        tipo: data.tipoNota,
+        tipo: data.tipoNota as 'evolucion' | 'interconsulta' | 'procedimiento' | 'enfermeria' | 'alta',
         subjetivo: data.subjetivo,
         objetivo: data.objetivo,
         analisis: data.analisis,
         plan: data.plan,
-        signosVitales: data.signos_vitales,
       });
 
       if (response.success) {

@@ -169,7 +169,7 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
       );
       
       const quirofanoDisponible = disponibles.data?.find(
-        q => q.id === formData.quirofanoId
+        (q: any) => q.id === formData.quirofanoId
       );
       
       if (!quirofanoDisponible) {

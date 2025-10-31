@@ -75,7 +75,7 @@ const POSPage: React.FC = () => {
   const loadStats = async () => {
     try {
       const response = await posService.getStats();
-      if (response.success) {
+      if (response.success && response.data) {
         setStats(response.data.stats);
       }
     } catch (error) {
@@ -86,7 +86,7 @@ const POSPage: React.FC = () => {
   const loadOpenAccounts = async () => {
     try {
       const response = await posService.getPatientAccounts({ estado: 'abierta' });
-      if (response.success) {
+      if (response.success && response.data) {
         setOpenAccounts(response.data.accounts || []);
       }
     } catch (error) {

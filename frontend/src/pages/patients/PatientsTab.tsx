@@ -113,7 +113,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
     }
   };
 
-  const handleFilterChange = (field: keyof PatientFilters, value: string | number | boolean) => {
+  const handleFilterChange = (field: keyof PatientFilters, value: string | number | boolean | undefined) => {
     setFilters(prev => ({
       ...prev,
       [field]: value === '' ? undefined : value
@@ -355,7 +355,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                 <FormControl fullWidth size="small">
                   <InputLabel>Estado</InputLabel>
                   <Select
-                    value={filters.activo !== undefined ? filters.activo.toString() : ''}
+                    value={filters.activo !== undefined ? String(filters.activo) : ''}
                     label="Estado"
                     onChange={(e) => handleFilterChange('activo', e.target.value === '' ? undefined : e.target.value === 'true')}
                   >

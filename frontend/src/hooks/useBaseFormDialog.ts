@@ -5,19 +5,19 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FieldValues } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { toast } from 'react-toastify';
 import { BaseFormConfig, BaseFormState } from '@/types/forms.types';
 
-interface UseBaseFormDialogProps<T> extends BaseFormConfig<T> {
+interface UseBaseFormDialogProps<T extends FieldValues> extends BaseFormConfig<T> {
   open: boolean;
   entity?: T | null;
   onSuccess: () => void;
   onClose: () => void;
 }
 
-interface UseBaseFormDialogReturn<T> {
+interface UseBaseFormDialogReturn<T extends FieldValues> {
   // React Hook Form
   control: any;
   handleSubmit: any;
@@ -39,7 +39,7 @@ interface UseBaseFormDialogReturn<T> {
   resetForm: () => void;
 }
 
-export const useBaseFormDialog = <T = any>({
+export const useBaseFormDialog = <T extends FieldValues = any>({
   schema,
   defaultValues,
   mode = 'onChange',
@@ -56,8 +56,8 @@ export const useBaseFormDialog = <T = any>({
 
   // Configurar React Hook Form
   const form = useForm<T>({
-    resolver: yupResolver(schema),
-    defaultValues,
+    resolver: yupResolver(schema) as any,
+    defaultValues: defaultValues as any,
     mode
   });
 

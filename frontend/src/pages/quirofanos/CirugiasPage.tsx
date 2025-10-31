@@ -133,7 +133,7 @@ const CirugiasPage: React.FC = () => {
         estado: estadoFilter || filters.estado,
         limit: pagination.limit,
         offset: (pagination.page - 1) * pagination.limit
-      });
+      } as any);
 
       if (response.success) {
         setCirugias(response.data.items || []);
@@ -227,7 +227,7 @@ const CirugiasPage: React.FC = () => {
       case 'programada':
         return <ScheduleIcon color="info" />;
       case 'en_progreso':
-        return <PlayArrow color="warning" />;
+        return <StartIcon color="warning" />;
       case 'completada':
         return <CompleteIcon color="success" />;
       case 'cancelada':
