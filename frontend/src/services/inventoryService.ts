@@ -185,7 +185,7 @@ class InventoryService {
     });
 
     const response = await api.get(`/inventory/services?${params.toString()}`);
-    return response;
+    return response as unknown as ServicesResponse;
   }
 
   async createService(serviceData: CreateServiceRequest) {
@@ -290,9 +290,9 @@ class InventoryService {
   /**
    * Obtiene productos por categoría
    */
-  getProductsByCategory(products: Product[], categoryId: number): Product[] {
-    return products.filter(product => 
-      product.activo && product.categoria.id === categoryId
+  getProductsByCategory(products: Product[], categoryId: CategoriaProducto): Product[] {
+    return products.filter(product =>
+      product.activo && product.categoria === categoryId
     );
   }
 
@@ -310,14 +310,14 @@ class InventoryService {
    */
   searchProducts(products: Product[], searchTerm: string): Product[] {
     if (!searchTerm.trim()) return products;
-    
+
     const term = searchTerm.toLowerCase();
     return products.filter(product =>
       product.nombre.toLowerCase().includes(term) ||
       product.codigo.toLowerCase().includes(term) ||
       product.codigoBarras?.toLowerCase().includes(term) ||
       product.descripcion?.toLowerCase().includes(term) ||
-      product.categoria.nombre.toLowerCase().includes(term) ||
+      product.categoria.toLowerCase().includes(term) ||
       product.proveedor.razonSocial.toLowerCase().includes(term)
     );
   }
@@ -423,16 +423,25 @@ class InventoryService {
         return {
           success: true,
           data: transformedStats,
-          message: response.message
+          message: response.message || "Operación exitosa"
         };
       }
-      
-      return response;
+
+      return response as ApiResponse<InventoryStats>;
     } catch (error: any) {
       console.error('Error getting inventory stats:', error);
       return {
         success: false,
-        message: error?.message || 'Error al obtener estadísticas del inventario'
+        message: error?.message || 'Error al obtener estadísticas del inventario',
+        data: {
+          totalProducts: 0,
+          lowStockProducts: 0,
+          outOfStockProducts: 0,
+          expiringProducts: 0,
+          totalValue: 0,
+          categoriesCount: 0,
+          suppliersCount: 0
+        }
       };
     }
   }

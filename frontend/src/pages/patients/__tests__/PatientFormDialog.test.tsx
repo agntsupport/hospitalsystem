@@ -49,11 +49,12 @@ const createTestStore = () => {
         isAuthenticated: true,
         user: {
           id: 1,
-          nombreUsuario: 'testuser',
-          rol: 'administrador',
+          username: 'testuser',
+          rol: 'administrador' as const,
           email: 'test@test.com',
           activo: true,
           createdAt: '2025-01-01',
+          updatedAt: '2025-01-01',
         },
         token: 'mock-token',
         loading: false,
@@ -61,28 +62,28 @@ const createTestStore = () => {
       },
       ui: {
         sidebarOpen: false,
-        loading: false,
-        error: null,
-        success: null,
+        theme: 'light' as const,
+        notifications: [],
+        loading: {
+          global: false,
+        },
+        modals: {},
       },
       patients: {
         patients: [],
         currentPatient: null,
         stats: {
           totalPacientes: 0,
-          pacientesActivos: 0,
-          pacientesInactivos: 0,
-          nuevosEsteMes: 0,
-          edadPromedio: 0,
-          distribucionGenero: { M: 0, F: 0, Otro: 0 },
-          distribucionEdad: {},
+          pacientesMenores: 0,
+          pacientesAdultos: 0,
+          pacientesConCuentaAbierta: 0,
+          pacientesHospitalizados: 0,
+          pacientesAmbulatorios: 0,
         },
         loading: false,
         error: null,
         filters: {
           search: '',
-          estado: 'todos',
-          genero: 'todos',
         },
         pagination: {
           page: 1,
@@ -113,12 +114,12 @@ const renderWithProviders = (component: React.ReactElement, { store = createTest
 
 describe('PatientFormDialog', () => {
   const mockOnClose = jest.fn();
-  const mockOnSuccess = jest.fn();
+  const mockOnPatientCreated = jest.fn();
 
   const defaultProps = {
     open: true,
     onClose: mockOnClose,
-    onSuccess: mockOnSuccess,
+    onPatientCreated: mockOnPatientCreated,
   };
 
   beforeEach(() => {
@@ -127,11 +128,13 @@ describe('PatientFormDialog', () => {
       success: true,
       data: {
         id: 1,
+        numeroExpediente: 'EXP-001',
         nombre: 'Test',
         apellidoPaterno: 'Patient',
         apellidoMaterno: 'Test',
         fechaNacimiento: '1990-01-01',
-        genero: 'M',
+        edad: 35,
+        genero: 'M' as const,
         telefono: '1234567890',
         email: 'test@example.com',
         direccion: 'Test Address',
@@ -140,6 +143,7 @@ describe('PatientFormDialog', () => {
         codigoPostal: '12345',
         activo: true,
         createdAt: '2025-01-01',
+        updatedAt: '2025-01-01',
       },
     });
 
@@ -147,11 +151,13 @@ describe('PatientFormDialog', () => {
       success: true,
       data: {
         id: 1,
+        numeroExpediente: 'EXP-001',
         nombre: 'Updated',
+        edad: 35,
         apellidoPaterno: 'Patient',
         apellidoMaterno: 'Test',
         fechaNacimiento: '1990-01-01',
-        genero: 'M',
+        genero: 'M' as const,
         telefono: '1234567890',
         email: 'updated@example.com',
         direccion: 'Updated Address',
@@ -160,6 +166,7 @@ describe('PatientFormDialog', () => {
         codigoPostal: '54321',
         activo: true,
         createdAt: '2025-01-01',
+        updatedAt: '2025-01-01',
       },
     });
   });
@@ -178,10 +185,12 @@ describe('PatientFormDialog', () => {
     it('should render edit patient dialog when patient is provided', () => {
       const patient = {
         id: 1,
+        numeroExpediente: 'EXP-002',
         nombre: 'John',
         apellidoPaterno: 'Doe',
         apellidoMaterno: 'Smith',
         fechaNacimiento: '1990-01-01',
+        edad: 35,
         genero: 'M' as const,
         telefono: '1234567890',
         email: 'john.doe@example.com',
@@ -191,9 +200,10 @@ describe('PatientFormDialog', () => {
         codigoPostal: '12345',
         activo: true,
         createdAt: '2025-01-01',
+        updatedAt: '2025-01-01',
       };
 
-      renderWithProviders(<PatientFormDialog {...defaultProps} patient={patient} />);
+      renderWithProviders(<PatientFormDialog {...defaultProps} editingPatient={patient} />);
       
       expect(screen.getByText('✏️ Editar Paciente')).toBeInTheDocument();
       expect(screen.getByDisplayValue('John')).toBeInTheDocument();
@@ -315,7 +325,7 @@ describe('PatientFormDialog', () => {
             fechaNacimiento: '1990-01-01',
           })
         );
-        expect(mockOnSuccess).toHaveBeenCalled();
+        expect(mockOnPatientCreated).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
       });
     });
@@ -323,10 +333,12 @@ describe('PatientFormDialog', () => {
     it('should update existing patient successfully', async () => {
       const patient = {
         id: 1,
+        numeroExpediente: 'EXP-002',
         nombre: 'John',
         apellidoPaterno: 'Doe',
         apellidoMaterno: 'Smith',
         fechaNacimiento: '1990-01-01',
+        edad: 35,
         genero: 'M' as const,
         telefono: '1234567890',
         email: 'john.doe@example.com',
@@ -336,9 +348,10 @@ describe('PatientFormDialog', () => {
         codigoPostal: '12345',
         activo: true,
         createdAt: '2025-01-01',
+        updatedAt: '2025-01-01',
       };
 
-      renderWithProviders(<PatientFormDialog {...defaultProps} patient={patient} />);
+      renderWithProviders(<PatientFormDialog {...defaultProps} editingPatient={patient} />);
       
       // Update name
       const nameField = screen.getByDisplayValue('John');
@@ -356,7 +369,7 @@ describe('PatientFormDialog', () => {
             nombre: 'Jane',
           })
         );
-        expect(mockOnSuccess).toHaveBeenCalled();
+        expect(mockOnPatientCreated).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
       });
     });

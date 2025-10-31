@@ -61,37 +61,37 @@ class NotificacionesService {
     limit?: number;
   }): Promise<NotificacionesResponse> {
     const response = await api.get('/notificaciones', { params });
-    return response;
+    return response as unknown as NotificacionesResponse;
   }
 
   // Contar notificaciones no leídas
   async getNotificacionesNoLeidasCount(): Promise<{ count: number }> {
     const response = await api.get('/notificaciones/no-leidas/count');
-    return response;
+    return response as unknown as { count: number };
   }
 
   // Marcar notificación como leída
   async marcarComoLeida(id: number): Promise<{ message: string; notificacion: Notificacion }> {
     const response = await api.put(`/notificaciones/${id}/marcar-leida`);
-    return response;
+    return response as unknown as { message: string; notificacion: Notificacion };
   }
 
   // Marcar todas las notificaciones como leídas
   async marcarTodasComoLeidas(): Promise<{ message: string }> {
     const response = await api.put('/notificaciones/marcar-todas-leidas');
-    return response;
+    return response as unknown as { message: string };
   }
 
   // Eliminar notificación
   async eliminarNotificacion(id: number): Promise<{ message: string }> {
     const response = await api.delete(`/notificaciones/${id}`);
-    return response;
+    return response as unknown as { message: string };
   }
 
   // Obtener tipos de notificaciones disponibles
   async getTiposNotificaciones(): Promise<TipoNotificacionOption[]> {
     const response = await api.get('/notificaciones/tipos');
-    return response;
+    return response.data as TipoNotificacionOption[];
   }
 
   // Obtener notificaciones recientes (no leídas + últimas 5 leídas)

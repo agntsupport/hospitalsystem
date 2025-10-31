@@ -80,7 +80,7 @@ const ExecutiveDashboardTab: React.FC<ExecutiveDashboardTabProps> = ({
       }
 
       if (kpisResponse.success) {
-        setKpis(kpisResponse.data.items);
+        setKpis(kpisResponse.data?.items || []);
       } else {
         console.error('Error en KPIs:', kpisResponse.message);
       }

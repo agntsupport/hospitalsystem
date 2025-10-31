@@ -73,55 +73,55 @@ class UsersService {
     limit?: number;
   }): Promise<UsersResponse> {
     const response = await api.get('/users', { params });
-    return response;
+    return response as unknown as UsersResponse;
   }
 
   // Obtener un usuario específico
   async getUserById(id: number): Promise<User> {
     const response = await api.get(`/users/${id}`);
-    return response;
+    return response.data as User;
   }
 
   // Crear nuevo usuario
   async createUser(data: CreateUserData): Promise<{ message: string; usuario: User }> {
     const response = await api.post('/users', data);
-    return response;
+    return response as unknown as { message: string; usuario: User };
   }
 
   // Actualizar usuario
   async updateUser(id: number, data: UpdateUserData): Promise<{ message: string; usuario: User }> {
     const response = await api.put(`/users/${id}`, data);
-    return response;
+    return response as unknown as { message: string; usuario: User };
   }
 
   // Desactivar usuario (soft delete)
   async deleteUser(id: number): Promise<{ message: string; usuario: { id: number; username: string; activo: boolean } }> {
     const response = await api.delete(`/users/${id}`);
-    return response;
+    return response as unknown as { message: string; usuario: { id: number; username: string; activo: boolean } };
   }
 
   // Reactivar usuario
   async reactivateUser(id: number): Promise<{ message: string; usuario: { id: number; username: string; activo: boolean } }> {
     const response = await api.put(`/users/${id}/reactivate`);
-    return response;
+    return response as unknown as { message: string; usuario: { id: number; username: string; activo: boolean } };
   }
 
   // Resetear contraseña
   async resetPassword(id: number, newPassword: string): Promise<{ message: string }> {
     const response = await api.put(`/users/${id}/reset-password`, { newPassword });
-    return response;
+    return response as unknown as { message: string };
   }
 
   // Obtener historial de cambios de rol
   async getRoleHistory(id: number): Promise<RoleHistory[]> {
     const response = await api.get(`/users/${id}/role-history`);
-    return response;
+    return response.data as RoleHistory[];
   }
 
   // Obtener estadísticas de usuarios
   async getUserStats(): Promise<UserStats> {
     const response = await api.get('/users/stats/summary');
-    return response;
+    return response.data as UserStats;
   }
 
   // Validar username disponible

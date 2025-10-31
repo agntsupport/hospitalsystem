@@ -118,7 +118,7 @@ const HospitalizationPage: React.FC = () => {
       ]);
 
       if (admissionsResponse.success && admissionsResponse.data) {
-        setAdmissions(admissionsResponse.data.items || []);
+        setAdmissions(admissionsResponse.data?.items || [] || []);
         setTotalItems(admissionsResponse.data.pagination?.total || 0);
         setTotalPages(admissionsResponse.data.pagination?.totalPages || 1);
       } else {

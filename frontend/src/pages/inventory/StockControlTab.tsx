@@ -90,8 +90,8 @@ const StockControlTab: React.FC = () => {
       // Cargar todos los productos para análisis de alertas
       const response = await inventoryService.getProducts({ limit: 1000, offset: 0 });
       
-      if (response.success && response.data && response.data.products) {
-        const products = response.data.products;
+      if (response.success && response.data && response.data?.products || []) {
+        const products = response.data?.products || [];
         setProducts(products);
         
         // Generar alertas

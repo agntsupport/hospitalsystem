@@ -38,13 +38,14 @@ export const roomsService = {
       const occupancyRate = totalRooms > 0 ? ((occupiedRooms / totalRooms) * 100) : 0;
       
       // Transform room types
-      const roomsByType: { [key: string]: { total: number; available: number; occupied: number } } = {};
+      const roomsByType: { [key: string]: { total: number; available: number; occupied: number; maintenance: number } } = {};
       if (backendData.porTipo) {
         Object.entries(backendData.porTipo).forEach(([tipo, total]) => {
           roomsByType[tipo] = {
             total: total as number,
             available: total as number, // Assume all available for now
-            occupied: 0
+            occupied: 0,
+            maintenance: 0
           };
         });
       }
@@ -58,14 +59,25 @@ export const roomsService = {
         roomsByType
       };
       
-      return { 
-        success: true, 
-        message: response.message,
-        data: transformedStats 
+      return {
+        success: true,
+        message: response.message || "Operación exitosa",
+        data: transformedStats
       };
     }
-    
-    return response;
+
+    return {
+      success: false,
+      message: response.message || "Error al obtener estadísticas",
+      data: {
+        totalRooms: 0,
+        availableRooms: 0,
+        occupiedRooms: 0,
+        maintenanceRooms: 0,
+        occupancyRate: 0,
+        roomsByType: {}
+      }
+    };
   },
 
   // Room CRUD operations
@@ -88,7 +100,8 @@ export const roomsService = {
     // Transform backend response structure to match RoomsResponse type
     if (response.success && response.data) {
       return {
-        ...response,
+        success: true,
+        message: response.message || "Operación exitosa",
         data: {
           rooms: response.data.items || [],
           total: response.data.pagination?.total || 0,
@@ -97,37 +110,46 @@ export const roomsService = {
         }
       };
     }
-    
-    return response;
+
+    return {
+      success: false,
+      message: response.message || "Error al obtener habitaciones",
+      data: {
+        rooms: [],
+        total: 0,
+        totalPages: 1,
+        currentPage: 1
+      }
+    };
   },
 
   async getRoomById(id: number): Promise<SingleRoomResponse> {
-    return api.get(`/rooms/${id}`);
+    return api.get(`/rooms/${id}`) as Promise<SingleRoomResponse>;
   },
 
   async createRoom(roomData: CreateRoomRequest): Promise<SingleRoomResponse> {
-    return api.post('/rooms', roomData);
+    return api.post('/rooms', roomData) as Promise<SingleRoomResponse>;
   },
 
   async updateRoom(id: number, roomData: UpdateRoomRequest): Promise<SingleRoomResponse> {
-    return api.put(`/rooms/${id}`, roomData);
+    return api.put(`/rooms/${id}`, roomData) as Promise<SingleRoomResponse>;
   },
 
   async deleteRoom(id: number, motivo: string = 'Eliminación de habitación desde panel administrativo'): Promise<{ success: boolean; message: string }> {
-    return api.delete(`/rooms/${id}`, { data: { motivo } });
+    return api.delete(`/rooms/${id}`, { data: { motivo } }) as Promise<{ success: boolean; message: string }>;
   },
 
   // Room assignment operations
   async assignRoom(roomId: number, assignmentData: AssignRoomRequest): Promise<SingleRoomResponse> {
-    return api.put(`/rooms/${roomId}/assign`, assignmentData);
+    return api.put(`/rooms/${roomId}/assign`, assignmentData) as Promise<SingleRoomResponse>;
   },
 
   async releaseRoom(roomId: number, observaciones?: string): Promise<SingleRoomResponse> {
-    return api.put(`/rooms/${roomId}/release`, { observaciones });
+    return api.put(`/rooms/${roomId}/release`, { observaciones }) as Promise<SingleRoomResponse>;
   },
 
   async setRoomMaintenance(roomId: number, observaciones?: string): Promise<SingleRoomResponse> {
-    return api.put(`/rooms/${roomId}/maintenance`, { observaciones });
+    return api.put(`/rooms/${roomId}/maintenance`, { observaciones }) as Promise<SingleRoomResponse>;
   },
 
   // Office Statistics
@@ -158,23 +180,46 @@ export const roomsService = {
         });
       }
       
+      const officesByTypeWithMaintenance: { [key: string]: { total: number; available: number; occupied: number; maintenance: number } } = {};
+      if (backendData.distribution) {
+        Object.entries(backendData.distribution).forEach(([specialty, total]) => {
+          officesByTypeWithMaintenance[specialty] = {
+            total: total as number,
+            available: total as number,
+            occupied: 0,
+            maintenance: 0
+          };
+        });
+      }
+
       const transformedStats: OfficeStats = {
         totalOffices,
         availableOffices,
         occupiedOffices,
         maintenanceOffices,
         occupancyRate,
-        officesByType
+        officesByType: officesByTypeWithMaintenance
       };
-      
-      return { 
-        success: true, 
-        message: response.message,
-        data: transformedStats 
+
+      return {
+        success: true,
+        message: response.message || "Operación exitosa",
+        data: transformedStats
       };
     }
-    
-    return response;
+
+    return {
+      success: false,
+      message: response.message || "Error al obtener estadísticas de consultorios",
+      data: {
+        totalOffices: 0,
+        availableOffices: 0,
+        occupiedOffices: 0,
+        maintenanceOffices: 0,
+        occupancyRate: 0,
+        officesByType: {}
+      }
+    };
   },
 
   // Office CRUD operations
@@ -197,41 +242,55 @@ export const roomsService = {
     // Transform backend response structure
     if (response.success && response.data) {
       return {
-        ...response,
-        data: response.data.items || [],
-        pagination: response.data.pagination
+        success: true,
+        message: response.message || "Operación exitosa",
+        data: {
+          offices: response.data.items || [],
+          total: response.data.pagination?.total || 0,
+          totalPages: response.data.pagination?.pages || 1,
+          currentPage: response.data.pagination?.currentPage || 1
+        }
       };
     }
-    
-    return response;
+
+    return {
+      success: false,
+      message: response.message || "Error al obtener consultorios",
+      data: {
+        offices: [],
+        total: 0,
+        totalPages: 1,
+        currentPage: 1
+      }
+    };
   },
 
   async getOfficeById(id: number): Promise<SingleOfficeResponse> {
-    return api.get(`/offices/${id}`);
+    return api.get(`/offices/${id}`) as Promise<SingleOfficeResponse>;
   },
 
   async createOffice(officeData: CreateOfficeRequest): Promise<SingleOfficeResponse> {
-    return api.post('/offices', officeData);
+    return api.post('/offices', officeData) as Promise<SingleOfficeResponse>;
   },
 
   async updateOffice(id: number, officeData: UpdateOfficeRequest): Promise<SingleOfficeResponse> {
-    return api.put(`/offices/${id}`, officeData);
+    return api.put(`/offices/${id}`, officeData) as Promise<SingleOfficeResponse>;
   },
 
   async deleteOffice(id: number): Promise<{ success: boolean; message: string }> {
-    return api.delete(`/offices/${id}`);
+    return api.delete(`/offices/${id}`) as Promise<{ success: boolean; message: string }>;
   },
 
   // Office assignment operations
   async assignOffice(officeId: number, assignmentData: AssignOfficeRequest): Promise<SingleOfficeResponse> {
-    return api.put(`/offices/${officeId}/assign`, assignmentData);
+    return api.put(`/offices/${officeId}/assign`, assignmentData) as Promise<SingleOfficeResponse>;
   },
 
   async releaseOffice(officeId: number, observaciones?: string): Promise<SingleOfficeResponse> {
-    return api.put(`/offices/${officeId}/release`, { observaciones });
+    return api.put(`/offices/${officeId}/release`, { observaciones }) as Promise<SingleOfficeResponse>;
   },
 
   async setOfficeMaintenance(officeId: number, observaciones?: string): Promise<SingleOfficeResponse> {
-    return api.put(`/offices/${officeId}/maintenance`, { observaciones });
+    return api.put(`/offices/${officeId}/maintenance`, { observaciones }) as Promise<SingleOfficeResponse>;
   }
 };

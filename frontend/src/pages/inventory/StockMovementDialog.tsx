@@ -100,7 +100,7 @@ const StockMovementDialog: React.FC<StockMovementDialogProps> = ({
       });
       
       if (response.success && response.data) {
-        setProducts(response.data.products || []);
+        setProducts(response.data?.products || [] || []);
       }
     } catch (error) {
       console.error('Error loading products:', error);

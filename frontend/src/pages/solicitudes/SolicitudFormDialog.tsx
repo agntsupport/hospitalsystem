@@ -224,7 +224,7 @@ const SolicitudFormDialog: React.FC<SolicitudFormDialogProps> = ({
         limit: 500 
       });
       
-      // Asegurar que sea un array - el backend devuelve response.data.products, no items
+      // Asegurar que sea un array - el backend devuelve response.data?.products || [], no items
       const productos = Array.isArray(response.data) 
         ? response.data 
         : (response.data?.products || response.data?.items || []);

@@ -91,7 +91,7 @@ const POSTransactionDialog: React.FC<POSTransactionDialogProps> = ({
     try {
       const response = await posService.getServices({ activo: true });
       if (response.success) {
-        setServices(response.data.services);
+        setServices(response.data?.services || []);
       }
     } catch (error) {
       console.error('Error loading services:', error);

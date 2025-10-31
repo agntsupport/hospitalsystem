@@ -49,11 +49,12 @@ const createTestStore = () => {
         isAuthenticated: true,
         user: {
           id: 1,
-          nombreUsuario: 'testuser',
-          rol: 'administrador',
+          username: 'testuser',
+          rol: 'administrador' as const,
           email: 'test@test.com',
           activo: true,
           createdAt: '2025-01-01',
+          updatedAt: '2025-01-01',
         },
         token: 'mock-token',
         loading: false,
@@ -61,28 +62,41 @@ const createTestStore = () => {
       },
       ui: {
         sidebarOpen: false,
-        loading: false,
-        error: null,
-        success: null,
+        theme: 'light' as const,
+        notifications: [],
+        loading: {
+          global: false,
+        },
+        modals: {},
       },
       patients: {
         patients: [],
         currentPatient: null,
         stats: {
           totalPacientes: 3,
-          pacientesActivos: 2,
-          pacientesInactivos: 1,
-          nuevosEsteMes: 3,
-          edadPromedio: 30,
-          distribucionGenero: { M: 2, F: 1, Otro: 0 },
-          distribucionEdad: { '20-30': 1, '30-40': 2 },
+          pacientesMenores: 1,
+          pacientesAdultos: 2,
+          pacientesConCuentaAbierta: 0,
+          pacientesHospitalizados: 0,
+          pacientesAmbulatorios: 3,
+          patientsByGender: { M: 2, F: 1, Otro: 0 },
+          patientsByAgeGroup: {
+            '0-17': 1,
+            '18-35': 1,
+            '36-55': 1,
+            '56+': 0
+          },
+          growth: {
+            total: 3,
+            weekly: 3,
+            monthly: 3
+          }
         },
         loading: false,
         error: null,
         filters: {
           search: '',
-          estado: 'todos',
-          genero: 'todos',
+          esMenorEdad: false,
         },
         pagination: {
           page: 1,
@@ -186,8 +200,8 @@ describe('PatientsTab (Simple Tests)', () => {
       renderWithProviders(<MockPatientsTab />, { store });
       
       const state = store.getState();
-      expect(state.patients.stats.totalPacientes).toBe(3);
-      expect(state.patients.stats.pacientesActivos).toBe(2);
+      expect(state.patients.stats?.totalPacientes).toBe(3);
+      expect(state.patients.stats?.pacientesAdultos).toBe(2);
     });
 
     it('should access user authentication from store', () => {
@@ -196,7 +210,7 @@ describe('PatientsTab (Simple Tests)', () => {
       
       const state = store.getState();
       expect(state.auth.isAuthenticated).toBe(true);
-      expect(state.auth.user.rol).toBe('administrador');
+      expect(state.auth.user?.rol).toBe('administrador');
     });
 
     it('should handle loading state', () => {
@@ -211,7 +225,7 @@ describe('PatientsTab (Simple Tests)', () => {
             isAuthenticated: true,
             user: {
               id: 1,
-              nombreUsuario: 'testuser',
+              username: 'testuser',
               rol: 'administrador',
               email: 'test@test.com',
               activo: true,
@@ -223,28 +237,29 @@ describe('PatientsTab (Simple Tests)', () => {
           },
           ui: {
             sidebarOpen: false,
-            loading: true, // Loading state
-            error: null,
-            success: null,
+            theme: 'light' as const,
+            notifications: [],
+            loading: {
+              global: true, // Loading state
+            },
+            modals: {},
           },
           patients: {
             patients: [],
             currentPatient: null,
             stats: {
               totalPacientes: 0,
-              pacientesActivos: 0,
-              pacientesInactivos: 0,
-              nuevosEsteMes: 0,
-              edadPromedio: 0,
-              distribucionGenero: { M: 0, F: 0, Otro: 0 },
-              distribucionEdad: {},
+              pacientesMenores: 0,
+              pacientesAdultos: 0,
+              pacientesConCuentaAbierta: 0,
+              pacientesHospitalizados: 0,
+              pacientesAmbulatorios: 0,
             },
             loading: true,
             error: null,
             filters: {
               search: '',
-              estado: 'todos',
-              genero: 'todos',
+              esMenorEdad: false,
             },
             pagination: {
               page: 1,
@@ -308,7 +323,7 @@ describe('PatientsTab (Simple Tests)', () => {
             isAuthenticated: true,
             user: {
               id: 1,
-              nombreUsuario: 'testuser',
+              username: 'testuser',
               rol: 'administrador',
               email: 'test@test.com',
               activo: true,
@@ -320,28 +335,29 @@ describe('PatientsTab (Simple Tests)', () => {
           },
           ui: {
             sidebarOpen: false,
-            loading: false,
-            error: 'Test error message',
-            success: null,
+            theme: 'light' as const,
+            notifications: [],
+            loading: {
+              global: false,
+            },
+            modals: {},
           },
           patients: {
             patients: [],
             currentPatient: null,
             stats: {
               totalPacientes: 0,
-              pacientesActivos: 0,
-              pacientesInactivos: 0,
-              nuevosEsteMes: 0,
-              edadPromedio: 0,
-              distribucionGenero: { M: 0, F: 0, Otro: 0 },
-              distribucionEdad: {},
+              pacientesMenores: 0,
+              pacientesAdultos: 0,
+              pacientesConCuentaAbierta: 0,
+              pacientesHospitalizados: 0,
+              pacientesAmbulatorios: 0,
             },
             loading: false,
             error: 'Failed to load patients',
             filters: {
               search: '',
-              estado: 'todos',
-              genero: 'todos',
+              esMenorEdad: false,
             },
             pagination: {
               page: 1,
@@ -359,7 +375,6 @@ describe('PatientsTab (Simple Tests)', () => {
       
       const state = store.getState();
       expect(state.patients.error).toBe('Failed to load patients');
-      expect(state.ui.error).toBe('Test error message');
     });
   });
 });

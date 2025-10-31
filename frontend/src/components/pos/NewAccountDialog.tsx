@@ -82,7 +82,7 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     try {
       const response = await patientsService.searchPatients(query, 10);
       if (response.success) {
-        setPatients(response.data.patients);
+        setPatients(response.data?.patients || []);
       }
     } catch (error) {
       console.error('Error searching patients:', error);

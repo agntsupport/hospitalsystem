@@ -16,28 +16,79 @@ const mockedInventoryService = inventoryService as jest.Mocked<typeof inventoryS
 
 // Test data
 const mockSuppliers = [
-  { id: 1, nombre: 'Proveedor 1', contacto: 'Contacto 1' },
-  { id: 2, nombre: 'Proveedor 2', contacto: 'Contacto 2' },
+  {
+    id: 1,
+    codigo: 'PROV001',
+    razonSocial: 'Proveedor 1 SA de CV',
+    nombreComercial: 'Proveedor 1',
+    rfc: 'PRO123456ABC',
+    telefono: '555-1234',
+    email: 'contacto@prov1.com',
+    direccion: 'Calle 123',
+    ciudad: 'Ciudad',
+    estado: 'Estado',
+    codigoPostal: '12345',
+    contacto: {
+      nombre: 'Contacto 1',
+      cargo: 'Ventas',
+      telefono: '555-5678',
+      email: 'ventas@prov1.com'
+    },
+    condicionesPago: '30 días',
+    diasCredito: 30,
+    activo: true,
+    fechaRegistro: '2025-01-01',
+    fechaActualizacion: '2025-01-01'
+  },
+  {
+    id: 2,
+    codigo: 'PROV002',
+    razonSocial: 'Proveedor 2 SA de CV',
+    nombreComercial: 'Proveedor 2',
+    rfc: 'PRO789012DEF',
+    telefono: '555-5678',
+    email: 'contacto@prov2.com',
+    direccion: 'Avenida 456',
+    ciudad: 'Ciudad',
+    estado: 'Estado',
+    codigoPostal: '54321',
+    contacto: {
+      nombre: 'Contacto 2',
+      cargo: 'Gerente',
+      telefono: '555-9012',
+      email: 'gerente@prov2.com'
+    },
+    condicionesPago: '15 días',
+    diasCredito: 15,
+    activo: true,
+    fechaRegistro: '2025-01-01',
+    fechaActualizacion: '2025-01-01'
+  },
 ];
 
 const mockProduct = {
   id: 1,
-  nombre: 'Test Product',
-  precio: 25.99,
-  stock: 100,
-  stockMinimo: 10,
-  categoria: 'medicamento' as const,
-  descripcion: 'Test product description',
-  proveedor_id: 1,
-  contenido: '500mg',
-  stockMaximo: 1000,
+  codigo: 'PROD001',
   codigoBarras: '1234567890',
+  nombre: 'Test Product',
+  descripcion: 'Test product description',
+  categoria: 'medicamento' as const,
+  proveedor: mockSuppliers[0],
+  unidadMedida: 'pieza',
+  contenidoPorUnidad: '500mg',
+  precioCompra: 20.00,
+  precioVenta: 25.99,
+  margenGanancia: 29.95,
+  stockMinimo: 10,
+  stockMaximo: 1000,
+  stockActual: 100,
   ubicacion: 'A1-B2',
   requiereReceta: true,
   fechaCaducidad: '2025-12-31',
   lote: 'LOT001',
-  createdAt: '2025-01-01',
-  proveedor: mockSuppliers[0],
+  activo: true,
+  fechaRegistro: '2025-01-01',
+  fechaActualizacion: '2025-01-01',
 };
 
 // Test store setup
@@ -52,11 +103,12 @@ const createTestStore = () => {
         isAuthenticated: true,
         user: {
           id: 1,
-          nombreUsuario: 'testuser',
-          rol: 'almacenista',
+          username: 'testuser',
+          rol: 'almacenista' as const,
           email: 'test@test.com',
           activo: true,
           createdAt: '2025-01-01',
+          updatedAt: '2025-01-01',
         },
         token: 'mock-token',
         loading: false,
@@ -64,9 +116,12 @@ const createTestStore = () => {
       },
       ui: {
         sidebarOpen: false,
-        loading: false,
-        error: null,
-        success: null,
+        theme: 'light' as const,
+        notifications: [],
+        loading: {
+          global: false,
+        },
+        modals: {},
       },
     },
   });
@@ -89,11 +144,13 @@ const renderWithProviders = (component: React.ReactElement, { store = createTest
 describe('ProductFormDialog', () => {
   const mockOnClose = jest.fn();
   const mockOnSuccess = jest.fn();
+  const mockOnSubmit = jest.fn();
 
   const defaultProps = {
     open: true,
     onClose: mockOnClose,
-    onSuccess: mockOnSuccess,
+    onSubmit: mockOnSubmit,
+    suppliers: mockSuppliers,
   };
 
   beforeEach(() => {
@@ -217,14 +274,16 @@ describe('ProductFormDialog', () => {
 
     it('should validate stock minimum vs maximum', async () => {
       renderWithProviders(<ProductFormDialog {...defaultProps} />);
-      
+
       await waitFor(() => {
-        const stockMinField = screen.getByLabelText(/stock mínimo/i);
-        const stockMaxField = screen.getByLabelText(/stock máximo/i);
-        
-        await userEvent.type(stockMinField, '100');
-        await userEvent.type(stockMaxField, '50');
+        expect(screen.getByLabelText(/stock mínimo/i)).toBeInTheDocument();
       });
+
+      const stockMinField = screen.getByLabelText(/stock mínimo/i);
+      const stockMaxField = screen.getByLabelText(/stock máximo/i);
+
+      await userEvent.type(stockMinField, '100');
+      await userEvent.type(stockMaxField, '50');
       
       const submitButton = screen.getByText('Crear Producto');
       fireEvent.click(submitButton);

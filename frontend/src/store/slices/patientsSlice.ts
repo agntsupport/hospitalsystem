@@ -90,7 +90,7 @@ export const fetchPatientById = createAsyncThunk(
       const response = await api.get<PatientResponse['data']>(`${API_ROUTES.PATIENTS.BY_ID(id)}${params}`);
       
       if (response.success && response.data) {
-        return response.data.patient;
+        return response.data?.patient;
       }
       
       return rejectWithValue('Error al obtener paciente');
@@ -107,7 +107,7 @@ export const createPatient = createAsyncThunk(
       const response = await api.post<PatientResponse['data']>(API_ROUTES.PATIENTS.BASE, patientData);
       
       if (response.success && response.data) {
-        return response.data.patient;
+        return response.data?.patient;
       }
       
       return rejectWithValue('Error al crear paciente');
@@ -124,7 +124,7 @@ export const updatePatient = createAsyncThunk(
       const response = await api.put<PatientResponse['data']>(API_ROUTES.PATIENTS.BY_ID(id), data);
       
       if (response.success && response.data) {
-        return response.data.patient;
+        return response.data?.patient;
       }
       
       return rejectWithValue('Error al actualizar paciente');
@@ -145,7 +145,7 @@ export const searchPatients = createAsyncThunk(
       const response = await api.get<{ patients: Patient[] }>(`${API_ROUTES.PATIENTS.SEARCH}?${params.toString()}`);
       
       if (response.success && response.data) {
-        return response.data.patients;
+        return response.data?.patients || [];
       }
       
       return rejectWithValue('Error al buscar pacientes');

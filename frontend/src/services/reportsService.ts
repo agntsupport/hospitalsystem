@@ -90,12 +90,11 @@ class ReportsService {
         const revenueData: RevenueByPeriod[] = [
           {
             periodo: filters.periodo || 'mes',
-            fechaInicio: filters.fechaInicio || new Date().toISOString().split('T')[0],
-            fechaFin: filters.fechaFin || new Date().toISOString().split('T')[0],
             ingresos: response.data.ingresos?.total || 0,
             facturas: (response.data.ingresos?.facturasPagadas?.cantidad || 0) + (response.data.ingresos?.ventasRapidas?.cantidad || 0),
-            ventasRapidas: response.data.ingresos?.ventasRapidas?.monto || 0,
-            cuentasPorCobrar: response.data.cuentasPorCobrar?.monto || 0
+            promedioFactura: response.data.ingresos?.total ?
+              (response.data.ingresos.total / ((response.data.ingresos?.facturasPagadas?.cantidad || 0) + (response.data.ingresos?.ventasRapidas?.cantidad || 0))) : 0,
+            crecimiento: 0
           }
         ];
 
@@ -144,24 +143,36 @@ class ReportsService {
         // Transformar datos de ingresos en servicios
         const servicesData: RevenueByService[] = [
           {
-            servicioId: 1,
-            nombreServicio: 'Ventas Rápidas',
-            tipoServicio: 'pos',
+            servicio: {
+              id: 1,
+              nombre: 'Ventas Rápidas',
+              categoria: 'pos'
+            },
             ingresos: response.data.ingresos?.ventasRapidas?.monto || 0,
-            cantidadServicios: response.data.ingresos?.ventasRapidas?.cantidad || 0,
-            ingresoPromedio: response.data.ingresos?.ventasRapidas?.cantidad > 0 ? 
+            cantidad: response.data.ingresos?.ventasRapidas?.cantidad || 0,
+            porcentajeTotal: 0,
+            promedioUnitario: response.data.ingresos?.ventasRapidas?.cantidad > 0 ?
               (response.data.ingresos.ventasRapidas.monto / response.data.ingresos.ventasRapidas.cantidad) : 0
           },
           {
-            servicioId: 2,
-            nombreServicio: 'Facturas Médicas',
-            tipoServicio: 'medico',
+            servicio: {
+              id: 2,
+              nombre: 'Facturas Médicas',
+              categoria: 'medico'
+            },
             ingresos: response.data.ingresos?.facturasPagadas?.monto || 0,
-            cantidadServicios: response.data.ingresos?.facturasPagadas?.cantidad || 0,
-            ingresoPromedio: response.data.ingresos?.facturasPagadas?.cantidad > 0 ? 
+            cantidad: response.data.ingresos?.facturasPagadas?.cantidad || 0,
+            porcentajeTotal: 0,
+            promedioUnitario: response.data.ingresos?.facturasPagadas?.cantidad > 0 ?
               (response.data.ingresos.facturasPagadas.monto / response.data.ingresos.facturasPagadas.cantidad) : 0
           }
         ].filter(service => service.ingresos > 0); // Solo incluir servicios con ingresos
+
+        // Calculate percentages
+        const totalIngresos = servicesData.reduce((sum, s) => sum + s.ingresos, 0);
+        servicesData.forEach(s => {
+          s.porcentajeTotal = totalIngresos > 0 ? (s.ingresos / totalIngresos) * 100 : 0;
+        });
 
         return {
           success: true,
@@ -206,13 +217,12 @@ class ReportsService {
         if (response.data.distribucionMetodosPago) {
           Object.entries(response.data.distribucionMetodosPago).forEach(([metodo, data]: [string, any]) => {
             paymentMethodsData.push({
-              metodoPago: metodo,
-              nombreMetodo: metodo.charAt(0).toUpperCase() + metodo.slice(1).replace('_', ' '),
-              ingresos: data.monto || 0,
-              cantidadTransacciones: data.cantidad || 0,
-              montoPromedio: data.cantidad > 0 ? (data.monto / data.cantidad) : 0,
-              porcentaje: response.data.ingresos?.total > 0 ? 
-                ((data.monto / response.data.ingresos.total) * 100) : 0
+              metodoPago: metodo.charAt(0).toUpperCase() + metodo.slice(1).replace('_', ' '),
+              monto: data.monto || 0,
+              transacciones: data.cantidad || 0,
+              porcentajeTotal: response.data.ingresos?.total > 0 ?
+                ((data.monto / response.data.ingresos.total) * 100) : 0,
+              promedioTransaccion: data.cantidad > 0 ? (data.monto / data.cantidad) : 0
             });
           });
         }
@@ -308,18 +318,18 @@ class ReportsService {
         // Transformar datos operacionales en reporte de ocupación
         const roomOccupancyReport: RoomOccupancyReport = {
           totalHabitaciones: 20, // Estimado - no disponible en response actual
-          habitacionesOcupadas: response.data.ocupacion?.habitacionesOcupadas || 0,
-          habitacionesDisponibles: 20 - (response.data.ocupacion?.habitacionesOcupadas || 0),
-          porcentajeOcupacion: response.data.ocupacion?.habitacionesOcupadas ? 
-            ((response.data.ocupacion.habitacionesOcupadas / 20) * 100) : 0,
+          ocupadas: response.data.ocupacion?.ocupadas || 0,
+          disponibles: 20 - (response.data.ocupacion?.ocupadas || 0),
+          mantenimiento: 0,
+          porcentajeOcupacion: response.data.ocupacion?.ocupadas ?
+            ((response.data.ocupacion.ocupadas / 20) * 100) : 0,
           promedioEstancia: 3.5, // Estimado
-          rotacionDiaria: 0.8, // Estimado
-          ocupacionPorTipo: {
-            'individual': { total: 12, ocupadas: Math.floor((response.data.ocupacion?.habitacionesOcupadas || 0) * 0.6) },
-            'doble': { total: 6, ocupadas: Math.floor((response.data.ocupacion?.habitacionesOcupadas || 0) * 0.3) },
-            'suite': { total: 2, ocupadas: Math.floor((response.data.ocupacion?.habitacionesOcupadas || 0) * 0.1) }
-          },
-          tendenciaOcupacion: []
+          ingresosPorHabitacion: 0,
+          ocupacionPorTipo: [
+            { tipo: 'individual', total: 12, ocupadas: Math.floor((response.data.ocupacion?.ocupadas || 0) * 0.6), porcentaje: 0 },
+            { tipo: 'doble', total: 6, ocupadas: Math.floor((response.data.ocupacion?.ocupadas || 0) * 0.3), porcentaje: 0 },
+            { tipo: 'suite', total: 2, ocupadas: Math.floor((response.data.ocupacion?.ocupadas || 0) * 0.1), porcentaje: 0 }
+          ]
         };
 
         return {
@@ -360,26 +370,29 @@ class ReportsService {
         // Crear datos de productividad basados en datos operacionales
         const productivityData: EmployeeProductivityReport[] = [
           {
-            empleadoId: 1,
-            nombreEmpleado: 'Dr. Juan Pérez',
-            departamento: 'Médico',
-            cargo: 'Médico Especialista',
+            empleado: {
+              id: 1,
+              nombre: 'Dr. Juan Pérez',
+              tipo: 'medico_especialista',
+              especialidad: 'Medicina General'
+            },
             pacientesAtendidos: Math.floor(response.data.atencionPacientes?.pacientesAtendidos * 0.3 || 0),
             horasTrabajadas: 40,
-            productividadPorHora: 2.5,
-            metaCumplimiento: 85,
-            calificacionDesempeño: 4.2
+            ingresosGenerados: 0,
+            eficiencia: 85,
+            satisfaccionPacientes: 4.2
           },
           {
-            empleadoId: 2,
-            nombreEmpleado: 'Enf. María García',
-            departamento: 'Enfermería',
-            cargo: 'Enfermera Jefe',
+            empleado: {
+              id: 2,
+              nombre: 'Enf. María García',
+              tipo: 'enfermero'
+            },
             pacientesAtendidos: Math.floor(response.data.atencionPacientes?.pacientesAtendidos * 0.5 || 0),
             horasTrabajadas: 45,
-            productividadPorHora: 3.1,
-            metaCumplimiento: 92,
-            calificacionDesempeño: 4.5
+            ingresosGenerados: 0,
+            eficiencia: 92,
+            satisfaccionPacientes: 4.5
           }
         ];
 

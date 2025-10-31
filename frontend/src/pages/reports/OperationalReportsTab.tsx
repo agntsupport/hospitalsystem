@@ -80,25 +80,25 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
       ]);
 
       // Procesar respuestas
-      if (roomResponse.success) {
+      if (roomResponse.success && roomResponse.data) {
         setRoomOccupancy(roomResponse.data);
       } else {
         console.error('Error en ocupación de habitaciones:', roomResponse.message);
       }
 
       if (employeeResponse.success) {
-        setEmployeeProductivity(employeeResponse.data.items);
+        setEmployeeProductivity(employeeResponse.data?.items || []);
       } else {
         console.error('Error en productividad de empleados:', employeeResponse.message);
       }
 
       if (inventoryResponse.success) {
-        setInventoryTurnover(inventoryResponse.data.items);
+        setInventoryTurnover(inventoryResponse.data?.items || []);
       } else {
         console.error('Error en rotación de inventario:', inventoryResponse.message);
       }
 
-      if (patientResponse.success) {
+      if (patientResponse.success && patientResponse.data) {
         setPatientFlow(patientResponse.data);
       } else {
         console.error('Error en flujo de pacientes:', patientResponse.message);
@@ -142,7 +142,7 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
           <MetricCard
             title="Ocupación General"
             value={`${roomOccupancy.porcentajeOcupacion.toFixed(1)}%`}
-            subtitle={`${roomOccupancy.habitacionesOcupadas}/${roomOccupancy.totalHabitaciones} habitaciones`}
+            subtitle={`${roomOccupancy.ocupadas}/${roomOccupancy.totalHabitaciones} habitaciones`}
             trend={roomOccupancy.porcentajeOcupacion > 75 ? 'up' : 'down'}
             trendValue={Math.abs(roomOccupancy.porcentajeOcupacion - 75)}
             icon={<HotelIcon sx={{ fontSize: 40 }} />}
@@ -153,7 +153,7 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Habitaciones Disponibles"
-            value={roomOccupancy.habitacionesDisponibles}
+            value={roomOccupancy.disponibles}
             subtitle="Listas para uso"
             icon={<LocalHospitalIcon sx={{ fontSize: 40 }} />}
             color="success"
@@ -173,7 +173,7 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Ingresos por Habitación"
-            value={reportsService.formatCurrency((roomOccupancy.habitacionesOcupadas || 0) * 1500)}
+            value={reportsService.formatCurrency((roomOccupancy.ocupadas || 0) * 1500)}
             subtitle="Promedio diario"
             icon={<TrendingUpIcon sx={{ fontSize: 40 }} />}
             color="warning"
@@ -305,23 +305,23 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {employeeProductivity.filter(employee => employee && employee.nombreEmpleado).map((employee, index) => (
+                {employeeProductivity.filter(employee => employee && employee.empleado?.nombre).map((employee, index) => (
                   <TableRow key={index} hover>
                     <TableCell>
                       <Box>
                         <Typography variant="body2" fontWeight="medium">
-                          {employee.nombreEmpleado}
+                          {employee.empleado.nombre}
                         </Typography>
-                        {employee.cargo && (
+                        {employee.empleado.tipo && (
                           <Typography variant="caption" color="text.secondary">
-                            {employee.cargo}
+                            {employee.empleado.tipo}
                           </Typography>
                         )}
                       </Box>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={employee.departamento || 'Sin departamento'}
+                        label={employee.empleado.especialidad || 'Sin especialidad'}
                         color="default"
                         size="small"
                       />
@@ -335,21 +335,21 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <LinearProgress
                           variant="determinate"
-                          value={employee.metaCumplimiento || 0}
+                          value={employee.eficiencia || 0}
                           sx={{ minWidth: 60, flexGrow: 1 }}
-                          color={(employee.metaCumplimiento || 0) > 85 ? 'success' : (employee.metaCumplimiento || 0) > 70 ? 'warning' : 'error'}
+                          color={(employee.eficiencia || 0) > 85 ? 'success' : (employee.eficiencia || 0) > 70 ? 'warning' : 'error'}
                         />
                         <Typography variant="body2" color="text.secondary">
-                          {(employee.metaCumplimiento || 0).toFixed(1)}%
+                          {(employee.eficiencia || 0).toFixed(1)}%
                         </Typography>
                       </Box>
                     </TableCell>
                     <TableCell align="center">
-                      {employee.calificacionDesempeño && (
+                      {employee.satisfaccionPacientes && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <StarIcon sx={{ fontSize: 16, color: 'warning.main' }} />
                           <Typography variant="body2">
-                            {employee.calificacionDesempeño.toFixed(1)}
+                            {employee.satisfaccionPacientes.toFixed(1)}
                           </Typography>
                         </Box>
                       )}
@@ -399,35 +399,35 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {inventoryTurnover.filter(item => item && item.nombreProducto).map((item, index) => (
+                {inventoryTurnover.filter(item => item && item.producto?.nombre).map((item, index) => (
                   <TableRow key={index} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium">
-                        {item.nombreProducto}
+                        {item.producto.nombre}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={item.categoria || 'Sin categoría'}
+                        label={item.producto.categoria || 'Sin categoría'}
                         size="small"
                         variant="outlined"
                       />
                     </TableCell>
-                    <TableCell align="center">{(item.stockPromedio || 0).toLocaleString()}</TableCell>
-                    <TableCell align="center">{(item.ventasPerido || 0).toLocaleString()}</TableCell>
-                    <TableCell align="center">{Math.max(0, (item.stockPromedio || 0) - (item.ventasPerido || 0)).toLocaleString()}</TableCell>
+                    <TableCell align="center">{(((item.stockInicial || 0) + (item.stockFinal || 0)) / 2).toLocaleString()}</TableCell>
+                    <TableCell align="center">{(item.consumido || 0).toLocaleString()}</TableCell>
+                    <TableCell align="center">{Math.max(0, (((item.stockInicial || 0) + (item.stockFinal || 0)) / 2) - (item.consumido || 0)).toLocaleString()}</TableCell>
                     <TableCell align="center">
                       <Typography
                         variant="body2"
-                        color={(item.rotacionInventario || 0) > 8 ? 'success.main' : (item.rotacionInventario || 0) > 5 ? 'warning.main' : 'error.main'}
+                        color={(item.rotacion || 0) > 8 ? 'success.main' : (item.rotacion || 0) > 5 ? 'warning.main' : 'error.main'}
                         fontWeight="medium"
                       >
-                        {(item.rotacionInventario || 0).toFixed(1)}x
+                        {(item.rotacion || 0).toFixed(1)}x
                       </Typography>
                     </TableCell>
                     <TableCell align="center">{item.diasInventario || 0} días</TableCell>
                     <TableCell align="center">
-                      {reportsService.formatCurrency(item.valorInventario || 0)}
+                      {reportsService.formatCurrency(item.valorRotacion || 0)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -528,9 +528,9 @@ const OperationalReportsTab: React.FC<OperationalReportsTabProps> = ({
         <Grid item xs={12} md={4}>
           <DonutChart
             title="Consultas por Tipo"
-            data={Object.entries(patientFlow.distribucionPorServicio || {}).map(([servicio, cantidad]) => ({
-              label: servicio,
-              value: cantidad
+            data={(patientFlow.consultasPorTipo || []).map((item) => ({
+              label: item.tipo,
+              value: item.cantidad
             }))}
             height={350}
             innerRadius={0.4}

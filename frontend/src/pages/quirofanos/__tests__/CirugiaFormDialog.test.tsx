@@ -6,7 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import CirugiaFormDialog from '../CirugiaFormDialog';
-import { quirofanosService } from '@/services/quirofanosService';
+import quirofanosService from '@/services/quirofanosService';
 import { patientsService } from '@/services/patientsService';
 import { employeeService } from '@/services/employeeService';
 import authSlice from '@/store/slices/authSlice';
@@ -115,11 +115,12 @@ const createTestStore = () => {
         isAuthenticated: true,
         user: {
           id: 1,
-          nombreUsuario: 'testuser',
-          rol: 'medico_especialista',
+          username: 'testuser',
+          rol: 'medico_especialista' as const,
           email: 'test@test.com',
           activo: true,
           createdAt: '2025-01-01',
+          updatedAt: '2025-01-01',
         },
         token: 'mock-token',
         loading: false,
@@ -127,9 +128,12 @@ const createTestStore = () => {
       },
       ui: {
         sidebarOpen: false,
-        loading: false,
-        error: null,
-        success: null,
+        theme: 'light' as const,
+        notifications: [],
+        loading: {
+          global: false,
+        },
+        modals: {},
       },
     },
   });

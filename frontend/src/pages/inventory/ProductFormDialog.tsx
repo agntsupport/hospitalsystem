@@ -42,6 +42,12 @@ import {
 } from '@/types/inventory.types';
 import { inventoryService } from '@/services/inventoryService';
 
+// Form type that includes codigo for display purposes
+interface ProductFormData extends Omit<CreateProductRequest, 'categoriaId'> {
+  codigo?: string;
+  categoriaId: CategoriaProducto | '';
+}
+
 const schema = yup.object({
   codigo: yup.string().optional(),
   codigoBarras: yup.string().optional(),
@@ -92,7 +98,7 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
     watch,
     setValue,
     formState: { errors }
-  } = useForm<CreateProductRequest | UpdateProductRequest>({
+  } = useForm<ProductFormData>({
     resolver: yupResolver(schema),
     defaultValues: {
       codigo: '',
@@ -175,15 +181,22 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
     }
   }, [product, isEditing, reset]);
 
-  const onFormSubmit = async (data: CreateProductRequest | UpdateProductRequest) => {
+  const onFormSubmit = async (data: ProductFormData) => {
     try {
       setLoading(true);
       setError(null);
 
+      // Remove codigo from the data and ensure categoriaId is correct type
+      const { codigo, categoriaId, ...requestData } = data;
+      const apiData = {
+        ...requestData,
+        categoriaId: categoriaId as CategoriaProducto
+      };
+
       if (isEditing && product) {
-        await inventoryService.updateProduct(product.id, data as UpdateProductRequest);
+        await inventoryService.updateProduct(product.id, apiData);
       } else {
-        await inventoryService.createProduct(data as CreateProductRequest);
+        await inventoryService.createProduct(apiData);
       }
 
       onSubmit();
@@ -205,7 +218,7 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
 
   const calculatePrecioVenta = () => {
     const compra = watch('precioCompra');
-    if (compra > 0) {
+    if (compra && compra > 0) {
       const ventaCalculado = compra * 1.3; // 30% de margen por defecto
       setValue('precioVenta', Number(ventaCalculado.toFixed(2)));
     }

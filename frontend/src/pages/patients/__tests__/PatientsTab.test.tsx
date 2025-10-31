@@ -7,6 +7,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import PatientsTab from '../PatientsTab';
 import { patientsService } from '@/services/patientsService';
+import { Patient } from '@/types/patients.types';
 import authSlice from '@/store/slices/authSlice';
 import uiSlice from '@/store/slices/uiSlice';
 import patientsSlice from '@/store/slices/patientsSlice';
@@ -30,54 +31,54 @@ jest.mock('../PatientFormDialog', () => {
 });
 
 // Test data
-const mockPatients = [
+const mockPatients: Patient[] = [
   {
     id: 1,
+    numeroExpediente: 'EXP-001',
     nombre: 'Juan',
     apellidoPaterno: 'Pérez',
     apellidoMaterno: 'García',
     fechaNacimiento: '1990-05-15',
-    genero: 'M' as const,
+    edad: 34,
+    genero: 'M',
     telefono: '5551234567',
     email: 'juan.perez@email.com',
     direccion: 'Calle Test 123',
-    ciudad: 'Ciudad Test',
-    estado: 'Estado Test',
-    codigoPostal: '12345',
     activo: true,
     createdAt: '2025-01-01',
+    updatedAt: '2025-01-01',
   },
   {
     id: 2,
+    numeroExpediente: 'EXP-002',
     nombre: 'María',
     apellidoPaterno: 'González',
     apellidoMaterno: 'López',
     fechaNacimiento: '1985-08-22',
-    genero: 'F' as const,
+    edad: 39,
+    genero: 'F',
     telefono: '5559876543',
     email: 'maria.gonzalez@email.com',
     direccion: 'Avenida Test 456',
-    ciudad: 'Ciudad Test',
-    estado: 'Estado Test',
-    codigoPostal: '54321',
     activo: true,
     createdAt: '2025-01-02',
+    updatedAt: '2025-01-02',
   },
   {
     id: 3,
+    numeroExpediente: 'EXP-003',
     nombre: 'Carlos',
     apellidoPaterno: 'Rodríguez',
     apellidoMaterno: 'Martínez',
     fechaNacimiento: '1992-12-10',
-    genero: 'M' as const,
+    edad: 32,
+    genero: 'M',
     telefono: '5555555555',
     email: 'carlos.rodriguez@email.com',
     direccion: 'Boulevard Test 789',
-    ciudad: 'Ciudad Test',
-    estado: 'Estado Test',
-    codigoPostal: '67890',
     activo: false,
     createdAt: '2025-01-03',
+    updatedAt: '2025-01-03',
   },
 ];
 
@@ -94,7 +95,7 @@ const createTestStore = (initialState?: any) => {
         isAuthenticated: true,
         user: {
           id: 1,
-          nombreUsuario: 'testuser',
+          username: 'testuser',
           rol: 'administrador',
           email: 'test@test.com',
           activo: true,
@@ -105,29 +106,30 @@ const createTestStore = (initialState?: any) => {
         error: null,
       },
       ui: {
-        sidebarOpen: false,
-        loading: false,
-        error: null,
-        success: null,
+        sidebarOpen: true,
+        theme: 'light' as const,
+        notifications: [],
+        loading: {
+          global: false,
+        },
+        modals: {},
       },
       patients: {
         patients: mockPatients,
         currentPatient: null,
         stats: {
           totalPacientes: 3,
-          pacientesActivos: 2,
-          pacientesInactivos: 1,
-          nuevosEsteMes: 3,
-          edadPromedio: 30,
-          distribucionGenero: { M: 2, F: 1, Otro: 0 },
-          distribucionEdad: { '20-30': 1, '30-40': 2 },
+          pacientesMenores: 0,
+          pacientesAdultos: 3,
+          pacientesConCuentaAbierta: 0,
+          pacientesHospitalizados: 0,
+          pacientesAmbulatorios: 3,
         },
         loading: false,
         error: null,
         filters: {
           search: '',
-          estado: 'todos',
-          genero: 'todos',
+          esMenorEdad: undefined,
         },
         pagination: {
           page: 1,
@@ -157,11 +159,18 @@ const renderWithProviders = (component: React.ReactElement, { store = createTest
   );
 };
 
+// Mock props for PatientsTab
+const mockProps = {
+  onStatsChange: jest.fn(),
+  onPatientCreated: jest.fn(),
+};
+
 describe('PatientsTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedPatientsService.getPatients.mockResolvedValue({
       success: true,
+      message: 'Pacientes obtenidos',
       data: {
         items: mockPatients,
         pagination: {
@@ -169,21 +178,19 @@ describe('PatientsTab', () => {
           limit: 20,
           total: 3,
           totalPages: 1,
-          hasNext: false,
-          hasPrev: false,
         },
       },
     });
 
     mockedPatientsService.deletePatient.mockResolvedValue({
       success: true,
-      data: { message: 'Paciente eliminado correctamente' },
+      message: 'Paciente eliminado correctamente',
     });
   });
 
   describe('Rendering', () => {
     it('should render patients table with data', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       expect(screen.getByText('Juan Pérez García')).toBeInTheDocument();
       expect(screen.getByText('María González López')).toBeInTheDocument();
@@ -191,27 +198,27 @@ describe('PatientsTab', () => {
     });
 
     it('should render search input', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       expect(screen.getByPlaceholderText(/buscar pacientes/i)).toBeInTheDocument();
     });
 
     it('should render filter controls', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       expect(screen.getByLabelText(/estado/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/género/i)).toBeInTheDocument();
     });
 
     it('should render add patient button', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       expect(screen.getByText(/nuevo paciente/i)).toBeInTheDocument();
     });
 
     it('should show loading state', () => {
       const store = createTestStore({ loading: true });
-      renderWithProviders(<PatientsTab />, { store });
+      renderWithProviders(<PatientsTab {...mockProps} />, { store });
       
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
     });
@@ -221,7 +228,7 @@ describe('PatientsTab', () => {
         patients: [],
         pagination: { ...mockPatients[0], total: 0 }
       });
-      renderWithProviders(<PatientsTab />, { store });
+      renderWithProviders(<PatientsTab {...mockProps} />, { store });
       
       expect(screen.getByText(/no se encontraron pacientes/i)).toBeInTheDocument();
     });
@@ -229,7 +236,7 @@ describe('PatientsTab', () => {
 
   describe('Search and Filtering', () => {
     it('should filter patients by search term', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const searchInput = screen.getByPlaceholderText(/buscar pacientes/i);
       await userEvent.type(searchInput, 'Juan');
@@ -247,7 +254,7 @@ describe('PatientsTab', () => {
     });
 
     it('should filter patients by estado', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const estadoFilter = screen.getByLabelText(/estado/i);
       fireEvent.mouseDown(estadoFilter);
@@ -265,7 +272,7 @@ describe('PatientsTab', () => {
     });
 
     it('should filter patients by género', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const generoFilter = screen.getByLabelText(/género/i);
       fireEvent.mouseDown(generoFilter);
@@ -283,7 +290,7 @@ describe('PatientsTab', () => {
     });
 
     it('should clear search when clear button is clicked', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const searchInput = screen.getByPlaceholderText(/buscar pacientes/i);
       await userEvent.type(searchInput, 'Juan');
@@ -297,7 +304,7 @@ describe('PatientsTab', () => {
 
   describe('Patient Actions', () => {
     it('should open create patient dialog when add button is clicked', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const addButton = screen.getByText(/nuevo paciente/i);
       fireEvent.click(addButton);
@@ -306,7 +313,7 @@ describe('PatientsTab', () => {
     });
 
     it('should open edit patient dialog when edit button is clicked', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const editButtons = screen.getAllByRole('button', { name: /editar/i });
       fireEvent.click(editButtons[0]);
@@ -316,7 +323,7 @@ describe('PatientsTab', () => {
     });
 
     it('should show confirmation dialog when delete button is clicked', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const deleteButtons = screen.getAllByRole('button', { name: /eliminar/i });
       fireEvent.click(deleteButtons[0]);
@@ -326,7 +333,7 @@ describe('PatientsTab', () => {
     });
 
     it('should delete patient when deletion is confirmed', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const deleteButtons = screen.getAllByRole('button', { name: /eliminar/i });
       fireEvent.click(deleteButtons[0]);
@@ -340,7 +347,7 @@ describe('PatientsTab', () => {
     });
 
     it('should cancel deletion when cancel button is clicked', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const deleteButtons = screen.getAllByRole('button', { name: /eliminar/i });
       fireEvent.click(deleteButtons[0]);
@@ -354,7 +361,7 @@ describe('PatientsTab', () => {
 
   describe('Table Functionality', () => {
     it('should display patient information correctly', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       // Check patient data is displayed
       expect(screen.getByText('Juan Pérez García')).toBeInTheDocument();
@@ -364,7 +371,7 @@ describe('PatientsTab', () => {
     });
 
     it('should show patient status badges', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       // Should show active and inactive badges
       expect(screen.getAllByText('Activo')).toHaveLength(2);
@@ -372,14 +379,14 @@ describe('PatientsTab', () => {
     });
 
     it('should format dates correctly', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       // Check if dates are formatted (you may need to adjust based on your date formatting)
       expect(screen.getByText(/15\/05\/1990/)).toBeInTheDocument();
     });
 
     it('should calculate and display age', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       // Assuming age calculation is displayed
       const currentYear = new Date().getFullYear();
@@ -400,7 +407,7 @@ describe('PatientsTab', () => {
           hasPrev: false,
         },
       });
-      renderWithProviders(<PatientsTab />, { store });
+      renderWithProviders(<PatientsTab {...mockProps} />, { store });
       
       expect(screen.getByRole('navigation')).toBeInTheDocument();
     });
@@ -416,7 +423,7 @@ describe('PatientsTab', () => {
           hasPrev: false,
         },
       });
-      renderWithProviders(<PatientsTab />, { store });
+      renderWithProviders(<PatientsTab {...mockProps} />, { store });
       
       const nextButton = screen.getByRole('button', { name: /next page/i });
       fireEvent.click(nextButton);
@@ -431,7 +438,7 @@ describe('PatientsTab', () => {
     });
 
     it('should change page size when rows per page is changed', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const rowsPerPageSelect = screen.getByDisplayValue('20');
       fireEvent.mouseDown(rowsPerPageSelect);
@@ -455,7 +462,7 @@ describe('PatientsTab', () => {
         error: 'Error loading patients',
         loading: false 
       });
-      renderWithProviders(<PatientsTab />, { store });
+      renderWithProviders(<PatientsTab {...mockProps} />, { store });
       
       expect(screen.getByText('Error loading patients')).toBeInTheDocument();
     });
@@ -469,7 +476,7 @@ describe('PatientsTab', () => {
         },
       });
 
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const deleteButtons = screen.getAllByRole('button', { name: /eliminar/i });
       fireEvent.click(deleteButtons[0]);
@@ -485,7 +492,7 @@ describe('PatientsTab', () => {
 
   describe('Accessibility', () => {
     it('should have proper table structure for screen readers', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       expect(screen.getByRole('table')).toBeInTheDocument();
       expect(screen.getAllByRole('columnheader')).toHaveLength(7); // Adjust based on your columns
@@ -493,7 +500,7 @@ describe('PatientsTab', () => {
     });
 
     it('should have accessible action buttons', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const editButtons = screen.getAllByRole('button', { name: /editar/i });
       const deleteButtons = screen.getAllByRole('button', { name: /eliminar/i });
@@ -507,7 +514,7 @@ describe('PatientsTab', () => {
     });
 
     it('should support keyboard navigation in table', () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const firstEditButton = screen.getAllByRole('button', { name: /editar/i })[0];
       firstEditButton.focus();
@@ -518,7 +525,7 @@ describe('PatientsTab', () => {
 
   describe('Data Refresh', () => {
     it('should refresh data when form dialog success callback is called', async () => {
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       const addButton = screen.getByText(/nuevo paciente/i);
       fireEvent.click(addButton);
@@ -533,7 +540,7 @@ describe('PatientsTab', () => {
 
     it('should refresh data periodically if configured', () => {
       // This test would depend on your implementation of auto-refresh
-      renderWithProviders(<PatientsTab />);
+      renderWithProviders(<PatientsTab {...mockProps} />);
       
       // Verify initial load
       expect(mockedPatientsService.getPatients).toHaveBeenCalledTimes(1);

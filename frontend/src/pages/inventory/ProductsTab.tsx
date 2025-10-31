@@ -93,7 +93,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ suppliers, onRefreshSuppliers
       });
       
       if (response.success && response.data) {
-        setProducts(response.data.products || []);
+        setProducts(response.data?.products || [] || []);
         setTotal(response.data.total || 0);
       } else {
         setProducts([]);

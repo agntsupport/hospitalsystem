@@ -127,43 +127,43 @@ class SolicitudesService {
     limit?: number;
   }): Promise<SolicitudesResponse> {
     const response = await api.get('/solicitudes', { params });
-    return response;
+    return response as unknown as SolicitudesResponse;
   }
 
   // Obtener una solicitud específica
   async getSolicitudById(id: number): Promise<SolicitudProducto> {
     const response = await api.get(`/solicitudes/${id}`);
-    return response;
+    return response.data as SolicitudProducto;
   }
 
   // Crear nueva solicitud
   async createSolicitud(data: CreateSolicitudData): Promise<{ message: string; solicitud: SolicitudProducto }> {
     const response = await api.post('/solicitudes', data);
-    return response;
+    return response as unknown as { message: string; solicitud: SolicitudProducto };
   }
 
   // Asignar solicitud a almacenista (solo almacenistas)
   async asignarSolicitud(id: number): Promise<{ message: string; solicitud: SolicitudProducto }> {
     const response = await api.put(`/solicitudes/${id}/asignar`);
-    return response;
+    return response as unknown as { message: string; solicitud: SolicitudProducto };
   }
 
   // Marcar solicitud como entregada (solo almacenistas)
   async entregarSolicitud(id: number, observaciones?: string): Promise<{ message: string }> {
     const response = await api.put(`/solicitudes/${id}/entregar`, { observaciones });
-    return response;
+    return response as unknown as { message: string };
   }
 
   // Confirmar recepción de solicitud (solo solicitantes)
   async confirmarSolicitud(id: number, observaciones?: string): Promise<{ message: string; solicitud: SolicitudProducto }> {
     const response = await api.put(`/solicitudes/${id}/confirmar`, { observaciones });
-    return response;
+    return response as unknown as { message: string; solicitud: SolicitudProducto };
   }
 
   // Obtener estadísticas de solicitudes
   async getSolicitudStats(): Promise<SolicitudStats> {
     const response = await api.get('/solicitudes/stats/resumen');
-    return response;
+    return response.data as SolicitudStats;
   }
 
   // Validar disponibilidad de productos

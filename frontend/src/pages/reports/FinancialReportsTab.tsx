@@ -82,19 +82,19 @@ const FinancialReportsTab: React.FC<FinancialReportsTabProps> = ({
       }
 
       if (periodResponse.success) {
-        setRevenueByPeriod(periodResponse.data.items);
+        setRevenueByPeriod(periodResponse.data?.items || []);
       } else {
         console.error('Error en ingresos por período:', periodResponse.message);
       }
 
       if (serviceResponse.success) {
-        setRevenueByService(serviceResponse.data.items);
+        setRevenueByService(serviceResponse.data?.items || []);
       } else {
         console.error('Error en ingresos por servicio:', serviceResponse.message);
       }
 
       if (paymentMethodResponse.success) {
-        setRevenueByPaymentMethod(paymentMethodResponse.data.items);
+        setRevenueByPaymentMethod(paymentMethodResponse.data?.items || []);
       } else {
         console.error('Error en ingresos por método de pago:', paymentMethodResponse.message);
       }

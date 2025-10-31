@@ -126,10 +126,10 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
       });
       
       if (response.success) {
-        setPatients(response.data.patients);
+        setPatients(response.data?.patients || []);
         setTotalCount(response.data.total);
         
-        if (response.data.patients.length === 0) {
+        if (response.data?.patients || [].length === 0) {
           toast.info('No se encontraron pacientes con los criterios especificados');
         } else {
           toast.success(`Se encontraron ${response.data.total} paciente(s)`);

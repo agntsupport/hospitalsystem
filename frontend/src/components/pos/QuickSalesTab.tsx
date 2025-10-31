@@ -101,7 +101,7 @@ const QuickSalesTab: React.FC<QuickSalesTabProps> = ({ onRefresh }) => {
       // Cargar servicios disponibles
       const servicesResponse = await posService.getAvailableServices();
       if (servicesResponse.success) {
-        const servicesData = servicesResponse.data.items || servicesResponse.data.services || [];
+        const servicesData = servicesResponse.data?.items || [] || servicesResponse.data?.services || [] || [];
         setServices(servicesData);
       }
 
@@ -111,7 +111,7 @@ const QuickSalesTab: React.FC<QuickSalesTabProps> = ({ onRefresh }) => {
         limit: 100
       });
       if (productsResponse.success) {
-        const productsData = productsResponse.data.products || productsResponse.data.items || [];
+        const productsData = productsResponse.data.products || productsResponse.data?.items || [] || [];
         setProducts(productsData);
       }
     } catch (error) {
@@ -146,7 +146,7 @@ const QuickSalesTab: React.FC<QuickSalesTabProps> = ({ onRefresh }) => {
         precio: type === 'servicio' ? item.precio : (item as any).precioVenta || (item as any).precio_venta || 0,
         cantidad: 1,
         subtotal: type === 'servicio' ? item.precio : (item as any).precioVenta || (item as any).precio_venta || 0,
-        disponible: type === 'producto' ? (item as any).stockActual || (item as any).stock_actual : undefined
+        disponible: type === 'producto' ? (item as any).stockActual || (item as any).stockActual : undefined
       };
       setCart(prev => [...prev, newItem]);
     }
@@ -419,17 +419,17 @@ const QuickSalesTab: React.FC<QuickSalesTabProps> = ({ onRefresh }) => {
                 {filteredProducts.map((product) => (
                   <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
                     <Card 
-                      sx={{ 
-                        cursor: (product.stockActual || product.stock_actual || 0) > 0 ? 'pointer' : 'not-allowed',
-                        opacity: (product.stockActual || product.stock_actual || 0) > 0 ? 1 : 0.6,
+                      sx={{
+                        cursor: (product.stockActual || 0) > 0 ? 'pointer' : 'not-allowed',
+                        opacity: (product.stockActual || 0) > 0 ? 1 : 0.6,
                         height: '100%',
                         transition: 'transform 0.2s, box-shadow 0.2s',
-                        '&:hover': (product.stockActual || product.stock_actual || 0) > 0 ? { 
+                        '&:hover': (product.stockActual || 0) > 0 ? {
                           transform: 'translateY(-2px)',
                           boxShadow: 3
                         } : {}
                       }}
-                      onClick={() => (product.stockActual || product.stock_actual || 0) > 0 && addToCart(product, 'producto')}
+                      onClick={() => (product.stockActual || 0) > 0 && addToCart(product, 'producto')}
                     >
                       <CardContent sx={{ p: 2 }}>
                         <Tooltip title={product.nombre} arrow placement="top">
@@ -484,7 +484,7 @@ const QuickSalesTab: React.FC<QuickSalesTabProps> = ({ onRefresh }) => {
                                 whiteSpace: 'nowrap'
                               }}
                             >
-                              Stock: {product.stockActual || product.stock_actual || 0}
+                              Stock: {product.stockActual || 0}
                             </Typography>
                           </Box>
                           <Typography 
