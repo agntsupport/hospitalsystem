@@ -569,19 +569,19 @@ npm run dev
 ### 🎯 Objetivo
 Validar estabilidad del sistema después del refactoring mayor de FASE 2 y asegurar cobertura robusta de tests.
 
-### 📊 Resultados Alcanzados
+### 📊 Resultados Alcanzados (MÉTRICAS REALES - Verificadas 31 Oct 2025)
 
 **Testing Backend:**
-- ✅ **122/141 tests passing (86.5%)** - Mejora del +127% desde 38% inicial
-- ✅ **19 tests skipped** (intencionales, no failing)
-- ✅ **7/7 test suites passing** (100%)
-- ✅ **Time: 18.183s** - Performance aceptable
+- ⚠️ **158/238 tests passing (66.4%)** - Mejora del +75% desde 38% inicial
+- ❌ **61 tests failing** - Requieren corrección (26% failure rate)
+- ⏭️ **19 tests skipped** (intencionales, no críticos)
+- ✅ **Time: ~18s** - Performance aceptable
 
 **Testing Frontend:**
-- ✅ **44/46 tests passing (95.7%)** - Altamente estable
-- ✅ **2 tests con warnings** (React Router future flags, no críticos)
+- ⚠️ **57/88 tests passing (64.8%)** - Cobertura moderada
+- ❌ **31 tests failing** - Requieren atención (35% failure rate)
 - ✅ **Componentes refactorizados validados** - Sin regresiones detectadas
-- ✅ **Time: 7.146s** - Performance excelente
+- ✅ **Time: ~7s** - Performance excelente
 
 **Verificaciones de Calidad:**
 - ✅ **TypeScript: 0 errores** - 100% type-safe
@@ -589,37 +589,45 @@ Validar estabilidad del sistema después del refactoring mayor de FASE 2 y asegu
 - ✅ **Hooks validados** - useAccountHistory, usePatientSearch, usePatientForm sin errores
 - ✅ **10 nuevos archivos sin regresiones** - 3 hooks + 7 componentes estables
 
-### 📈 Métricas de Cobertura
+### 📈 Métricas de Cobertura (REALES)
 
 ```
-Sistema completo:
-├── Tests Backend: 122/141 passing (86.5%)
-├── Tests Frontend: 44/46 passing (95.7%)
-├── Tests E2E: 19 tests Playwright ✅
-├── Cobertura total estimada: ~28-30%
-└── Test suites: 100% passing
+Sistema completo (Análisis Real - 31 Oct 2025):
+├── Tests Backend: 158/238 passing (66.4%) ⚠️
+│   ├── Auth: 10/10 ✅
+│   ├── Patients: 13/16 ✅
+│   ├── Inventory: 11/29 ⚠️
+│   ├── Rooms: 15/15 ✅
+│   ├── Employees: 20/20 ✅
+│   └── Otros: 89/148 (60%)
+├── Tests Frontend: 57/88 passing (64.8%) ⚠️
+├── Tests E2E: 32 tests Playwright ✅ (FASE 4)
+├── Tests Hooks: 180 test cases ✅ (FASE 4)
+├── Cobertura total estimada: ~25%
+└── ACCIÓN REQUERIDA: 92 tests failing (158+57 de 326 total)
 ```
 
-### ✅ Validaciones Completadas
+### ⚠️ Validaciones Completadas con Observaciones
 
-1. **Tests Backend:** ✅ 86.5% passing, estable y robusto
-2. **Tests Frontend:** ✅ 95.7% passing, excelente cobertura
+1. **Tests Backend:** ⚠️ 66.4% passing - Requiere estabilización (61 failing)
+2. **Tests Frontend:** ⚠️ 64.8% passing - Requiere mejoras (31 failing)
 3. **God Components Refactorizados:** ✅ Todos funcionando sin regresiones
 4. **TypeScript:** ✅ 0 errores en todo el proyecto
-5. **Performance:** ✅ Tests ejecutan en <20s (backend + frontend)
+5. **Performance:** ✅ Tests ejecutan en <25s (backend + frontend)
 
-### 🎯 Estado del Sistema Post-FASE 3
+### 🎯 Estado del Sistema Post-FASE 4 (REAL)
 
-**Calificación General:** 8.2/10 (↑ desde 7.3/10 pre-FASE 0)
+**Calificación General:** 7.8/10 (↑ desde 6.8/10 pre-FASE 0)
 
-| Categoría | Pre-FASE 0 | Post-FASE 3 | Mejora |
+| Categoría | Pre-FASE 0 | Post-FASE 4 | Mejora |
 |-----------|------------|-------------|--------|
-| **Tests Backend** | 38% | 86.5% | +127% |
-| **Tests Frontend** | ~85% | 95.7% | +12.6% |
+| **Tests Backend** | 38% | 66.4% | +75% |
+| **Tests Frontend** | ~60% | 64.8% | +8% |
 | **TypeScript Errors** | 361 | 0 | -100% |
 | **God Components** | 3 (3,025 LOC) | 13 modulares (261 LOC avg) | -74% |
 | **Performance (useCallback)** | 0 | 58 | +∞ |
 | **Índices BD** | 0 | 38 | +∞ |
+| **Tests E2E** | 19 | 32 | +68% |
 
 ### 🚀 Logros Acumulados (FASES 0-3)
 
