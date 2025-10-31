@@ -485,7 +485,7 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     };
     const metodoPagoEnum = metodoPagoMap[metodoPago] || 'cash';
 
-    // Ejecutar transacción completa
+    // Ejecutar transacción completa con timeout configurado
     const result = await prisma.$transaction(async (tx) => {
       // 1. Si hay hospitalización, calcular y cargar días de habitación antes de cerrar
       if (hospitalizacion && cuenta.habitacionId) {
@@ -629,6 +629,9 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
       }
 
       return { cuenta: cuentaActualizada, hospitalizacion };
+    }, {
+      maxWait: 5000,  // Máximo 5 segundos esperando obtener el lock
+      timeout: 10000  // Máximo 10 segundos ejecutando la transacción
     });
 
     // Obtener cuenta actualizada con todas las relaciones

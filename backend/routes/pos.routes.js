@@ -192,6 +192,9 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
       }
 
       return ventaRapida;
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.json({

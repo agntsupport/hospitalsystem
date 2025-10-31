@@ -55,34 +55,19 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Verificar contraseña con bcrypt
-    let passwordValid = false;
-    
-    // Si el password hash empieza con $2, es bcrypt
-    if (user.passwordHash && user.passwordHash.startsWith('$2')) {
-      passwordValid = await bcrypt.compare(password, user.passwordHash);
-    } else {
-      // Para migración gradual: verificar contraseñas conocidas y actualizar a bcrypt
-      const knownPasswords = {
-        'admin123': user.username === 'admin',
-        'cajero123': user.username === 'cajero1',
-        'enfermero123': user.username === 'enfermero1',
-        'medico123': user.username === 'especialista1',
-        'residente123': user.username === 'residente1',
-        'almacen123': user.username === 'almacen1',
-        'socio123': user.username === 'socio1'
-      };
-      
-      if (knownPasswords[password]) {
-        passwordValid = true;
-        // Actualizar a bcrypt hash
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await prisma.usuario.update({
-          where: { id: user.id },
-          data: { passwordHash: hashedPassword }
-        });
-      }
+    // Verificar contraseña con bcrypt - SOLO bcrypt, sin fallback inseguro
+    if (!user.passwordHash || !user.passwordHash.startsWith('$2')) {
+      logger.logAuth('LOGIN_INVALID_HASH', null, {
+        username: user.username,
+        reason: 'Password hash inválido o no es bcrypt'
+      });
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
     }
+
+    const passwordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordValid) {
       return res.status(401).json({ 

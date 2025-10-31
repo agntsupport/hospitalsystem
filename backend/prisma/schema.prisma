@@ -44,6 +44,8 @@ model Usuario {
   historialSolicitudes      HistorialSolicitud[]
   notificaciones            NotificacionSolicitud[]
 
+  @@index([rol])
+  @@index([activo])
   @@map("usuarios")
 }
 
@@ -124,6 +126,9 @@ model Paciente {
   // Relación con solicitudes de productos
   solicitudesProductos SolicitudProductos[]
 
+  @@index([activo])
+  @@index([apellidoPaterno, nombre])
+  @@index([numeroExpediente])
   @@map("pacientes")
 }
 
@@ -171,6 +176,9 @@ model Empleado {
   cancelaciones        Cancelacion[]
   cirugiasMedico       CirugiaQuirofano[]
 
+  @@index([tipoEmpleado])
+  @@index([activo])
+  @@index([cedulaProfesional])
   @@map("empleados")
 }
 
@@ -198,6 +206,8 @@ model Habitacion {
   cuentas           CuentaPaciente[]
   hospitalizaciones Hospitalizacion[]
 
+  @@index([estado])
+  @@index([tipo])
   @@map("habitaciones")
 }
 
@@ -260,6 +270,8 @@ model Quirofano {
   citas    CitaMedica[]
   cirugias CirugiaQuirofano[]
 
+  @@index([estado])
+  @@index([tipo])
   @@map("quirofanos")
 }
 
@@ -303,6 +315,9 @@ model CirugiaQuirofano {
   paciente  Paciente  @relation(fields: [pacienteId], references: [id])
   medico    Empleado  @relation(fields: [medicoId], references: [id])
 
+  @@index([quirofanoId])
+  @@index([estado])
+  @@index([fechaInicio])
   @@map("cirugias_quirofano")
 }
 
@@ -371,6 +386,10 @@ model Producto {
   // Relación con solicitudes de productos
   detallesSolicitud DetalleSolicitudProducto[]
 
+  @@index([categoria])
+  @@index([activo])
+  @@index([stockActual])
+  @@index([codigoBarras])
   @@map("productos")
 }
 
@@ -440,6 +459,10 @@ model CuentaPaciente {
   // Relación con solicitudes de productos
   solicitudesProductos    SolicitudProductos[]
 
+  @@index([pacienteId])
+  @@index([estado])
+  @@index([cajeroAperturaId])
+  @@index([estado, fechaApertura])
   @@map("cuentas_pacientes")
 }
 
@@ -477,6 +500,8 @@ model Hospitalizacion {
   ordenesMedicas       OrdenMedica[]
   notasHospitalizacion NotaHospitalizacion[]
 
+  @@index([estado])
+  @@index([fechaIngreso])
   @@map("hospitalizaciones")
 }
 
@@ -746,6 +771,9 @@ model MovimientoInventario {
   cuentaPaciente        CuentaPaciente?        @relation(fields: [cuentaPacienteId], references: [id])
   aplicacionMedicamento AplicacionMedicamento? @relation(fields: [aplicacionMedicamentoId], references: [id])
 
+  @@index([productoId])
+  @@index([tipoMovimiento])
+  @@index([fechaMovimiento])
   @@map("movimientos_inventario")
 }
 
@@ -776,6 +804,8 @@ model VentaRapida {
   cajero Usuario           @relation(fields: [cajeroId], references: [id])
   items  ItemVentaRapida[]
 
+  @@index([cajeroId])
+  @@index([createdAt])
   @@map("ventas_rapidas")
 }
 
@@ -837,6 +867,10 @@ model Factura {
   pagos    PagoFactura[]
   detalles DetalleFactura[]
 
+  @@index([pacienteId])
+  @@index([estado])
+  @@index([fechaFactura])
+  @@index([estado, fechaVencimiento])
   @@map("facturas")
 }
 
@@ -1110,6 +1144,10 @@ model SolicitudProductos {
   historial         HistorialSolicitud[]
   notificaciones    NotificacionSolicitud[]
 
+  @@index([estado])
+  @@index([solicitanteId])
+  @@index([almacenistaId])
+  @@index([fechaSolicitud])
   @@map("solicitudes_productos")
 }
 

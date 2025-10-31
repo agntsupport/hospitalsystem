@@ -106,6 +106,9 @@ router.post('/', authenticateToken, auditMiddleware('habitaciones'), validateReq
       });
 
       return { habitacion, servicio };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.status(201).json({

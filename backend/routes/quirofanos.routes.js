@@ -335,6 +335,9 @@ router.post('/', authenticateToken, auditMiddleware('quirofanos'), async (req, r
       }
 
       return { quirofano: nuevoQuirofano, servicio };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.status(201).json({

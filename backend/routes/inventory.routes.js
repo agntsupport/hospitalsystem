@@ -690,6 +690,9 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
       });
 
       return movimiento;
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.status(201).json({

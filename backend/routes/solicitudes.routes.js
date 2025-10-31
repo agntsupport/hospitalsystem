@@ -633,6 +633,9 @@ router.put('/:id/entregar',
             saldoPendiente: saldoPendiente
           }
         });
+      }, {
+        maxWait: 5000,
+        timeout: 10000
       });
 
       // Crear notificación para el solicitante

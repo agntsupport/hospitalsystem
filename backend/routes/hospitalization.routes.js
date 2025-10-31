@@ -389,6 +389,9 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
       });
 
       return hospitalizacion;
+    }, {
+      maxWait: 5000,  // Máximo 5 segundos esperando obtener el lock
+      timeout: 10000  // Máximo 10 segundos ejecutando la transacción
     });
 
     res.status(201).json({
@@ -463,6 +466,9 @@ router.put('/:id/discharge', authenticateToken, authorizeRoles(['enfermero', 'me
           estado: 'alta'
         }
       });
+    }, {
+      maxWait: 5000,  // Máximo 5 segundos esperando obtener el lock
+      timeout: 10000  // Máximo 10 segundos ejecutando la transacción
     });
 
     res.json({
@@ -940,6 +946,9 @@ router.post('/update-room-charges', authenticateToken, authorizeRoles(['administ
             req.user.id,
             tx
           );
+        }, {
+          maxWait: 5000,
+          timeout: 10000
         });
 
         totalCargosGenerados += cargosGenerados;
@@ -1025,6 +1034,9 @@ router.post('/admissions/:id/update-charges', authenticateToken, authorizeRoles(
         req.user.id,
         tx
       );
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.json({
@@ -1058,6 +1070,9 @@ router.post('/accounts/:id/recalculate-totals', authenticateToken, authorizeRole
 
     const totales = await prisma.$transaction(async (tx) => {
       return await actualizarTotalesCuenta(parseInt(id), tx);
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.json({

@@ -333,6 +333,9 @@ router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, re
       }
 
       return { empleado: nuevoEmpleado, usuario: nuevoUsuario };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
     
     res.status(201).json({
