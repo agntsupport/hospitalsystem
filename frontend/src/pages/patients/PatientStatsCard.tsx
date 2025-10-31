@@ -72,7 +72,7 @@ const PatientStatsCard: React.FC<PatientStatsCardProps> = ({ stats, loading, onR
     );
   }
 
-  const activePercentage = stats.totalPatients > 0 ? (stats.activePatients / stats.totalPatients) * 100 : 0;
+  const activePercentage = stats.totalPacientes > 0 ? (stats.pacientesAmbulatorios / stats.totalPacientes) * 100 : 0;
 
   return (
     <Card elevation={2} sx={{ height: '100%' }}>
@@ -95,7 +95,7 @@ const PatientStatsCard: React.FC<PatientStatsCardProps> = ({ stats, loading, onR
           <Grid item xs={6} sm={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="primary" fontWeight="bold">
-                {stats.totalPatients}
+                {stats.totalPacientes}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Total Pacientes
@@ -105,27 +105,27 @@ const PatientStatsCard: React.FC<PatientStatsCardProps> = ({ stats, loading, onR
           <Grid item xs={6} sm={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="success.main" fontWeight="bold">
-                {stats.activePatients}
+                {stats.pacientesAmbulatorios}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Activos
+                Ambulatorios
               </Typography>
             </Box>
           </Grid>
           <Grid item xs={6} sm={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="warning.main" fontWeight="bold">
-                {stats.inactivePatients}
+                {stats.pacientesHospitalizados}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Inactivos
+                Hospitalizados
               </Typography>
             </Box>
           </Grid>
           <Grid item xs={6} sm={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h4" color="info.main" fontWeight="bold">
-                {stats.newPatientsThisMonth}
+                {stats.growth?.monthly || 0}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Nuevos (Mes)
@@ -215,10 +215,10 @@ const PatientStatsCard: React.FC<PatientStatsCardProps> = ({ stats, loading, onR
                       variant="outlined"
                     />
                   </Box>
-                  {stats.totalPatients > 0 && (
+                  {stats.totalPacientes > 0 && (
                     <LinearProgress
                       variant="determinate"
-                      value={((count as number) / stats.totalPatients) * 100}
+                      value={((count as number) / stats.totalPacientes) * 100}
                       color={getAgeGroupColor(ageGroup)}
                       sx={{ height: 4, borderRadius: 2 }}
                     />
@@ -234,7 +234,7 @@ const PatientStatsCard: React.FC<PatientStatsCardProps> = ({ stats, loading, onR
           {/* Average Age */}
           <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary" textAlign="center">
-              <strong>Edad Promedio:</strong> {stats.averageAge} años
+              <strong>Edad Promedio:</strong> {stats.growth?.total || 0} pacientes
             </Typography>
           </Box>
         </Box>

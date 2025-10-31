@@ -346,7 +346,7 @@ const Dashboard: React.FC = () => {
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               title="Pacientes Atendidos"
-              value={executiveSummary?.pacientesAtendidos || stats?.resumen?.totalPacientes || 0}
+              value={executiveSummary?.pacientesAtendidos || stats?.totalPacientes || 0}
               icon={<People />}
               color="#9c27b0"
               subtitle="Consultas y servicios"
@@ -376,7 +376,7 @@ const Dashboard: React.FC = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Total Pacientes"
-                value={stats?.resumen?.totalPacientes || 0}
+                value={stats?.totalPacientes || 0}
                 icon={<People />}
                 color="#1976d2"
                 subtitle="En el sistema"
@@ -385,7 +385,7 @@ const Dashboard: React.FC = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Cuentas Hospitalización"
-                value={stats?.resumen?.conCuentasHospitalizacion || 0}
+                value={stats?.pacientesHospitalizados || 0}
                 icon={<LocalHospital />}
                 color="#f57c00"
                 subtitle="Pacientes hospitalizados"
@@ -394,7 +394,7 @@ const Dashboard: React.FC = () => {
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
                 title="Cuentas Abiertas"
-                value={stats?.resumen?.conCuentasAbiertas || 0}
+                value={stats?.pacientesConCuentaAbierta || 0}
                 icon={<Assignment />}
                 color="#388e3c"
                 subtitle="POS activos"
@@ -402,11 +402,11 @@ const Dashboard: React.FC = () => {
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <StatCard
-                title="Edad Promedio"
-                value={stats?.resumen?.promedioEdad || 0}
+                title="Estadística Adicional"
+                value={stats?.pacientesAdultos || 0}
                 icon={<Assessment />}
                 color="#7b1fa2"
-                subtitle="Años"
+                subtitle="Pacientes adultos"
               />
             </Grid>
           </Grid>

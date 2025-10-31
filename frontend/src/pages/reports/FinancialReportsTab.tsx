@@ -75,7 +75,7 @@ const FinancialReportsTab: React.FC<FinancialReportsTabProps> = ({
       ]);
 
       // Procesar respuestas
-      if (summaryResponse.success) {
+      if (summaryResponse.success && summaryResponse.data) {
         setFinancialSummary(summaryResponse.data);
       } else {
         console.error('Error en resumen financiero:', summaryResponse.message);
@@ -99,7 +99,7 @@ const FinancialReportsTab: React.FC<FinancialReportsTabProps> = ({
         console.error('Error en ingresos por método de pago:', paymentMethodResponse.message);
       }
 
-      if (accountsResponse.success) {
+      if (accountsResponse.success && accountsResponse.data) {
         setAccountsReceivable(accountsResponse.data);
       } else {
         console.error('Error en cuentas por cobrar:', accountsResponse.message);
@@ -238,7 +238,7 @@ const FinancialReportsTab: React.FC<FinancialReportsTabProps> = ({
             data={revenueByService
               .filter(item => item && typeof item.ingresos === 'number' && !isNaN(item.ingresos) && item.ingresos > 0)
               .map(item => ({
-                label: item.nombreServicio || 'Servicio desconocido',
+                label: item.servicio?.nombre || 'Servicio desconocido',
                 value: item.ingresos
               }))}
             height={350}
@@ -273,10 +273,10 @@ const FinancialReportsTab: React.FC<FinancialReportsTabProps> = ({
       <BarChart
         title="Ingresos por Método de Pago"
         data={revenueByPaymentMethod
-          .filter(item => item && typeof item.ingresos === 'number' && !isNaN(item.ingresos) && item.ingresos > 0)
+          .filter(item => item && typeof item.monto === 'number' && !isNaN(item.monto) && item.monto > 0)
           .map(item => ({
             label: methodLabels[item.metodoPago] || item.metodoPago || 'Método desconocido',
-            value: item.ingresos
+            value: item.monto
           }))}
         height={350}
         showValues={true}

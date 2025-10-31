@@ -49,43 +49,66 @@ const mockQuirofanos = [
 ];
 
 const mockPatients = [
-  { 
-    id: 1, 
-    nombre: 'Juan', 
-    apellidoPaterno: 'Pérez', 
-    apellidoMaterno: 'García' 
+  {
+    id: 1,
+    numeroExpediente: 'EXP001',
+    nombre: 'Juan',
+    apellidoPaterno: 'Pérez',
+    apellidoMaterno: 'García',
+    fechaNacimiento: '1990-01-01',
+    edad: 35,
+    genero: 'M' as const,
+    activo: true,
+    createdAt: '2025-01-01',
+    updatedAt: '2025-01-01'
   },
-  { 
-    id: 2, 
-    nombre: 'María', 
-    apellidoPaterno: 'González', 
-    apellidoMaterno: 'López' 
+  {
+    id: 2,
+    numeroExpediente: 'EXP002',
+    nombre: 'María',
+    apellidoPaterno: 'González',
+    apellidoMaterno: 'López',
+    fechaNacimiento: '1985-01-01',
+    edad: 40,
+    genero: 'F' as const,
+    activo: true,
+    createdAt: '2025-01-01',
+    updatedAt: '2025-01-01'
   },
 ];
 
 const mockMedicos = [
-  { 
-    id: 1, 
-    nombre: 'Dr. Carlos', 
-    apellidoPaterno: 'Martínez', 
-    tipoEmpleado: 'medico_especialista',
-    especialidad: 'Cirugía General'
+  {
+    id: 1,
+    nombre: 'Dr. Carlos',
+    apellidoPaterno: 'Martínez',
+    tipoEmpleado: 'medico_especialista' as const,
+    especialidad: 'Cirugía General',
+    fechaIngreso: '2020-01-01',
+    activo: true,
+    createdAt: '2020-01-01'
   },
-  { 
-    id: 2, 
-    nombre: 'Dra. Ana', 
-    apellidoPaterno: 'Rodríguez', 
-    tipoEmpleado: 'medico_especialista',
-    especialidad: 'Cardiología'
+  {
+    id: 2,
+    nombre: 'Dra. Ana',
+    apellidoPaterno: 'Rodríguez',
+    tipoEmpleado: 'medico_especialista' as const,
+    especialidad: 'Cardiología',
+    fechaIngreso: '2020-01-01',
+    activo: true,
+    createdAt: '2020-01-01'
   },
 ];
 
 const mockPersonalMedico = [
-  { 
-    id: 3, 
-    nombre: 'Enfermera Laura', 
-    apellidoPaterno: 'Sánchez', 
-    tipoEmpleado: 'enfermero'
+  {
+    id: 3,
+    nombre: 'Enfermera Laura',
+    apellidoPaterno: 'Sánchez',
+    tipoEmpleado: 'enfermero' as const,
+    fechaIngreso: '2020-01-01',
+    activo: true,
+    createdAt: '2020-01-01'
   },
   ...mockMedicos,
 ];
@@ -100,7 +123,9 @@ const mockCirugia = {
   fechaFin: '2025-08-15T11:00:00.000Z',
   observaciones: 'Cirugía de prueba',
   equipoMedico: [3],
-  estado: 'programada',
+  estado: 'programada' as const,
+  createdAt: '2025-01-01T00:00:00.000Z',
+  updatedAt: '2025-01-01T00:00:00.000Z'
 };
 
 // Test store setup
@@ -173,7 +198,16 @@ describe('CirugiaFormDialog', () => {
 
     mockedPatientsService.getPatients.mockResolvedValue({
       success: true,
-      data: { items: mockPatients },
+      message: 'Patients fetched successfully',
+      data: {
+        items: mockPatients,
+        pagination: {
+          page: 1,
+          limit: 100,
+          total: mockPatients.length,
+          totalPages: 1
+        }
+      },
     });
 
     mockedEmployeeService.getEmployees.mockResolvedValue({
@@ -515,19 +549,19 @@ describe('CirugiaFormDialog', () => {
 
     it('should validate dates are selected', async () => {
       renderWithProviders(<CirugiaFormDialog {...defaultProps} />);
-      
+
       await waitFor(() => {
         // Fill quirófano but not dates
         const quirofanoField = screen.getByLabelText(/quirófano/i);
         fireEvent.mouseDown(quirofanoField);
         fireEvent.click(screen.getByText('Quirófano 101 - general'));
-        
-        const tipoField = screen.getByLabelText(/tipo de intervención/i);
-        await userEvent.type(tipoField, 'Cirugía General');
-        
-        const submitButton = screen.getByText('Programar');
-        fireEvent.click(submitButton);
       });
+
+      const tipoField = screen.getByLabelText(/tipo de intervención/i);
+      await userEvent.type(tipoField, 'Cirugía General');
+
+      const submitButton = screen.getByText('Programar');
+      fireEvent.click(submitButton);
 
       await waitFor(() => {
         expect(screen.getByText('Por favor seleccione las fechas de inicio y fin')).toBeInTheDocument();

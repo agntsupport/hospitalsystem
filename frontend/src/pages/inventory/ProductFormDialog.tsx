@@ -37,6 +37,7 @@ import {
   Supplier,
   CreateProductRequest,
   UpdateProductRequest,
+  CategoriaProducto,
   PRODUCT_CATEGORIES,
   UNIT_TYPES
 } from '@/types/inventory.types';
@@ -99,7 +100,7 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
     setValue,
     formState: { errors }
   } = useForm<ProductFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: {
       codigo: '',
       codigoBarras: '',
@@ -224,7 +225,7 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
     }
   };
 
-  const getCategoryName = (categoryId: number) => {
+  const getCategoryName = (categoryId: CategoriaProducto | string) => {
     const category = PRODUCT_CATEGORIES.find(cat => cat.id === categoryId);
     return category?.nombre;
   };
@@ -243,7 +244,7 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
           </Alert>
         )}
 
-        <Box component="form" onSubmit={handleSubmit(onFormSubmit)}>
+        <Box component="form" onSubmit={handleSubmit(onFormSubmit as any)}>
           <Grid container spacing={3}>
             {/* Información Básica */}
             <Grid item xs={12}>
@@ -683,7 +684,7 @@ const ProductFormDialog: React.FC<ProductFormDialogProps> = ({
           Cancelar
         </Button>
         <Button
-          onClick={handleSubmit(onFormSubmit)}
+          onClick={handleSubmit(onFormSubmit as any)}
           variant="contained"
           disabled={loading}
           startIcon={<SaveIcon />}

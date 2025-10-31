@@ -125,14 +125,14 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
         offset: page * rowsPerPage
       });
       
-      if (response.success) {
-        setPatients(response.data?.patients || []);
-        setTotalCount(response.data.total);
-        
-        if (response.data?.patients || [].length === 0) {
+      if (response.success && response.data) {
+        setPatients(response.data.items || []);
+        setTotalCount(response.data.pagination.total);
+
+        if ((response.data.items || []).length === 0) {
           toast.info('No se encontraron pacientes con los criterios especificados');
         } else {
-          toast.success(`Se encontraron ${response.data.total} paciente(s)`);
+          toast.success(`Se encontraron ${response.data.pagination.total} paciente(s)`);
         }
       } else {
         throw new Error(response.message);
@@ -413,7 +413,13 @@ const AdvancedSearchTab: React.FC<AdvancedSearchTabProps> = ({ onStatsChange, on
                     <Select
                       value={filters.activo !== undefined ? filters.activo.toString() : ''}
                       label="Estado"
-                      onChange={(e) => handleFilterChange('activo', e.target.value === '' ? undefined : e.target.value === 'true')}
+                      onChange={(e) => {
+                        if (e.target.value === '') {
+                          setFilters(prev => ({ ...prev, activo: undefined }));
+                        } else {
+                          handleFilterChange('activo', e.target.value === 'true');
+                        }
+                      }}
                     >
                       <MenuItem value="">Todos</MenuItem>
                       <MenuItem value="true">Activos</MenuItem>

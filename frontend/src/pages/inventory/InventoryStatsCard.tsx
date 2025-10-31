@@ -285,13 +285,13 @@ const InventoryStatsCard: React.FC<InventoryStatsCardProps> = ({
             {(stats?.recentMovements || []).slice(0, 3).map((movement) => (
               <ListItem key={movement.id} sx={{ px: 0 }}>
                 <ListItemIcon>
-                  <Chip 
-                    label={MOVEMENT_TYPES[movement.tipoMovimiento as keyof typeof MOVEMENT_TYPES]}
+                  <Chip
+                    label={MOVEMENT_TYPES[movement.tipo as keyof typeof MOVEMENT_TYPES]}
                     size="small"
                     color={
-                      movement.tipoMovimiento === 'entrada' ? 'success' :
-                      movement.tipoMovimiento === 'salida' ? 'primary' :
-                      movement.tipoMovimiento === 'merma' ? 'error' :
+                      movement.tipo === 'entrada' ? 'success' :
+                      movement.tipo === 'salida' ? 'primary' :
+                      movement.tipo === 'merma' ? 'error' :
                       'default'
                     }
                     variant="outlined"
@@ -299,7 +299,7 @@ const InventoryStatsCard: React.FC<InventoryStatsCardProps> = ({
                 </ListItemIcon>
                 <ListItemText
                   primary={movement.producto.nombre}
-                  secondary={`${movement.cantidad} ${movement.producto.unidadMedida} • ${inventoryService.formatDateTime(movement.fecha)}`}
+                  secondary={`${movement.cantidad} unidades • ${inventoryService.formatDateTime(movement.fecha)}`}
                   primaryTypographyProps={{
                     sx: {
                       overflow: 'hidden',

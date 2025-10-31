@@ -46,7 +46,7 @@ import {
   Refresh as RefreshIcon,
   AttachMoney as MoneyIcon,
   Person as PersonIcon,
-  Calendar as CalendarIcon,
+  CalendarToday as CalendarIcon,
   AccountBalance as AccountIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -130,14 +130,11 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
     setLoading(true);
     try {
       // Aquí llamaríamos a un endpoint específico para cuentas cerradas con filtros
-      const response = await posService.getPatientAccounts({ 
-        estado: 'cerrada',
-        page: page,
-        limit: ITEMS_PER_PAGE,
-        ...filters
+      const response = await posService.getPatientAccounts({
+        estado: 'cerrada'
       });
-      
-      if (response.success) {
+
+      if (response.success && response.data) {
         setClosedAccounts(response.data.accounts || []);
         setTotalPages(Math.ceil((response.data.accounts?.length || 0) / ITEMS_PER_PAGE));
       }
@@ -171,8 +168,8 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
       }
 
       const response = await posService.getSalesHistory(params);
-      
-      if (response.success) {
+
+      if (response.success && response.data) {
         setQuickSales(response.data.items || []);
         setTotalPages(Math.ceil((response.data.pagination?.total || 0) / ITEMS_PER_PAGE));
       }
@@ -195,7 +192,7 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
   const handleViewDetails = async (account: PatientAccount) => {
     try {
       const response = await posService.getPatientAccountById(account.id);
-      if (response.success) {
+      if (response.success && response.data) {
         setSelectedAccount(response.data.account);
         setAccountDetailsOpen(true);
       }

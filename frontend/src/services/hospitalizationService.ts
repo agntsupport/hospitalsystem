@@ -339,15 +339,20 @@ class HospitalizationService {
       const params = new URLSearchParams();
       if (filters.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
       if (filters.fechaFin) params.append('fechaFin', filters.fechaFin);
-      
+
       const response = await api.get(`/hospitalization/reports?${params.toString()}`);
-      
+
+      const reportFilters: HospitalizationFilters = {
+        fechaIngresoDesde: filters.fechaInicio,
+        fechaIngresoHasta: filters.fechaFin
+      };
+
       return {
         success: true,
         message: 'Reporte de hospitalización generado correctamente',
         data: response.data,
         generadoEn: new Date().toISOString(),
-        parametros: filters
+        parametros: reportFilters
       };
     } catch (error: any) {
       console.error('Error al generar reporte:', error);
@@ -628,12 +633,11 @@ class HospitalizationService {
         const pacientesHospitalizados = response.data.items.map(admission => ({
           id: admission.paciente.id,
           nombre: admission.paciente.nombre,
-          apellidoPaterno: admission.paciente.apellidoPaterno || '',
-          apellidoMaterno: admission.paciente.apellidoMaterno || '',
+          apellidoPaterno: '',
+          apellidoMaterno: '',
           numeroExpediente: admission.paciente.numeroExpediente,
           hospitalizacionId: admission.id,
-          cuentaId: admission.cuentaPacienteId, // ID directo de la cuenta
-          cuentaPaciente: admission.cuentaPaciente, // Información completa de la cuenta
+          cuentaId: admission.id, // ID de la hospitalización como referencia
           habitacion: admission.habitacion?.numero,
           estado: admission.estado
         }));
