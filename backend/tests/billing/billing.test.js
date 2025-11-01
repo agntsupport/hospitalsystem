@@ -63,7 +63,7 @@ describe('Billing Endpoints', () => {
 
     it('should filter invoices by status', async () => {
       const response = await request(app)
-        .get('/api/billing/invoices?estado=pagada')
+        .get('/api/billing/invoices?estado=paid')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -304,7 +304,7 @@ describe('Billing Endpoints', () => {
 
     it('should update invoice status', async () => {
       const updateData = {
-        estado: 'cancelada'
+        estado: 'cancelled'
       };
 
       const response = await request(app)
@@ -314,7 +314,7 @@ describe('Billing Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.factura.estado).toBe('cancelada');
+      expect(response.body.data.factura.estado).toBe('cancelled');
     });
 
     it('should not allow updating paid invoice', async () => {
@@ -322,13 +322,13 @@ describe('Billing Endpoints', () => {
       await request(app)
         .put(`/api/billing/invoices/${testInvoice.id}`)
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ estado: 'pagada' });
+        .send({ estado: 'paid' });
 
       // Try to update again
       const response = await request(app)
         .put(`/api/billing/invoices/${testInvoice.id}`)
         .set('Authorization', `Bearer ${authToken}`)
-        .send({ estado: 'cancelada' });
+        .send({ estado: 'cancelled' });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
@@ -371,7 +371,7 @@ describe('Billing Endpoints', () => {
 
     it('should filter accounts by status', async () => {
       const response = await request(app)
-        .get('/api/billing/accounts-receivable?estado=pendiente')
+        .get('/api/billing/accounts-receivable?estado=pending')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);

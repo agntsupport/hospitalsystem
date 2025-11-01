@@ -162,7 +162,7 @@ router.get('/executive', validateDateRange, async (req, res) => {
       // Tendencias (últimos 30 días)
       prisma.$queryRaw`
         SELECT DATE(created_at) as fecha, COUNT(*) as pacientes
-        FROM pacientes 
+        FROM pacientes
         WHERE created_at >= ${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)}
         GROUP BY DATE(created_at)
         ORDER BY fecha DESC
@@ -173,6 +173,12 @@ router.get('/executive', validateDateRange, async (req, res) => {
     const [facturas, ventas] = resumenFinanciero;
     const [nuevosPacientes, nuevasAdmisiones] = resumenOperacional;
 
+    // Convert BigInt values to numbers in tendencias
+    const tendenciasNormalized = tendencias.map(item => ({
+      fecha: item.fecha,
+      pacientes: Number(item.pacientes)
+    }));
+
     res.json({
       success: true,
       data: {
@@ -180,7 +186,7 @@ router.get('/executive', validateDateRange, async (req, res) => {
           ingresosTotales: parseFloat(facturas._sum.total || 0) + parseFloat(ventas._sum.total || 0),
           nuevosPacientes,
           nuevasAdmisiones,
-          tendenciaPacientes: tendencias
+          tendenciaPacientes: tendenciasNormalized
         }
       },
       message: 'Reporte ejecutivo generado correctamente'
