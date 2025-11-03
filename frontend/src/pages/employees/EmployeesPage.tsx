@@ -39,6 +39,7 @@ import {
   School as ResidentIcon,
   MedicalServices as NurseIcon,
   History as HistoryIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useDebounce } from '@/hooks/useDebounce';
 import { employeeService } from '@/services/employeeService';
@@ -172,6 +173,24 @@ const EmployeesPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error deleting employee:', error);
       const errorMessage = error?.message || error?.error || 'Error al eliminar empleado';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleActivateEmployee = async (employee: Employee) => {
+    try {
+      const response = await employeeService.activateEmployee(employee.id);
+      if (response.success) {
+        toast.success(`Empleado ${employee.nombre} ${employee.apellidoPaterno} reactivado exitosamente`);
+        // Recargar la lista y estadísticas
+        loadEmployees();
+        loadStats();
+      } else {
+        toast.error(response.message || 'Error al reactivar empleado');
+      }
+    } catch (error: any) {
+      console.error('Error activating employee:', error);
+      const errorMessage = error?.message || error?.error || 'Error al reactivar empleado';
       toast.error(errorMessage);
     }
   };
@@ -514,22 +533,35 @@ const EmployeesPage: React.FC = () => {
                           >
                             <ViewIcon />
                           </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleEditEmployee(employee)}
-                            title="Editar"
-                            color="primary"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteEmployee(employee)}
-                            title="Eliminar"
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                          {employee.activo ? (
+                            <>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditEmployee(employee)}
+                                title="Editar"
+                                color="primary"
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteEmployee(employee)}
+                                title="Eliminar"
+                                color="error"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </>
+                          ) : (
+                            <IconButton
+                              size="small"
+                              onClick={() => handleActivateEmployee(employee)}
+                              title="Reactivar empleado"
+                              color="success"
+                            >
+                              <CheckCircleIcon />
+                            </IconButton>
+                          )}
                           <IconButton
                             size="small"
                             onClick={() => handleOpenAuditTrail(employee)}
