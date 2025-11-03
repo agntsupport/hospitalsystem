@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger.config');
 const { prisma } = require('./utils/database');
 const { authenticateToken } = require('./middleware/auth.middleware');
 
@@ -99,14 +101,55 @@ app.use((req, res, next) => {
 // ==============================================
 
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'ok',
     message: 'Sistema Hospitalario API (PostgreSQL + Arquitectura Modular)',
     timestamp: new Date().toISOString(),
     database: 'PostgreSQL con Prisma',
-    architecture: 'Modular Routes'
+    architecture: 'Modular Routes',
+    documentation: '/api-docs'
   });
 });
+
+// ==============================================
+// SWAGGER API DOCUMENTATION
+// ==============================================
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Root endpoint
+ *     description: Información básica del API
+ *     responses:
+ *       200:
+ *         description: Información del servidor
+ */
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Sistema de Gestión Hospitalaria Integral - API',
+    version: '2.0.0',
+    author: 'Alfredo Manuel Reyes',
+    company: 'agnt_ - Software Development Company',
+    documentation: '/api-docs',
+    health: '/health',
+    endpoints: 121
+  });
+});
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Hospital API Docs',
+  customfavIcon: '/favicon.ico'
+}));
+
+// Swagger JSON
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+console.log('📚 Swagger documentation available at /api-docs');
 
 // ==============================================
 // MIDDLEWARE DE AUDITORÍA

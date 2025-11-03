@@ -1,6 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
-const prisma = new PrismaClient();
+const { prisma } = require('../utils/database');
 
 // Validar que JWT_SECRET esté definido al inicio
 if (!process.env.JWT_SECRET) {

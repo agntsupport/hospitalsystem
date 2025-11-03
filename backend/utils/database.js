@@ -7,12 +7,8 @@ const prisma = new PrismaClient({
     db: {
       url: process.env.DATABASE_URL
     }
-  },
-  // Configuración de pool de conexiones para evitar "Too many clients"
-  ...(process.env.NODE_ENV === 'test' && {
-    // En modo test, limitar conexiones
-    datasourceUrl: process.env.DATABASE_URL
-  })
+  }
+  // Connection pool configurado en schema.prisma
 });
 
 // Manejar cierre graceful de conexiones

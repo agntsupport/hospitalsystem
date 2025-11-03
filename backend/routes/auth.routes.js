@@ -18,6 +18,98 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // ENDPOINTS DE AUTENTICACIÓN
 // ==============================================
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     tags:
+ *       - Autenticación
+ *     summary: Iniciar sesión
+ *     description: |
+ *       Autentica un usuario y retorna un JWT token.
+ *
+ *       **Seguridad implementada (FASE 5):**
+ *       - Bloqueo de cuenta: 5 intentos fallidos = 15 min bloqueo
+ *       - Solo bcrypt (sin fallbacks inseguros)
+ *       - JWT blacklist para revocación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: admin
+ *               password:
+ *                 type: string
+ *                 example: admin123
+ *     responses:
+ *       200:
+ *         description: Login exitoso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Login exitoso
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     rol:
+ *                       type: string
+ *                       enum: [administrador, cajero, enfermero, almacenista, medico_residente, medico_especialista, socio]
+ *       401:
+ *         description: Credenciales inválidas o cuenta bloqueada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Credenciales inválidas. Intento 1 de 5
+ *                 intentosRestantes:
+ *                   type: integer
+ *                   example: 4
+ *       403:
+ *         description: Cuenta bloqueada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Cuenta bloqueada. Intente nuevamente en 15 minuto(s)
+ *                 bloqueadoHasta:
+ *                   type: string
+ *                   format: date-time
+ */
 // POST /login - Iniciar sesión con JWT real
 router.post('/login', async (req, res) => {
   try {
@@ -174,6 +266,39 @@ router.post('/login', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags:
+ *       - Autenticación
+ *     summary: Cerrar sesión
+ *     description: |
+ *       Cierra la sesión del usuario y revoca el token JWT agregándolo a la blacklist.
+ *
+ *       **Seguridad (FASE 5):**
+ *       - Token agregado a blacklist en PostgreSQL
+ *       - Token no puede ser reutilizado
+ *       - Limpieza automática de tokens expirados
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout exitoso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Logout exitoso. Token revocado
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 // POST /logout - Cerrar sesión y revocar token
 router.post('/logout', authenticateToken, auditMiddleware('autenticacion'), async (req, res) => {
   try {
@@ -209,6 +334,65 @@ router.post('/logout', authenticateToken, auditMiddleware('autenticacion'), asyn
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/verify-token:
+ *   get:
+ *     tags:
+ *       - Autenticación
+ *     summary: Verificar validez del token
+ *     description: Verifica si un token JWT es válido y retorna información del usuario
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Bearer token (formato "Bearer {token}")
+ *         example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *     responses:
+ *       200:
+ *         description: Token válido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Token válido
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     valid:
+ *                       type: boolean
+ *                       example: true
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         username:
+ *                           type: string
+ *                         rol:
+ *                           type: string
+ *       401:
+ *         description: Token inválido, expirado o no proporcionado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Token expirado
+ */
 // GET /verify-token - Verificar token JWT real
 router.get('/verify-token', async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');

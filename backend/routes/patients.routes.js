@@ -11,6 +11,63 @@ const logger = require('../utils/logger');
 // ENDPOINTS DE PACIENTES
 // ==============================================
 
+/**
+ * @swagger
+ * /api/patients:
+ *   get:
+ *     tags:
+ *       - Pacientes
+ *     summary: Listar todos los pacientes
+ *     description: Obtiene listado paginado de pacientes con filtros avanzados y búsqueda
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre, apellido, expediente o email
+ *       - in: query
+ *         name: genero
+ *         schema:
+ *           type: string
+ *           enum: [masculino, femenino, otro]
+ *       - in: query
+ *         name: ciudad
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de pacientes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     pagination:
+ *                       $ref: '#/components/schemas/PaginationInfo'
+ */
 // GET / - Obtener todos los pacientes con filtros avanzados
 router.get('/', validatePagination, async (req, res) => {
   try {
@@ -217,6 +274,69 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/patients:
+ *   post:
+ *     tags:
+ *       - Pacientes
+ *     summary: Crear nuevo paciente
+ *     description: Registra un nuevo paciente en el sistema con generación automática de número de expediente
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nombre
+ *               - apellidoPaterno
+ *               - fechaNacimiento
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *                 example: Juan
+ *               apellidoPaterno:
+ *                 type: string
+ *                 example: Pérez
+ *               apellidoMaterno:
+ *                 type: string
+ *                 example: García
+ *               fechaNacimiento:
+ *                 type: string
+ *                 format: date
+ *                 example: "1990-01-15"
+ *               genero:
+ *                 type: string
+ *                 enum: [masculino, femenino, otro]
+ *                 example: masculino
+ *               telefono:
+ *                 type: string
+ *                 example: "5512345678"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       201:
+ *         description: Paciente creado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
 // POST / - Crear nuevo paciente
 router.post('/', authenticateToken, auditMiddleware('pacientes'), validateRequired(['nombre', 'apellidoPaterno', 'fechaNacimiento']), async (req, res) => {
   try {
