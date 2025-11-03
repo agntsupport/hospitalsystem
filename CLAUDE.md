@@ -1,6 +1,7 @@
 # Sistema de Gestión Hospitalaria Integral
 **Desarrollado por:** Alfredo Manuel Reyes
-**Empresa:** agnt_ - Software Development Company
+**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**Teléfono:** 443 104 7479
 **Tecnología:** Arquitectura Full-Stack con PostgreSQL + React + Node.js
 
 ## 🚀 Inicio Rápido
@@ -362,9 +363,10 @@ psql -d hospital_management -c "SELECT 1;"
 ---
 **🏥 Sistema de Gestión Hospitalaria Integral**
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
-**🏢 Empresa:** agnt_ - Software Development Company
-**📅 Última actualización:** 1 de noviembre de 2025
-**✅ Estado:** Sistema Funcional (7.8/10) | Tests 600 (72% avg) | TypeScript 0 errores ✅
+**🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**📞 Teléfono:** 443 104 7479
+**📅 Última actualización:** 3 de noviembre de 2025
+**✅ Estado:** Sistema Funcional (8.8/10) | Tests ~670 (~92% avg) | TypeScript 0 errores ✅
 
 ---
-*© 2025 agnt_ Software Development Company. Todos los derechos reservados.*
+*© 2025 AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial. Todos los derechos reservados.*

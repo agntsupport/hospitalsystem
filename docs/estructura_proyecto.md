@@ -222,4 +222,7 @@ npm run dev
 - **FASE 6**: Containerización y Despliegue
 
 ---
-**🏥 Sistema 100% Funcional** - Desarrollado por Alfredo Manuel Reyes / agnt_ Software Development Company
+**🏥 Sistema 100% Funcional**
+**Desarrollado por:** Alfredo Manuel Reyes
+**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**Teléfono:** 443 104 7479

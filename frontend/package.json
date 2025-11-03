@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend del Sistema de Gestión Hospitalaria Integral",
   "author": "Alfredo Manuel Reyes <alfredo@agnt.dev>",
-  "company": "agnt_ - Software Development Company",
+  "company": "AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial",
+  "phone": "443 104 7479",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.11.1",

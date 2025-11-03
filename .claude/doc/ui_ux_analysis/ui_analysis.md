@@ -1,7 +1,7 @@
 # UI/UX Comprehensive Analysis - Hospital Management System
 
 **Date:** November 3, 2025
-**System:** Hospital Management System (agnt_ Software Development)
+**System:** Hospital Management System (AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial)
 **Analysis Type:** Code-Based UI/UX Audit (No Runtime Screenshots)
 **Technology Stack:** React 18 + Material-UI v5.14.5 + TypeScript + Redux Toolkit
 

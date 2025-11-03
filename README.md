@@ -1,7 +1,8 @@
 # 🏥 Sistema de Gestión Hospitalaria Integral
 
-**Desarrollado por:** Alfredo Manuel Reyes  
-**Empresa:** agnt_ - Software Development Company  
+**Desarrollado por:** Alfredo Manuel Reyes
+**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**Teléfono:** 443 104 7479
 **Tecnología:** Arquitectura Full-Stack con PostgreSQL + React + Node.js
 
 ![Estado del Proyecto](https://img.shields.io/badge/Estado-88%25%20Funcional-brightgreen)
@@ -476,10 +477,11 @@ npm run dev
 
 **🏥 Sistema de Gestión Hospitalaria Integral**
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
-**🏢 Empresa:** agnt_ - Software Development Company
+**🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**📞 Teléfono:** 443 104 7479
 **🚀 Stack:** React 18 + TypeScript + Node.js + PostgreSQL + Material-UI
-**📅 Última actualización:** 2 de noviembre de 2025 - FASE 5 Completada ✅
-**✅ Estado:** Sistema Funcional (88%) - Tests ~670 (~92% avg pass) | TypeScript 0 errores | Seguridad Reforzada | FASE 0-5 Completadas ✅  
+**📅 Última actualización:** 3 de noviembre de 2025 - FASE 5 Completada ✅
+**✅ Estado:** Sistema Funcional (88%) - Tests ~670 (~92% avg pass) | TypeScript 0 errores | Seguridad Reforzada | FASE 0-5 Completadas ✅
 
 ---
-*© 2025 agnt_ Software Development Company. Todos los derechos reservados.*
+*© 2025 AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial. Todos los derechos reservados.*

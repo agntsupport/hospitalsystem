@@ -9,7 +9,9 @@ const options = {
       description: `
 # API del Sistema de Gestión Hospitalaria
 
-Desarrollado por **Alfredo Manuel Reyes** - agnt_ Software Development Company
+Desarrollado por **Alfredo Manuel Reyes**
+**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**Teléfono:** 443 104 7479
 
 ## Autenticación
 
@@ -50,7 +52,8 @@ Endpoints con listados soportan paginación:
       contact: {
         name: 'Alfredo Manuel Reyes',
         email: 'alfredo@agnt.dev',
-        url: 'https://agnt.dev'
+        url: 'https://agnt.dev',
+        'x-phone': '443 104 7479'
       },
       license: {
         name: 'MIT',
