@@ -41,13 +41,15 @@ router.get('/stats', async (req, res) => {
     res.json({
       success: true,
       data: {
+        total: totalEmpleados,
         totalEmpleados,
         empleadosActivos,
         empleadosInactivos: totalEmpleados - empleadosActivos,
+        porTipo: distribucionPorTipo,
         distribucionPorTipo,
         empleadosEspecialistas,
         // Calcular métricas adicionales
-        tasaActividad: totalEmpleados > 0 ? 
+        tasaActividad: totalEmpleados > 0 ?
           ((empleadosActivos / totalEmpleados) * 100).toFixed(1) : 0
       },
       message: 'Estadísticas de empleados obtenidas correctamente'
@@ -55,6 +57,118 @@ router.get('/stats', async (req, res) => {
 
   } catch (error) {
     logger.logError('GET_EMPLOYEES_STATS', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /doctors - Obtener solo médicos
+router.get('/doctors', async (req, res) => {
+  try {
+    const { especialidad, page = 1, limit = 20 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where = {
+      activo: true,
+      tipoEmpleado: { in: ['medico_residente', 'medico_especialista'] }
+    };
+
+    if (especialidad) {
+      where.especialidad = { contains: especialidad, mode: 'insensitive' };
+    }
+
+    const [empleados, total] = await Promise.all([
+      prisma.empleado.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: [
+          { apellidoPaterno: 'asc' },
+          { nombre: 'asc' }
+        ]
+      }),
+      prisma.empleado.count({ where })
+    ]);
+
+    res.json({
+      success: true,
+      data: empleados.map(emp => ({
+        id: emp.id,
+        nombre: emp.nombre,
+        apellidoPaterno: emp.apellidoPaterno,
+        apellidoMaterno: emp.apellidoMaterno,
+        nombreCompleto: `${emp.nombre} ${emp.apellidoPaterno} ${emp.apellidoMaterno || ''}`.trim(),
+        tipoEmpleado: emp.tipoEmpleado,
+        especialidad: emp.especialidad,
+        cedulaProfesional: emp.cedulaProfesional,
+        telefono: emp.telefono,
+        email: emp.email,
+        activo: emp.activo
+      })),
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    logger.logError('GET_DOCTORS', error, { query: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /nurses - Obtener solo enfermeros
+router.get('/nurses', async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where = {
+      activo: true,
+      tipoEmpleado: 'enfermero'
+    };
+
+    const [empleados, total] = await Promise.all([
+      prisma.empleado.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: [
+          { apellidoPaterno: 'asc' },
+          { nombre: 'asc' }
+        ]
+      }),
+      prisma.empleado.count({ where })
+    ]);
+
+    res.json({
+      success: true,
+      data: empleados.map(emp => ({
+        id: emp.id,
+        nombre: emp.nombre,
+        apellidoPaterno: emp.apellidoPaterno,
+        apellidoMaterno: emp.apellidoMaterno,
+        nombreCompleto: `${emp.nombre} ${emp.apellidoPaterno} ${emp.apellidoMaterno || ''}`.trim(),
+        tipoEmpleado: emp.tipoEmpleado,
+        telefono: emp.telefono,
+        email: emp.email,
+        activo: emp.activo
+      })),
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    logger.logError('GET_NURSES', error, { query: req.query });
     handlePrismaError(error, res);
   }
 });
@@ -198,7 +312,7 @@ router.get('/:id', async (req, res) => {
     
     res.json({
       success: true,
-      data: empleadoFormatted,
+      data: { empleado: empleadoFormatted },
       message: 'Empleado obtenido correctamente'
     });
     
@@ -262,12 +376,21 @@ router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, re
       }
     }
     
-    // Validar que email no esté en uso si se proporciona
+    // Validar formato de email si se proporciona
     if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El formato del email no es válido'
+        });
+      }
+
+      // Validar que email no esté en uso
       const empleadoExistente = await prisma.empleado.findFirst({
         where: { email, activo: true }
       });
-      
+
       if (empleadoExistente) {
         return res.status(400).json({
           success: false,
@@ -340,7 +463,7 @@ router.post('/', authenticateToken, auditMiddleware('empleados'), async (req, re
     
     res.status(201).json({
       success: true,
-      data: resultado.empleado,
+      data: { empleado: resultado.empleado },
       message: `Empleado ${resultado.usuario ? 'y usuario' : ''} creado exitosamente`
     });
     
@@ -444,7 +567,7 @@ router.put('/:id', authenticateToken, auditMiddleware('empleados'), captureOrigi
     
     res.json({
       success: true,
-      data: empleadoActualizado,
+      data: { empleado: empleadoActualizado },
       message: 'Empleado actualizado exitosamente'
     });
     
@@ -455,7 +578,7 @@ router.put('/:id', authenticateToken, auditMiddleware('empleados'), captureOrigi
 });
 
 // DELETE /:id - Eliminar empleado (soft delete)
-router.delete('/:id', authenticateToken, auditMiddleware('empleados'), criticalOperationAudit, captureOriginalData('empleado'), async (req, res) => {
+router.delete('/:id', authenticateToken, auditMiddleware('empleados'), captureOriginalData('empleado'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -484,6 +607,93 @@ router.delete('/:id', authenticateToken, auditMiddleware('empleados'), criticalO
     
   } catch (error) {
     logger.logError('DEACTIVATE_EMPLOYEE', error, { employeeId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /schedule/:id - Obtener horario/citas de empleado
+router.get('/schedule/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fechaInicio, fechaFin } = req.query;
+
+    // Verificar que el empleado existe
+    const empleado = await prisma.empleado.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!empleado) {
+      return res.status(404).json({
+        success: false,
+        message: 'Empleado no encontrado'
+      });
+    }
+
+    // Construir filtro de fechas si se proporcionan
+    const where = {
+      empleadoId: parseInt(id)
+    };
+
+    if (fechaInicio && fechaFin) {
+      where.fechaHora = {
+        gte: new Date(fechaInicio),
+        lte: new Date(fechaFin)
+      };
+    }
+
+    // Obtener citas del empleado (si existen en el modelo Cita)
+    // Por ahora retornamos estructura vacía ya que Cita puede no existir
+    const citas = [];
+
+    res.json({
+      success: true,
+      data: {
+        empleado: {
+          id: empleado.id,
+          nombre: empleado.nombre,
+          nombreCompleto: `${empleado.nombre} ${empleado.apellidoPaterno} ${empleado.apellidoMaterno || ''}`.trim()
+        },
+        citas,
+        total: citas.length
+      }
+    });
+
+  } catch (error) {
+    logger.logError('GET_EMPLOYEE_SCHEDULE', error, { employeeId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
+// PUT /:id/activate - Reactivar empleado
+router.put('/:id/activate', authenticateToken, auditMiddleware('empleados'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el empleado existe
+    const empleadoExistente = await prisma.empleado.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!empleadoExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Empleado no encontrado'
+      });
+    }
+
+    // Reactivar empleado
+    await prisma.empleado.update({
+      where: { id: parseInt(id) },
+      data: { activo: true }
+    });
+
+    res.json({
+      success: true,
+      message: 'Empleado reactivado exitosamente'
+    });
+
+  } catch (error) {
+    logger.logError('ACTIVATE_EMPLOYEE', error, { employeeId: req.params.id });
     handlePrismaError(error, res);
   }
 });

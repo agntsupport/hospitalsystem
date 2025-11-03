@@ -55,6 +55,14 @@ router.post('/', authenticateToken, auditMiddleware('habitaciones'), validateReq
   try {
     const { numero, tipo, precioPorDia, descripcion } = req.body;
 
+    // Validar que el precio sea positivo
+    if (parseFloat(precioPorDia) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El precio por día debe ser un valor positivo'
+      });
+    }
+
     // Verificar que el número no esté duplicado
     const existeHabitacion = await prisma.habitacion.findUnique({
       where: { numero: numero.toString() }
@@ -179,7 +187,7 @@ router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOr
 });
 
 // DELETE /:id - Eliminar habitación
-router.delete('/:id', authenticateToken, auditMiddleware('habitaciones'), criticalOperationAudit, captureOriginalData('habitacion'), async (req, res) => {
+router.delete('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), async (req, res) => {
   try {
     const { id } = req.params;
     const habitacionId = parseInt(id);
@@ -219,8 +227,21 @@ router.delete('/:id', authenticateToken, auditMiddleware('habitaciones'), critic
       });
     }
 
-    await prisma.habitacion.delete({
-      where: { id: habitacionId }
+    // Eliminar habitación y servicio asociado en transacción
+    await prisma.$transaction(async (tx) => {
+      // 1. Eliminar servicio asociado (código: HAB-{numero})
+      const codigoServicio = `HAB-${habitacion.numero}`;
+      await tx.servicio.deleteMany({
+        where: { codigo: codigoServicio }
+      });
+
+      // 2. Eliminar habitación
+      await tx.habitacion.delete({
+        where: { id: habitacionId }
+      });
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.json({

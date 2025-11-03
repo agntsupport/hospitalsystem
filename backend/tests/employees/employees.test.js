@@ -39,7 +39,7 @@ describe('Employees Endpoints', () => {
 
     it('should filter by employee type', async () => {
       const response = await request(app)
-        .get('/api/employees?tipoEmpleado=medico')
+        .get('/api/employees?tipoEmpleado=medico_especialista')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -48,7 +48,7 @@ describe('Employees Endpoints', () => {
 
     it('should filter by specialization', async () => {
       const response = await request(app)
-        .get('/api/employees?especializacion=cardiologia')
+        .get('/api/employees?especialidad=cardiologia')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -80,11 +80,12 @@ describe('Employees Endpoints', () => {
         nombre: 'Dr. Carlos',
         apellidoPaterno: 'González',
         apellidoMaterno: 'López',
-        tipoEmpleado: 'medico',
-        especializacion: 'medicina general',
+        tipoEmpleado: 'medico_especialista',
+        especialidad: 'medicina general',
         telefono: '5551234567',
         email: `carlos.gonzalez_${Date.now()}@hospital.com`,
-        numeroLicencia: `LIC-${Date.now()}`
+        cedulaProfesional: `LIC-${Date.now()}`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -104,7 +105,8 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         apellidoPaterno: 'González',
         tipoEmpleado: 'enfermero',
-        telefono: '5551234567'
+        telefono: '5551234567',
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -120,7 +122,8 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'Juan',
         apellidoPaterno: 'Pérez',
-        telefono: '5551234567'
+        telefono: '5551234567',
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -136,8 +139,9 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'María',
         apellidoPaterno: 'García',
-        tipoEmpleado: 'administrativo',
-        email: 'invalid-email-format'
+        tipoEmpleado: 'administrador',
+        email: 'invalid-email-format',
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -155,9 +159,10 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'Dr. Pedro',
         apellidoPaterno: 'Martínez',
-        tipoEmpleado: 'medico',
-        numeroLicencia: licenseNumber,
-        email: `pedro.martinez_${Date.now()}@hospital.com`
+        tipoEmpleado: 'medico_especialista',
+        cedulaProfesional: licenseNumber,
+        email: `pedro.martinez_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       // Create first employee
@@ -189,7 +194,8 @@ describe('Employees Endpoints', () => {
         nombre: 'Test',
         apellidoPaterno: 'Employee',
         tipoEmpleado: 'enfermero',
-        email: `test.employee_${Date.now()}@hospital.com`
+        email: `test.employee_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -225,8 +231,9 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'Update',
         apellidoPaterno: 'Test',
-        tipoEmpleado: 'administrativo',
-        email: `update.test_${Date.now()}@hospital.com`
+        tipoEmpleado: 'administrador',
+        email: `update.test_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -241,7 +248,7 @@ describe('Employees Endpoints', () => {
       const updateData = {
         nombre: 'Updated Name',
         apellidoPaterno: 'Updated Lastname',
-        tipoEmpleado: 'administrativo',
+        tipoEmpleado: 'administrador',
         telefono: '5559998877'
       };
 
@@ -261,9 +268,10 @@ describe('Employees Endpoints', () => {
       const doctorData = {
         nombre: 'Dr. Especialista',
         apellidoPaterno: 'Test',
-        tipoEmpleado: 'medico',
-        especializacion: 'pediatria',
-        email: `dr.especialista_${Date.now()}@hospital.com`
+        tipoEmpleado: 'medico_especialista',
+        especialidad: 'pediatria',
+        email: `dr.especialista_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const createResponse = await request(app)
@@ -275,7 +283,7 @@ describe('Employees Endpoints', () => {
 
       const updateData = {
         ...doctorData,
-        especializacion: 'cardiologia'
+        especialidad: 'cardiologia'
       };
 
       const response = await request(app)
@@ -284,7 +292,7 @@ describe('Employees Endpoints', () => {
         .send(updateData);
 
       expect(response.status).toBe(200);
-      expect(response.body.data.empleado.especializacion).toBe('cardiologia');
+      expect(response.body.data.empleado.especialidad).toBe('cardiologia');
     });
   });
 
@@ -293,8 +301,9 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'Delete',
         apellidoPaterno: 'Test',
-        tipoEmpleado: 'administrativo',
-        email: `delete.test_${Date.now()}@hospital.com`
+        tipoEmpleado: 'administrador',
+        email: `delete.test_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -350,7 +359,7 @@ describe('Employees Endpoints', () => {
 
     it('should filter doctors by specialization', async () => {
       const response = await request(app)
-        .get('/api/employees/doctors?especializacion=cardiologia')
+        .get('/api/employees/doctors?especialidad=cardiologia')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -375,8 +384,9 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'Schedule',
         apellidoPaterno: 'Test',
-        tipoEmpleado: 'medico',
-        email: `schedule.test_${Date.now()}@hospital.com`
+        tipoEmpleado: 'medico_especialista',
+        email: `schedule.test_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
@@ -414,8 +424,9 @@ describe('Employees Endpoints', () => {
       const employeeData = {
         nombre: 'Activate',
         apellidoPaterno: 'Test',
-        tipoEmpleado: 'administrativo',
-        email: `activate.test_${Date.now()}@hospital.com`
+        tipoEmpleado: 'administrador',
+        email: `activate.test_${Date.now()}@hospital.com`,
+        fechaIngreso: new Date().toISOString()
       };
 
       const response = await request(app)
