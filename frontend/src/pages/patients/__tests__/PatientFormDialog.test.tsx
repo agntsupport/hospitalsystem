@@ -176,12 +176,13 @@ describe('PatientFormDialog', () => {
   describe('Rendering', () => {
     it('should render create patient dialog when no patient is provided', () => {
       renderWithProviders(<PatientFormDialog {...defaultProps} />);
-      
-      expect(screen.getByText('➕ Nuevo Paciente')).toBeInTheDocument();
+
+      expect(screen.getByText('Registrar Nuevo Paciente')).toBeInTheDocument();
       expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/apellido paterno/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/género/i)).toBeInTheDocument();
-      expect(screen.getByText('Crear Paciente')).toBeInTheDocument();
+      // Género field is a Select with label text "Género *"
+      expect(screen.getByText('Género *')).toBeInTheDocument();
+      expect(screen.getByText('Siguiente')).toBeInTheDocument();
     });
 
     it('should render edit patient dialog when patient is provided', () => {
@@ -206,18 +207,18 @@ describe('PatientFormDialog', () => {
       };
 
       renderWithProviders(<PatientFormDialog {...defaultProps} editingPatient={patient} />);
-      
-      expect(screen.getByText('✏️ Editar Paciente')).toBeInTheDocument();
+
+      expect(screen.getByText('Editar Paciente')).toBeInTheDocument();
       expect(screen.getByDisplayValue('John')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Doe')).toBeInTheDocument();
-      expect(screen.getByText('Actualizar Paciente')).toBeInTheDocument();
+      expect(screen.getByText('Siguiente')).toBeInTheDocument(); // First step shows "Siguiente"
     });
 
     it('should not render when dialog is closed', () => {
       renderWithProviders(<PatientFormDialog {...defaultProps} open={false} />);
-      
-      expect(screen.queryByText('➕ Nuevo Paciente')).not.toBeInTheDocument();
-      expect(screen.queryByText('✏️ Editar Paciente')).not.toBeInTheDocument();
+
+      expect(screen.queryByText('Registrar Nuevo Paciente')).not.toBeInTheDocument();
+      expect(screen.queryByText('Editar Paciente')).not.toBeInTheDocument();
     });
 
     it('should render all required form fields', () => {
@@ -241,7 +242,7 @@ describe('PatientFormDialog', () => {
     it('should show validation errors for required fields', async () => {
       renderWithProviders(<PatientFormDialog {...defaultProps} />);
       
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -257,7 +258,7 @@ describe('PatientFormDialog', () => {
       const emailField = screen.getByLabelText(/email/i);
       await userEvent.type(emailField, 'invalid-email');
       
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -271,7 +272,7 @@ describe('PatientFormDialog', () => {
       const phoneField = screen.getByLabelText(/teléfono/i);
       await userEvent.type(phoneField, '123');
       
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -288,7 +289,7 @@ describe('PatientFormDialog', () => {
       const dateField = screen.getByTestId('date-picker-fecha-de-nacimiento');
       fireEvent.change(dateField, { target: { value: tomorrow.toISOString().split('T')[0] } });
       
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -315,7 +316,7 @@ describe('PatientFormDialog', () => {
       fireEvent.click(maleOption);
       
       // Submit form
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -400,7 +401,7 @@ describe('PatientFormDialog', () => {
       fireEvent.click(maleOption);
       
       // Submit form
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -433,7 +434,7 @@ describe('PatientFormDialog', () => {
       fireEvent.click(maleOption);
       
       // Submit form
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       // Check loading state
@@ -509,7 +510,7 @@ describe('PatientFormDialog', () => {
     it('should announce errors to screen readers', async () => {
       renderWithProviders(<PatientFormDialog {...defaultProps} />);
       
-      const submitButton = screen.getByText('Crear Paciente');
+      const submitButton = screen.getByText('Siguiente');
       fireEvent.click(submitButton);
 
       await waitFor(() => {
