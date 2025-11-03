@@ -1,4 +1,3 @@
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const path = require('path');
 
@@ -11,13 +10,14 @@ require('dotenv').config({
 // Test database configuration
 process.env.NODE_ENV = 'test';
 
-const prisma = new PrismaClient();
+// Usar singleton de Prisma compartido (evita "Too many clients already")
+const { prisma } = require('../utils/database');
 
 // Global test setup
 beforeAll(async () => {
-  // Connect to test database
-  await prisma.$connect();
-  
+  // Prisma se conecta automáticamente en la primera query
+  // No es necesario llamar explícitamente a $connect()
+
   // Clean up test data before tests
   await cleanTestData();
 });
@@ -25,9 +25,9 @@ beforeAll(async () => {
 afterAll(async () => {
   // Clean up test data after tests
   await cleanTestData();
-  
-  // Close database connection
-  await prisma.$disconnect();
+
+  // NO cerrar la conexión aquí para evitar problemas con otros tests
+  // Prisma singleton se desconectará automáticamente al finalizar el proceso
 });
 
 // Clean test data between test suites

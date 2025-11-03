@@ -13,9 +13,30 @@ import authSlice from '@/store/slices/authSlice';
 import uiSlice from '@/store/slices/uiSlice';
 
 // Mock services
-jest.mock('@/services/quirofanosService');
-jest.mock('@/services/patientsService');
-jest.mock('@/services/employeeService');
+jest.mock('@/services/quirofanosService', () => ({
+  __esModule: true,
+  default: {
+    getQuirofanos: jest.fn(),
+    getCirugias: jest.fn(),
+    createCirugia: jest.fn(),
+    updateCirugia: jest.fn(),
+    checkDisponibilidad: jest.fn(),
+  }
+}));
+
+jest.mock('@/services/patientsService', () => ({
+  __esModule: true,
+  patientsService: {
+    getPatients: jest.fn()
+  }
+}));
+
+jest.mock('@/services/employeeService', () => ({
+  __esModule: true,
+  employeeService: {
+    getDoctors: jest.fn()
+  }
+}));
 
 const mockedQuirofanosService = quirofanosService as jest.Mocked<typeof quirofanosService>;
 const mockedPatientsService = patientsService as jest.Mocked<typeof patientsService>;

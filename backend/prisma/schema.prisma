@@ -19,6 +19,7 @@ model Usuario {
   telefono         String?
   ultimoAcceso     DateTime? @map("ultimo_acceso")
   intentosFallidos Int       @default(0) @map("intentos_fallidos")
+  bloqueadoHasta   DateTime? @map("bloqueado_hasta")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
@@ -1238,4 +1239,20 @@ enum TipoNotificacion {
   ENTREGA_CONFIRMADA  // Para médico/enfermero
   SOLICITUD_CANCELADA // Para todos los involucrados
   PRODUCTOS_APLICADOS // Para almacenista (cierre del ciclo)
+}
+
+// ==============================================
+// JWT BLACKLIST (Seguridad)
+// ==============================================
+model TokenBlacklist {
+  id             Int      @id @default(autoincrement())
+  token          String   @unique
+  usuarioId      Int      @map("usuario_id")
+  motivoRevocado String?  @map("motivo_revocado")
+  fechaExpira    DateTime @map("fecha_expira")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+  @@index([fechaExpira])
+  @@map("token_blacklist")
 }

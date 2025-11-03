@@ -17,10 +17,41 @@ const PORT = process.env.PORT || 3001;
 // SEGURIDAD: HELMET
 // ==============================================
 // Configurar headers de seguridad HTTP
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(helmet({
-  contentSecurityPolicy: false, // Deshabilitado para desarrollo, habilitar en producción
-  crossOriginEmbedderPolicy: false
+  contentSecurityPolicy: isProduction, // Habilitado en producción
+  crossOriginEmbedderPolicy: false,
+  hsts: isProduction ? {
+    maxAge: 31536000, // 1 año en segundos
+    includeSubDomains: true,
+    preload: true
+  } : false
 }));
+
+// ==============================================
+// FORZAR HTTPS EN PRODUCCIÓN
+// ==============================================
+// Middleware para forzar HTTPS (solo en producción)
+if (isProduction) {
+  app.use((req, res, next) => {
+    // Verificar si la conexión es segura
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+
+    if (!isSecure) {
+      // Redirigir a HTTPS
+      const httpsUrl = `https://${req.hostname}${req.url}`;
+      console.warn(`⚠️  HTTP request redirected to HTTPS: ${req.url}`);
+      return res.redirect(301, httpsUrl);
+    }
+
+    next();
+  });
+
+  console.log('✅ HTTPS enforcement enabled (production mode)');
+} else {
+  console.log('⚠️  HTTPS enforcement disabled (development mode)');
+}
 
 // ==============================================
 // COMPRESIÓN GZIP
@@ -1063,6 +1094,10 @@ app.use((err, req, res, next) => {
 
 // Solo iniciar servidor si no estamos en modo test
 if (require.main === module) {
+  // Iniciar servicio de limpieza de tokens JWT blacklist
+  const TokenCleanupService = require('./utils/token-cleanup');
+  TokenCleanupService.startAutoCleanup(24); // Limpiar cada 24 horas
+
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🏥 Servidor Hospital con Arquitectura Modular iniciado`);
     console.log(`🚀 Ejecutándose en: http://localhost:${PORT}`);

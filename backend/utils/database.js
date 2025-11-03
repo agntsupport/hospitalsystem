@@ -1,8 +1,23 @@
 const { PrismaClient } = require('@prisma/client');
 
-// Cliente Prisma singleton
+// Cliente Prisma singleton con pool de conexiones optimizado
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  },
+  // Configuración de pool de conexiones para evitar "Too many clients"
+  ...(process.env.NODE_ENV === 'test' && {
+    // En modo test, limitar conexiones
+    datasourceUrl: process.env.DATABASE_URL
+  })
+});
+
+// Manejar cierre graceful de conexiones
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
 });
 
 // Función para calcular edad desde fecha de nacimiento

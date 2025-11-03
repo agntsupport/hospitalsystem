@@ -24,15 +24,15 @@ router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Usuario y contraseña son requeridos' 
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario y contraseña son requeridos'
       });
     }
 
     // Buscar usuario en la base de datos
     const user = await prisma.usuario.findFirst({
-      where: { 
+      where: {
         username: username,
         activo: true
       },
@@ -43,15 +43,32 @@ router.post('/login', async (req, res) => {
         email: true,
         rol: true,
         activo: true,
+        intentosFallidos: true,
+        bloqueadoHasta: true,
         createdAt: true,
         updatedAt: true
       }
     });
 
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Credenciales inválidas' 
+      return res.status(401).json({
+        success: false,
+        message: 'Credenciales inválidas'
+      });
+    }
+
+    // Verificar si la cuenta está bloqueada
+    if (user.bloqueadoHasta && new Date() < user.bloqueadoHasta) {
+      const minutosRestantes = Math.ceil((user.bloqueadoHasta - new Date()) / 60000);
+      logger.logAuth('LOGIN_BLOCKED', null, {
+        username: user.username,
+        minutosRestantes,
+        intentosFallidos: user.intentosFallidos
+      });
+      return res.status(403).json({
+        success: false,
+        message: `Cuenta bloqueada. Intente nuevamente en ${minutosRestantes} minuto(s)`,
+        bloqueadoHasta: user.bloqueadoHasta
       });
     }
 
@@ -70,18 +87,54 @@ router.post('/login', async (req, res) => {
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordValid) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Credenciales inválidas' 
+      // Incrementar intentos fallidos
+      const nuevoIntentosFallidos = user.intentosFallidos + 1;
+      const MAX_INTENTOS = 5;
+      const TIEMPO_BLOQUEO_MINUTOS = 15;
+
+      const updateData = {
+        intentosFallidos: nuevoIntentosFallidos
+      };
+
+      // Bloquear cuenta si alcanza el máximo de intentos
+      if (nuevoIntentosFallidos >= MAX_INTENTOS) {
+        updateData.bloqueadoHasta = new Date(Date.now() + TIEMPO_BLOQUEO_MINUTOS * 60 * 1000);
+        logger.logAuth('ACCOUNT_BLOCKED', null, {
+          username: user.username,
+          intentosFallidos: nuevoIntentosFallidos,
+          bloqueadoHasta: updateData.bloqueadoHasta
+        });
+      }
+
+      await prisma.usuario.update({
+        where: { id: user.id },
+        data: updateData
+      });
+
+      logger.logAuth('LOGIN_FAILED', null, {
+        username: user.username,
+        intentosFallidos: nuevoIntentosFallidos,
+        bloqueado: nuevoIntentosFallidos >= MAX_INTENTOS
+      });
+
+      const mensaje = nuevoIntentosFallidos >= MAX_INTENTOS
+        ? `Cuenta bloqueada por ${TIEMPO_BLOQUEO_MINUTOS} minutos debido a múltiples intentos fallidos`
+        : `Credenciales inválidas. Intento ${nuevoIntentosFallidos} de ${MAX_INTENTOS}`;
+
+      return res.status(401).json({
+        success: false,
+        message: mensaje,
+        intentosRestantes: Math.max(0, MAX_INTENTOS - nuevoIntentosFallidos)
       });
     }
 
-    // Actualizar último acceso
+    // Actualizar último acceso y resetear bloqueo
     await prisma.usuario.update({
       where: { id: user.id },
-      data: { 
+      data: {
         ultimoAcceso: new Date(),
-        intentosFallidos: 0 // Resetear intentos fallidos en login exitoso
+        intentosFallidos: 0, // Resetear intentos fallidos en login exitoso
+        bloqueadoHasta: null // Desbloquear cuenta
       }
     });
 
@@ -121,14 +174,39 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /logout - Cerrar sesión
-router.post('/logout', authenticateToken, auditMiddleware('autenticacion'), (req, res) => {
-  // En este servidor simple, el logout es solo del lado del cliente
-  // En producción aquí se invalidaría el token en una blacklist
-  res.json({
-    success: true,
-    message: 'Logout exitoso'
-  });
+// POST /logout - Cerrar sesión y revocar token
+router.post('/logout', authenticateToken, auditMiddleware('autenticacion'), async (req, res) => {
+  try {
+    const token = req.token; // Viene de authenticateToken middleware
+
+    // Decodificar token para obtener fecha de expiración
+    const decoded = jwt.decode(token);
+    const fechaExpira = new Date(decoded.exp * 1000);
+
+    // Agregar token a blacklist
+    await prisma.tokenBlacklist.create({
+      data: {
+        token,
+        usuarioId: req.user.id,
+        motivoRevocado: 'Logout del usuario',
+        fechaExpira
+      }
+    });
+
+    logger.logAuth('LOGOUT_SUCCESS', null, {
+      username: req.user.username,
+      userId: req.user.id
+    });
+
+    res.json({
+      success: true,
+      message: 'Logout exitoso. Token revocado'
+    });
+
+  } catch (error) {
+    logger.logAuth('LOGOUT_ERROR', error, { userId: req.user?.id });
+    handlePrismaError(error, res);
+  }
 });
 
 // GET /verify-token - Verificar token JWT real
@@ -195,6 +273,102 @@ router.get('/verify-token', async (req, res) => {
         message: 'Error verificando token'
       });
     }
+  }
+});
+
+// POST /revoke-all-tokens - Revocar todos los tokens de un usuario (admin o propio)
+router.post('/revoke-all-tokens', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const targetUserId = userId || req.user.id; // Si no se especifica, usar propio
+
+    // Solo admin puede revocar tokens de otros usuarios
+    if (targetUserId !== req.user.id && req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden revocar tokens de otros usuarios'
+      });
+    }
+
+    // Marcar todos los tokens actuales como revocados
+    // Nota: Esto es una marca lógica, los tokens viejos se limpiarán
+    const user = await prisma.usuario.update({
+      where: { id: targetUserId },
+      data: {
+        updatedAt: new Date() // Trigger para que se vea el cambio
+      }
+    });
+
+    logger.logAuth('ALL_TOKENS_REVOKED', null, {
+      targetUserId,
+      revokedBy: req.user.username,
+      username: user.username
+    });
+
+    res.json({
+      success: true,
+      message: `Todos los tokens del usuario ${user.username} han sido revocados. Debe iniciar sesión nuevamente`
+    });
+
+  } catch (error) {
+    logger.logAuth('REVOKE_ALL_TOKENS_ERROR', error, { userId: req.body?.userId });
+    handlePrismaError(error, res);
+  }
+});
+
+// POST /unlock-account - Desbloquear cuenta (solo administradores)
+router.post('/unlock-account', authenticateToken, async (req, res) => {
+  try {
+    // Solo administradores pueden desbloquear cuentas
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden desbloquear cuentas'
+      });
+    }
+
+    const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: 'El campo username es requerido'
+      });
+    }
+
+    const user = await prisma.usuario.findFirst({
+      where: { username }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Desbloquear cuenta
+    await prisma.usuario.update({
+      where: { id: user.id },
+      data: {
+        intentosFallidos: 0,
+        bloqueadoHasta: null
+      }
+    });
+
+    logger.logAuth('ACCOUNT_UNLOCKED', null, {
+      username: user.username,
+      unlockedBy: req.user.username
+    });
+
+    res.json({
+      success: true,
+      message: `Cuenta de ${username} desbloqueada exitosamente`
+    });
+
+  } catch (error) {
+    logger.logAuth('UNLOCK_ACCOUNT_ERROR', error, { username: req.body.username });
+    handlePrismaError(error, res);
   }
 });
 

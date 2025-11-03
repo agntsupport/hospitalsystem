@@ -23,12 +23,24 @@ const authenticateToken = async (req, res, next) => {
   }
 
   try {
+    // Verificar si el token está en la blacklist
+    const blacklistedToken = await prisma.tokenBlacklist.findUnique({
+      where: { token }
+    });
+
+    if (blacklistedToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token revocado. Por favor inicie sesión nuevamente'
+      });
+    }
+
     // Verificar JWT real con secret validado
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Cargar datos completos del usuario desde PostgreSQL
     const user = await prisma.usuario.findUnique({
-      where: { 
+      where: {
         id: decoded.userId,
         activo: true
       },
@@ -40,15 +52,16 @@ const authenticateToken = async (req, res, next) => {
         activo: true
       }
     });
-    
+
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Usuario no encontrado' 
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no encontrado'
       });
     }
-    
+
     req.user = user;
+    req.token = token; // Guardar token para uso posterior (logout)
     next();
   } catch (error) {
     console.error('Error authenticating user:', error);
