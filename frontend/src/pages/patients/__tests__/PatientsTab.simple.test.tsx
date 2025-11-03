@@ -275,10 +275,10 @@ describe('PatientsTab (Simple Tests)', () => {
       });
 
       renderWithProviders(<MockPatientsTab />, { store });
-      
+
       const state = store.getState();
       expect(state.patients.loading).toBe(true);
-      expect(state.ui.loading).toBe(true);
+      expect(state.ui.loading.global).toBe(true);
     });
   });
 

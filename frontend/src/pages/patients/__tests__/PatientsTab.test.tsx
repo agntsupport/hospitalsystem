@@ -17,8 +17,8 @@ jest.mock('@/services/patientsService');
 const mockedPatientsService = patientsService as jest.Mocked<typeof patientsService>;
 
 // Mock components that might cause issues
-jest.mock('../PatientFormDialog', () => {
-  return function MockPatientFormDialog({ open, onClose, onSuccess, patient }: any) {
+jest.mock('../PatientFormDialog', () => ({
+  default: function MockPatientFormDialog({ open, onClose, onSuccess, patient }: any) {
     if (!open) return null;
     return (
       <div data-testid="patient-form-dialog">
@@ -27,8 +27,8 @@ jest.mock('../PatientFormDialog', () => {
         {patient && <span data-testid="editing-patient">{patient.id}</span>}
       </div>
     );
-  };
-});
+  }
+}));
 
 // Test data
 const mockPatients: Patient[] = [

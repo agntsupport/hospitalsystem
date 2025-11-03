@@ -3,13 +3,16 @@ export default {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    // Mock constants FIRST (before @/ pattern) to catch all imports
     '^@/utils/constants$': '<rootDir>/src/utils/__mocks__/constants.ts',
+    '^.*/utils/constants$': '<rootDir>/src/utils/__mocks__/constants.ts',
     '^@/utils/api$': '<rootDir>/src/utils/__mocks__/api.ts',
     '^@/hooks/useAuth$': '<rootDir>/src/hooks/__mocks__/useAuth.ts',
     '^@/services/posService$': '<rootDir>/src/services/__mocks__/posService.ts',
     '^@/services/billingService$': '<rootDir>/src/services/__mocks__/billingService.ts',
+    // Generic @/ pattern LAST to not override specific mocks
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {

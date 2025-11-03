@@ -163,23 +163,55 @@ describe('patientsService (Simple Tests)', () => {
 
   describe('getPatientStats', () => {
     it('should call stats endpoint', async () => {
-      const mockStats = {
-        totalPacientes: 100,
-        pacientesActivos: 90,
-        pacientesInactivos: 10,
-      };
-
-      const mockResponse = {
+      // Mock the backend's nested response structure (from patients.routes.js lines 191-212)
+      const mockBackendResponse = {
         success: true,
-        data: mockStats,
+        data: {
+          resumen: {
+            totalPacientes: 100,
+            pacientesActivos: 90,
+            pacientesMenores: 15,
+            pacientesAdultos: 85,
+            pacientesConCuentaAbierta: 25,
+            pacientesHospitalizados: 20,
+            pacientesAmbulatorios: 5,
+            registrosRecientes: 10,
+            promedioEdad: 42.5
+          },
+          distribucion: {
+            genero: { M: 60, F: 38, Otro: 2 },
+            edad: { '0-17': 15, '18-35': 20, '36-55': 35, '56+': 30 }
+          }
+        },
+        message: 'Estadísticas obtenidas correctamente'
       };
 
-      mockedApi.get.mockResolvedValue(mockResponse);
+      mockedApi.get.mockResolvedValue(mockBackendResponse);
 
       const result = await patientsService.getPatientStats();
 
       expect(mockedApi.get).toHaveBeenCalledWith('/patients/stats');
-      expect(result).toEqual(mockResponse);
+
+      // Service transforms backend nested structure to flat frontend structure (patientsService.ts lines 28-48)
+      expect(result).toEqual({
+        success: true,
+        message: 'Estadísticas obtenidas correctamente',
+        data: {
+          totalPacientes: 100,
+          pacientesMenores: 15,
+          pacientesAdultos: 85,
+          pacientesConCuentaAbierta: 25,
+          pacientesHospitalizados: 20,
+          pacientesAmbulatorios: 5,
+          patientsByGender: { M: 60, F: 38, Otro: 2 },
+          patientsByAgeGroup: { '0-17': 15, '18-35': 20, '36-55': 35, '56+': 30 },
+          growth: {
+            total: 0,
+            weekly: 0,
+            monthly: 0
+          }
+        }
+      });
     });
   });
 
@@ -264,7 +296,8 @@ describe('patientsService (Simple Tests)', () => {
 
       await patientsService.getPatients({ search: 'José María' });
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/patients?search=Jos%C3%A9%20Mar%C3%ADa');
+      // URLSearchParams encodes spaces as '+' (both '+' and '%20' are valid)
+      expect(mockedApi.get).toHaveBeenCalledWith('/patients?search=Jos%C3%A9+Mar%C3%ADa');
     });
 
     it('should handle boolean false values', async () => {

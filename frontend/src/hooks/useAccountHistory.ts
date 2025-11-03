@@ -86,10 +86,10 @@ export const useAccountHistory = () => {
       };
 
       // Aplicar filtros
-      if (filters.fechaInicio) {
+      if (filters.fechaInicio && !isNaN(filters.fechaInicio.getTime())) {
         params.fechaInicio = filters.fechaInicio.toISOString().split('T')[0];
       }
-      if (filters.fechaFin) {
+      if (filters.fechaFin && !isNaN(filters.fechaFin.getTime())) {
         params.fechaFin = filters.fechaFin.toISOString().split('T')[0];
       }
       if (filters.pacienteNombre) {

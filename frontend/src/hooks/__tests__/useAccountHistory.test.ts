@@ -16,8 +16,20 @@ describe('useAccountHistory', () => {
   });
 
   describe('Initial State', () => {
-    it('should initialize with default state values', () => {
+    it('should initialize with default state values', async () => {
+      // Mock the initial load that happens on mount
+      mockedPosService.getPatientAccounts.mockResolvedValue({
+        success: true,
+        data: { accounts: [] },
+        message: 'Success'
+      });
+
       const { result } = renderHook(() => useAccountHistory());
+
+      // Wait for initial load to complete (useEffect fires on mount)
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
 
       expect(result.current.closedAccounts).toEqual([]);
       expect(result.current.quickSales).toEqual([]);
@@ -27,11 +39,10 @@ describe('useAccountHistory', () => {
       expect(result.current.selectedSale).toBeNull();
       expect(result.current.accountDetailsOpen).toBe(false);
       expect(result.current.saleDetailsOpen).toBe(false);
-      expect(result.current.loading).toBe(false);
       expect(result.current.filters).toEqual({});
       expect(result.current.showFilters).toBe(false);
       expect(result.current.page).toBe(1);
-      expect(result.current.totalPages).toBe(1);
+      expect(result.current.totalPages).toBe(0); // Changed from 1 to 0 (empty accounts)
       expect(result.current.searchTerm).toBe('');
       expect(result.current.historyTab).toBe(0);
     });
@@ -207,6 +218,13 @@ describe('useAccountHistory', () => {
     });
 
     it('should apply pagination parameters correctly', async () => {
+      // Mock initial load (historyTab defaults to 0)
+      mockedPosService.getPatientAccounts.mockResolvedValue({
+        success: true,
+        data: { accounts: [] },
+        message: 'Success'
+      });
+
       mockedPosService.getSalesHistory.mockResolvedValue({
         success: true,
         data: { items: [], pagination: { total: 0 } },
@@ -214,6 +232,29 @@ describe('useAccountHistory', () => {
       });
 
       const { result } = renderHook(() => useAccountHistory());
+
+      // Wait for initial load to complete
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Switch to quick sales tab (historyTab: 1)
+      act(() => {
+        result.current.setHistoryTab(1);
+      });
+
+      // Wait for quick sales to load
+      await waitFor(() => {
+        expect(mockedPosService.getSalesHistory).toHaveBeenCalled();
+      });
+
+      // Clear mock calls from tab switch
+      jest.clearAllMocks();
+      mockedPosService.getSalesHistory.mockResolvedValue({
+        success: true,
+        data: { items: [], pagination: { total: 0 } },
+        message: 'Success'
+      });
 
       // Change to page 3
       act(() => {
@@ -231,6 +272,13 @@ describe('useAccountHistory', () => {
     });
 
     it('should apply date filters correctly', async () => {
+      // Mock initial load
+      mockedPosService.getPatientAccounts.mockResolvedValue({
+        success: true,
+        data: { accounts: [] },
+        message: 'Success'
+      });
+
       mockedPosService.getSalesHistory.mockResolvedValue({
         success: true,
         data: { items: [], pagination: { total: 0 } },
@@ -238,6 +286,29 @@ describe('useAccountHistory', () => {
       });
 
       const { result } = renderHook(() => useAccountHistory());
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Switch to quick sales tab
+      act(() => {
+        result.current.setHistoryTab(1);
+      });
+
+      // Wait for tab switch to complete
+      await waitFor(() => {
+        expect(mockedPosService.getSalesHistory).toHaveBeenCalled();
+      });
+
+      // Clear previous calls
+      jest.clearAllMocks();
+      mockedPosService.getSalesHistory.mockResolvedValue({
+        success: true,
+        data: { items: [], pagination: { total: 0 } },
+        message: 'Success'
+      });
 
       const startDate = new Date('2025-10-01');
       const endDate = new Date('2025-10-31');
@@ -260,6 +331,13 @@ describe('useAccountHistory', () => {
     });
 
     it('should apply pacienteNombre filter as cajero parameter', async () => {
+      // Mock initial load
+      mockedPosService.getPatientAccounts.mockResolvedValue({
+        success: true,
+        data: { accounts: [] },
+        message: 'Success'
+      });
+
       mockedPosService.getSalesHistory.mockResolvedValue({
         success: true,
         data: { items: [], pagination: { total: 0 } },
@@ -267,6 +345,29 @@ describe('useAccountHistory', () => {
       });
 
       const { result } = renderHook(() => useAccountHistory());
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Switch to quick sales tab
+      act(() => {
+        result.current.setHistoryTab(1);
+      });
+
+      // Wait for tab switch
+      await waitFor(() => {
+        expect(mockedPosService.getSalesHistory).toHaveBeenCalled();
+      });
+
+      // Clear and re-mock
+      jest.clearAllMocks();
+      mockedPosService.getSalesHistory.mockResolvedValue({
+        success: true,
+        data: { items: [], pagination: { total: 0 } },
+        message: 'Success'
+      });
 
       act(() => {
         result.current.setFilters({ pacienteNombre: 'Juan' });
@@ -282,6 +383,13 @@ describe('useAccountHistory', () => {
     });
 
     it('should apply tipoAtencion filter as metodoPago parameter', async () => {
+      // Mock initial load
+      mockedPosService.getPatientAccounts.mockResolvedValue({
+        success: true,
+        data: { accounts: [] },
+        message: 'Success'
+      });
+
       mockedPosService.getSalesHistory.mockResolvedValue({
         success: true,
         data: { items: [], pagination: { total: 0 } },
@@ -289,6 +397,29 @@ describe('useAccountHistory', () => {
       });
 
       const { result } = renderHook(() => useAccountHistory());
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Switch to quick sales tab
+      act(() => {
+        result.current.setHistoryTab(1);
+      });
+
+      // Wait for tab switch
+      await waitFor(() => {
+        expect(mockedPosService.getSalesHistory).toHaveBeenCalled();
+      });
+
+      // Clear and re-mock
+      jest.clearAllMocks();
+      mockedPosService.getSalesHistory.mockResolvedValue({
+        success: true,
+        data: { items: [], pagination: { total: 0 } },
+        message: 'Success'
+      });
 
       act(() => {
         result.current.setFilters({ tipoAtencion: 'efectivo' });
@@ -843,6 +974,13 @@ describe('useAccountHistory', () => {
     });
 
     it('should handle date filter with invalid dates gracefully', async () => {
+      // Mock initial load
+      mockedPosService.getPatientAccounts.mockResolvedValue({
+        success: true,
+        data: { accounts: [] },
+        message: 'Success'
+      });
+
       mockedPosService.getSalesHistory.mockResolvedValue({
         success: true,
         data: { items: [], pagination: { total: 0 } },
@@ -850,6 +988,29 @@ describe('useAccountHistory', () => {
       });
 
       const { result } = renderHook(() => useAccountHistory());
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Switch to quick sales tab
+      act(() => {
+        result.current.setHistoryTab(1);
+      });
+
+      // Wait for tab switch
+      await waitFor(() => {
+        expect(mockedPosService.getSalesHistory).toHaveBeenCalled();
+      });
+
+      // Clear and re-mock
+      jest.clearAllMocks();
+      mockedPosService.getSalesHistory.mockResolvedValue({
+        success: true,
+        data: { items: [], pagination: { total: 0 } },
+        message: 'Success'
+      });
 
       act(() => {
         result.current.setFilters({

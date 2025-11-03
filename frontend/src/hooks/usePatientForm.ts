@@ -185,7 +185,7 @@ export const usePatientForm = (
   }, [activeStep, validateStep, watchedValues, watch]);
 
   const handleBack = useCallback(() => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    setActiveStep((prevActiveStep) => Math.max(0, prevActiveStep - 1));
     setError(null);
   }, []);
 
@@ -246,6 +246,7 @@ export const usePatientForm = (
     reset,
     watch,
     setValue,
+    trigger,
     errors,
     isValid,
     watchedValues,

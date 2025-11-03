@@ -175,24 +175,24 @@ describe('ProductFormDialog', () => {
   describe('Rendering', () => {
     it('should render create product dialog when no product is provided', async () => {
       renderWithProviders(<ProductFormDialog {...defaultProps} />);
-      
+
       await waitFor(() => {
-        expect(screen.getByText('➕ Nuevo Producto')).toBeInTheDocument();
+        expect(screen.getByText('Registrar Nuevo Producto')).toBeInTheDocument();
       });
-      
+
       expect(screen.getByLabelText(/nombre del producto/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/precio/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/precio de venta/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/categoría/i)).toBeInTheDocument();
       expect(screen.getByText('Crear Producto')).toBeInTheDocument();
     });
 
     it('should render edit product dialog when product is provided', async () => {
       renderWithProviders(<ProductFormDialog {...defaultProps} product={mockProduct} />);
-      
+
       await waitFor(() => {
-        expect(screen.getByText('✏️ Editar Producto')).toBeInTheDocument();
+        expect(screen.getByText('Editar Producto')).toBeInTheDocument();
       });
-      
+
       expect(screen.getByDisplayValue('Test Product')).toBeInTheDocument();
       expect(screen.getByDisplayValue('25.99')).toBeInTheDocument();
       expect(screen.getByText('Actualizar Producto')).toBeInTheDocument();
@@ -211,7 +211,7 @@ describe('ProductFormDialog', () => {
       
       await waitFor(() => {
         expect(screen.getByLabelText(/nombre del producto/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/precio/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/precio de venta/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/stock actual/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/stock mínimo/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/categoría/i)).toBeInTheDocument();
@@ -244,7 +244,7 @@ describe('ProductFormDialog', () => {
       renderWithProviders(<ProductFormDialog {...defaultProps} />);
       
       await waitFor(async () => {
-        const priceField = screen.getByLabelText(/precio/i);
+        const priceField = screen.getByLabelText(/precio de venta/i);
         await userEvent.type(priceField, '-10');
       });
       
@@ -325,7 +325,7 @@ describe('ProductFormDialog', () => {
 
       // Fill required fields
       await userEvent.type(screen.getByLabelText(/nombre del producto/i), 'New Product');
-      await userEvent.type(screen.getByLabelText(/precio/i), '15.99');
+      await userEvent.type(screen.getByLabelText(/precio de venta/i), '15.99');
       await userEvent.type(screen.getByLabelText(/stock actual/i), '50');
       await userEvent.type(screen.getByLabelText(/stock mínimo/i), '5');
       
@@ -399,7 +399,7 @@ describe('ProductFormDialog', () => {
 
       // Fill and submit form
       await userEvent.type(screen.getByLabelText(/nombre del producto/i), 'Duplicate Product');
-      await userEvent.type(screen.getByLabelText(/precio/i), '15.99');
+      await userEvent.type(screen.getByLabelText(/precio de venta/i), '15.99');
       await userEvent.type(screen.getByLabelText(/stock actual/i), '50');
       await userEvent.type(screen.getByLabelText(/stock mínimo/i), '5');
       
@@ -433,7 +433,7 @@ describe('ProductFormDialog', () => {
 
       // Fill and submit form quickly
       await userEvent.type(screen.getByLabelText(/nombre del producto/i), 'Test Product');
-      await userEvent.type(screen.getByLabelText(/precio/i), '15.99');
+      await userEvent.type(screen.getByLabelText(/precio de venta/i), '15.99');
       await userEvent.type(screen.getByLabelText(/stock actual/i), '50');
       await userEvent.type(screen.getByLabelText(/stock mínimo/i), '5');
       
@@ -506,7 +506,7 @@ describe('ProductFormDialog', () => {
 
       // Fill required fields and submit to test supplier is included
       await userEvent.type(screen.getByLabelText(/nombre del producto/i), 'Test Product');
-      await userEvent.type(screen.getByLabelText(/precio/i), '15.99');
+      await userEvent.type(screen.getByLabelText(/precio de venta/i), '15.99');
       await userEvent.type(screen.getByLabelText(/stock actual/i), '50');
       await userEvent.type(screen.getByLabelText(/stock mínimo/i), '5');
       
@@ -557,7 +557,7 @@ describe('ProductFormDialog', () => {
       await waitFor(() => {
         // Form should be empty
         expect(screen.getByLabelText(/nombre del producto/i)).toHaveValue('');
-        expect(screen.getByLabelText(/precio/i)).toHaveValue('');
+        expect(screen.getByLabelText(/precio de venta/i)).toHaveValue('');
       });
     });
   });
@@ -618,7 +618,7 @@ describe('ProductFormDialog', () => {
 
       // Fill and submit form
       await userEvent.type(screen.getByLabelText(/nombre del producto/i), 'Test Product');
-      await userEvent.type(screen.getByLabelText(/precio/i), '15.99');
+      await userEvent.type(screen.getByLabelText(/precio de venta/i), '15.99');
       await userEvent.type(screen.getByLabelText(/stock actual/i), '50');
       await userEvent.type(screen.getByLabelText(/stock mínimo/i), '5');
       

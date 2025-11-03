@@ -1,9 +1,18 @@
 import { patientsService } from '../patientsService';
-import { api } from '@/utils/api';
 import { API_ROUTES } from '@/utils/constants';
 
-// Mock the api utility
-jest.mock('@/utils/api');
+// Mock the api module completely
+jest.mock('@/utils/api', () => ({
+  api: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
+  },
+}));
+
+// Import the mocked api
+import { api } from '@/utils/api';
 const mockedApi = api as jest.Mocked<typeof api>;
 
 describe('patientsService', () => {
@@ -304,7 +313,7 @@ describe('patientsService', () => {
       const result = await patientsService.searchPatients('Juan');
 
       expect(mockedApi.get).toHaveBeenCalledWith(
-        `${API_ROUTES.PATIENTS.SEARCH}?q=Juan`
+        `${API_ROUTES.PATIENTS.SEARCH}?q=Juan&limit=10`
       );
       expect(result).toEqual(mockResponse);
     });
@@ -335,40 +344,62 @@ describe('patientsService', () => {
       await patientsService.searchPatients('');
 
       expect(mockedApi.get).toHaveBeenCalledWith(
-        `${API_ROUTES.PATIENTS.SEARCH}?q=`
+        `${API_ROUTES.PATIENTS.SEARCH}?q=&limit=10`
       );
     });
   });
 
   describe('getPatientStats', () => {
     it('should fetch patient statistics', async () => {
-      const mockStats = {
-        totalPacientes: 150,
-        pacientesActivos: 140,
-        pacientesInactivos: 10,
-        nuevosEsteMes: 25,
-        edadPromedio: 35.5,
-        distribucionGenero: { M: 75, F: 65, Otro: 10 },
-        distribucionEdad: {
-          '0-18': 20,
-          '19-35': 45,
-          '36-50': 50,
-          '51-65': 25,
-          '65+': 10,
-        },
-      };
-
-      const mockResponse = {
+      // Mock the backend's nested response structure (from patients.routes.js lines 191-212)
+      const mockBackendResponse = {
         success: true,
-        data: mockStats,
+        data: {
+          resumen: {
+            totalPacientes: 100,
+            pacientesActivos: 90,
+            pacientesMenores: 15,
+            pacientesAdultos: 85,
+            pacientesConCuentaAbierta: 25,
+            pacientesHospitalizados: 20,
+            pacientesAmbulatorios: 5,
+            registrosRecientes: 10,
+            promedioEdad: 42.5
+          },
+          distribucion: {
+            genero: { M: 60, F: 38, Otro: 2 },
+            edad: { '0-17': 15, '18-35': 20, '36-55': 35, '56+': 30 }
+          }
+        },
+        message: 'Estadísticas obtenidas correctamente'
       };
 
-      mockedApi.get.mockResolvedValue(mockResponse);
+      mockedApi.get.mockResolvedValue(mockBackendResponse);
 
       const result = await patientsService.getPatientStats();
 
       expect(mockedApi.get).toHaveBeenCalledWith(API_ROUTES.PATIENTS.STATS);
-      expect(result).toEqual(mockResponse);
+
+      // Service transforms backend nested structure to flat frontend structure (patientsService.ts lines 28-48)
+      expect(result).toEqual({
+        success: true,
+        message: 'Estadísticas obtenidas correctamente',
+        data: {
+          totalPacientes: 100,
+          pacientesMenores: 15,
+          pacientesAdultos: 85,
+          pacientesConCuentaAbierta: 25,
+          pacientesHospitalizados: 20,
+          pacientesAmbulatorios: 5,
+          patientsByGender: { M: 60, F: 38, Otro: 2 },
+          patientsByAgeGroup: { '0-17': 15, '18-35': 20, '36-55': 35, '56+': 30 },
+          growth: {
+            total: 0,
+            weekly: 0,
+            monthly: 0
+          }
+        }
+      });
     });
   });
 
@@ -473,8 +504,9 @@ describe('patientsService', () => {
 
       await patientsService.getPatients({ search: 'José María' });
 
+      // URLSearchParams encodes spaces as '+' (both '+' and '%20' are valid)
       expect(mockedApi.get).toHaveBeenCalledWith(
-        `${API_ROUTES.PATIENTS.BASE}?search=Jos%C3%A9%20Mar%C3%ADa`
+        `${API_ROUTES.PATIENTS.BASE}?search=Jos%C3%A9+Mar%C3%ADa`
       );
     });
 

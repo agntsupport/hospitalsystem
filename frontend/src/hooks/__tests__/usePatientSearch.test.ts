@@ -193,9 +193,14 @@ describe('usePatientSearch', () => {
 
       const { result } = renderHook(() => usePatientSearch());
 
+      // handleChangeRowsPerPage resets page to 0, so call it first
+      act(() => {
+        result.current.handleChangeRowsPerPage({ target: { value: '10' } } as any);
+      });
+
+      // Now change to page 1 AFTER rowsPerPage is set
       act(() => {
         result.current.handleChangePage(null, 1); // Page 2 (0-indexed)
-        result.current.handleChangeRowsPerPage({ target: { value: '10' } } as any);
       });
 
       await act(async () => {
