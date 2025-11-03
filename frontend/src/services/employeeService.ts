@@ -89,5 +89,76 @@ export const employeeService = {
   // Eliminar empleado
   async deleteEmployee(id: number): Promise<ApiResponse<{ message: string }>> {
     return api.delete(API_ROUTES.EMPLOYEES.BY_ID(id));
+  },
+
+  // Obtener solo médicos (con filtro opcional por especialidad)
+  async getDoctors(params: {
+    page?: number;
+    limit?: number;
+    especialidad?: string;
+  } = {}): Promise<ApiResponse<Employee[]>> {
+    const queryParams = new URLSearchParams();
+
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.especialidad) queryParams.append('especialidad', params.especialidad);
+
+    const url = `${API_ROUTES.EMPLOYEES.BASE}/doctors${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+
+    // Transform backend response structure
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: response.data.items || response.data || [],
+        pagination: response.data.pagination
+      };
+    }
+
+    return response;
+  },
+
+  // Obtener solo enfermeros
+  async getNurses(params: {
+    page?: number;
+    limit?: number;
+  } = {}): Promise<ApiResponse<Employee[]>> {
+    const queryParams = new URLSearchParams();
+
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+
+    const url = `${API_ROUTES.EMPLOYEES.BASE}/nurses${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get(url);
+
+    // Transform backend response structure
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: response.data.items || response.data || [],
+        pagination: response.data.pagination
+      };
+    }
+
+    return response;
+  },
+
+  // Obtener horario/citas de un empleado
+  async getSchedule(id: number, params: {
+    fechaInicio?: string;
+    fechaFin?: string;
+  } = {}): Promise<ApiResponse<any>> {
+    const queryParams = new URLSearchParams();
+
+    if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
+    if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
+
+    const url = `${API_ROUTES.EMPLOYEES.BASE}/schedule/${id}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return api.get(url);
+  },
+
+  // Reactivar empleado desactivado
+  async activateEmployee(id: number): Promise<ApiResponse<{ message: string }>> {
+    return api.put(`${API_ROUTES.EMPLOYEES.BY_ID(id)}/activate`, {});
   }
 };

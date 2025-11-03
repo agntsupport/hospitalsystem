@@ -25,7 +25,7 @@ cd backend && npx prisma db seed  # Resetear datos
 
 # Testing
 cd frontend && npm test           # 312 tests frontend (225 passing - 72.1%)
-cd backend && npm test            # 237 tests backend (169 passing - 71.3%)
+cd backend && npm test            # 237 tests backend (186 passing - 78.5%)
 
 # Testing E2E (Playwright)
 cd frontend && npm run test:e2e        # 51 tests E2E completos (requiere backend)
@@ -106,7 +106,7 @@ VITE_API_URL=http://localhost:3001
 9. ✅ **Hospitalización** - Ingresos con anticipo automático, altas, notas médicas, control por roles
 10. ✅ **Quirófanos** - Gestión completa y cirugías programadas con **cargos automáticos**
 11. ✅ **Auditoría** - Sistema completo de trazabilidad
-12. ✅ **Testing** - 312 tests frontend (72.1%) + 237 tests backend (71.3%) + 51 tests E2E Playwright
+12. ✅ **Testing** - 312 tests frontend (72.1%) + 237 tests backend (78.5%) + 51 tests E2E Playwright
 13. ✅ **Cargos Automáticos** - Habitaciones y quirófanos con servicios auto-generados
 14. ✅ **Notificaciones y Solicitudes** - Sistema de comunicación interna
 
@@ -133,6 +133,18 @@ VITE_API_URL=http://localhost:3001
 - `PUT /api/patients/:id` - Actualizar
 - `DELETE /api/patients/:id` - Soft delete
 - `GET /api/patients/stats` - Estadísticas
+
+### Empleados
+- `GET /api/employees` - Lista de empleados con filtros (tipo, especialidad, búsqueda)
+- `POST /api/employees` - Crear empleado
+- `GET /api/employees/:id` - Obtener detalle de empleado
+- `PUT /api/employees/:id` - Actualizar empleado
+- `DELETE /api/employees/:id` - Desactivar empleado (soft delete)
+- `PUT /api/employees/:id/activate` - Reactivar empleado desactivado
+- `GET /api/employees/stats` - Estadísticas de empleados
+- `GET /api/employees/doctors` - Lista solo médicos (con filtro por especialidad)
+- `GET /api/employees/nurses` - Lista solo enfermeros
+- `GET /api/employees/schedule/:id` - Obtener horario/citas de empleado
 
 ### Inventario
 - `GET /api/inventory/products` - Productos
@@ -824,12 +836,12 @@ Sistema completo:
 - **♿ Accesibilidad mejorada**: Solucionados warnings aria-hidden en dialogs
 
 ### Testing Framework (Estado Real - 1 Noviembre 2025)
-- **✅ 600 tests implementados**: 312 frontend (72.1%) + 237 backend (71.3%) + 51 E2E (100%)
-- **✅ MEJORA SIGNIFICATIVA**: Tests backend pasaron de 38% a 71.3% (+88% mejora)
+- **✅ 600 tests implementados**: 312 frontend (72.1%) + 237 backend (78.5%) + 51 E2E (100%)
+- **✅ MEJORA SIGNIFICATIVA**: Tests backend pasaron de 38% a 78.5% (+107% mejora)
 - **✅ TypeScript limpio**: 0 errores en producción (25 errores en tests por corregir)
 - **✅ 51 tests E2E Playwright**: Validación ITEM 3 (formularios) + ITEM 4 (Skip Links WCAG) + módulos críticos
 - **📊 Cobertura real**: ~25-30% unit tests + E2E críticos implementados
-- **📈 Progreso total**: Frontend 225/312 passing | Backend 169/237 passing | E2E 51/51 passing
+- **📈 Progreso total**: Frontend 225/312 passing | Backend 186/237 passing | E2E 51/51 passing
 - **✅ Playwright configurado**: Tests E2E listos para ejecución y CI/CD
 - **📋 Script automatizado**: `test-e2e-full.sh` inicia backend + frontend + tests
 - **✅ CI/CD**: GitHub Actions configurado (4 jobs completos)

@@ -267,6 +267,25 @@ router.post('/', authenticateToken, auditMiddleware('quirofanos'), async (req, r
       });
     }
 
+    // Validar tipo de quirófano
+    const tiposValidos = [
+      'cirugia_general',
+      'cirugia_cardiaca',
+      'cirugia_neurologica',
+      'cirugia_ortopedica',
+      'cirugia_plastica',
+      'cirugia_pediatrica',
+      'cirugia_traumatologia',
+      'cirugia_ambulatoria'
+    ];
+
+    if (!tiposValidos.includes(tipo)) {
+      return res.status(400).json({
+        success: false,
+        message: `Tipo de quirófano inválido. Valores permitidos: ${tiposValidos.join(', ')}`
+      });
+    }
+
     // Verificar que el número no esté duplicado
     const existeQuirofano = await prisma.quirofano.findUnique({
       where: { numero }

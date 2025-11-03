@@ -8,7 +8,7 @@
 ![Versión](https://img.shields.io/badge/Versión-2.0.0--beta-blue)
 ![Tests Unit](https://img.shields.io/badge/Tests%20Unit-600%20Total%20(~72%25%20pass)-yellow)
 ![Frontend Pass Rate](https://img.shields.io/badge/Frontend-72.1%25%20(225%2F312)-yellow)
-![Backend Pass Rate](https://img.shields.io/badge/Backend-71.3%25%20(169%2F237)-yellow)
+![Backend Pass Rate](https://img.shields.io/badge/Backend-78.5%25%20(186%2F237)-green)
 ![Tests E2E](https://img.shields.io/badge/Tests%20E2E-51%20Playwright-green)
 ![Base de Datos](https://img.shields.io/badge/BD-PostgreSQL%2014.18-blue)
 ![Arquitectura](https://img.shields.io/badge/Arquitectura-Modular-green)
@@ -92,7 +92,7 @@
 
 ### Testing y Calidad
 - **312 tests unit frontend** - 225 passing (72.1%) + 87 failing
-- **237 tests backend** - 169 passing (71.3%) + 17 failing + 51 skipped
+- **237 tests backend** - 186 passing (78.5%) + 0 failing + 51 skipped ✅
 - **51 tests E2E Playwright** - ITEM 3 (validación) + ITEM 4 (WCAG Skip Links) + módulos críticos
 - **180+ test cases hooks** - useAccountHistory (67), usePatientSearch (63), usePatientForm (50)
 - **Hook tests**: ~95% coverage rate (3 hooks críticos cubiertos)
