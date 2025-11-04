@@ -360,6 +360,130 @@ psql -d hospital_management -c "SELECT 1;"
 - ✅ **Documentación técnica** - Arquitectura y permisos actualizados
 - ✅ **Consistencia verificada** - Información sincronizada entre archivos
 
+## 🤖 Flujo de Trabajo del Subagente
+
+### Gestión de Contexto de Sesión
+
+Después de una fase de modo de plan, DEBES crear un archivo `.claude/sessions/context_session_{nombre_de_la_característica}.md` con la definición del plan.
+
+**Antes de realizar cualquier trabajo**, DEBES:
+1. Leer los archivos en `.claude/sessions/context_session_{nombre_de_la_característica}.md`
+2. Leer los archivos `.claude/doc/{nombre_de_la_característica}/*` para obtener el contexto completo
+3. Si el archivo no existe, créalo inmediatamente
+
+**Contenido del archivo de contexto:**
+- Contexto completo de lo que hicimos
+- Plan general de la funcionalidad
+- Actualizaciones continuas de los subagentes
+
+**Después de terminar el trabajo**, DEBES:
+- Actualizar el archivo `context_session_{nombre_de_la_característica}.md`
+- Asegurar que otros puedan obtener el contexto completo de lo que hiciste
+- Actualizar después de CADA fase completada
+
+### Trabajo con Subagentes Especializados
+
+Este proyecto utiliza subagentes especializados para diferentes preocupaciones. DEBES consultar siempre al agente apropiado.
+
+**Reglas importantes:**
+- Los subagentes investigarán la implementación e informarán sus comentarios, pero TÚ harás la implementación real
+- Al pasar una tarea a un subagente, DEBES pasar el archivo de contexto (`.claude/sessions/context_session_{nombre_de_la_característica}.md`)
+- Después de que cada subagente termine el trabajo, DEBES leer la documentación relacionada que crearon para obtener el contexto completo del plan antes de comenzar a ejecutarlo
+
+## 📝 Estándares de Escritura de Código
+
+### Reglas Fundamentales
+
+1. **Simplicidad Primero**: Prefiere soluciones simples, limpias y mantenibles a las ingeniosas o complejas. La legibilidad y la mantenibilidad son PREOCUPACIONES PRINCIPALES, incluso a costa de la concisión o el rendimiento.
+
+2. **Comentarios ABOUTME**: Todos los archivos DEBEN comenzar con un comentario de 2 líneas con el prefijo "ABOUTME: " que explique qué hace el archivo.
+
+3. **Cambios Mínimos**: DEBES realizar los cambios más pequeños razonables para lograr el resultado deseado.
+
+4. **Coincidencia de Estilo**: DEBES coincidir con el estilo/formato de código existente dentro de cada archivo. La coherencia dentro de un archivo triunfa sobre los estándares externos.
+
+5. **Preservar Comentarios**: NUNCA elimines comentarios a menos que sean demostrablemente falsos. Los comentarios son documentación importante.
+
+6. **Sin Nombres Temporales**: Evita 'nuevo', 'mejorado', 'recientemente' en nombres/comentarios. Todos los nombres deben ser perennes.
+
+7. **Documentación Perenne**: Los comentarios describen el código tal como es, no su historial.
+
+8. **Sin Cambios No Relacionados**: NUNCA realices cambios de código no relacionados con tu tarea actual. Si notas algo que debe corregirse pero no está relacionado, documéntalo en lugar de corregirlo inmediatamente.
+
+9. **Espacios en Blanco**: NO cambies los espacios en blanco no relacionados con el código que estás modificando.
+
+### Comunicación con el Desarrollador
+
+- **SIEMPRE** dirígete a mí como "Alfredo" en todas las comunicaciones
+
+## 🔄 Control de Versiones
+
+### Políticas de Git
+
+1. **Ediciones No Triviales**: Todos los cambios DEBEN rastrearse en git.
+
+2. **Ramas WIP**: Al comenzar el trabajo sin una rama clara para la tarea actual, DEBES crear una rama WIP.
+
+3. **Commits Frecuentes**: DEBES realizar commits con frecuencia durante el proceso de desarrollo.
+
+4. **Nunca Descartar Implementaciones**: NUNCA descartes implementaciones para reescribirlas sin permiso EXPLÍCITO. Si estás considerando esto, DEBES DETENERTE y preguntar primero.
+
+5. **Verificaciones Iniciales**:
+   - Si el proyecto no está en un repositorio git, DEBES DETENERTE y pedir permiso para inicializar uno
+   - Si hay cambios sin confirmar o archivos sin rastrear al comenzar el trabajo, DEBES DETENERTE y preguntar cómo manejarlos
+   - Sugiere confirmar el trabajo existente primero
+
+## ✅ Requisitos de Prueba
+
+### Política Sin Excepciones
+
+**TODOS los proyectos DEBEN tener:**
+- ✅ Pruebas unitarias
+- ✅ Pruebas de integración
+- ✅ Pruebas de extremo a extremo (E2E)
+
+**La ÚNICA forma de omitir las pruebas:**
+Alfredo declara EXPLÍCITAMENTE: "TE AUTORIZO A OMITIR LA ESCRITURA DE PRUEBAS ESTA VEZ"
+
+### Estándares de Prueba
+
+1. **Cobertura Exhaustiva**: Las pruebas DEBEN cubrir exhaustivamente TODA la funcionalidad implementada.
+
+2. **Salida Impecable**: La salida de la prueba DEBE SER IMPECABLE PARA PASAR.
+
+3. **Nunca Ignorar Salida**: NUNCA ignores la salida del sistema/prueba. Los registros contienen información CRÍTICA.
+
+4. **Manejo de Errores**: Si se espera que los registros contengan errores, estos DEBEN capturarse y probarse.
+
+## 🆘 Obtener Ayuda
+
+### Cuándo Pedir Ayuda
+
+1. **Siempre Pide Aclaraciones**: Pide aclaraciones en lugar de hacer suposiciones.
+
+2. **Detente Cuando Estés Atascado**: Detente y pide ayuda cuando estés atascado, especialmente cuando la intervención humana sea valiosa.
+
+3. **Excepciones a las Reglas**: Si estás considerando una excepción a CUALQUIER regla, DEBES DETENERTE y obtener permiso explícito de Alfredo primero.
+
+## ✓ Verificación de Cumplimiento
+
+### Checklist Antes de Enviar Trabajo
+
+Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
+
+- [ ] ¿Creaste/actualizaste el archivo de contexto de sesión?
+- [ ] ¿Agregaste comentarios ABOUTME al inicio de nuevos archivos?
+- [ ] ¿Realizaste los cambios más pequeños razonables?
+- [ ] ¿Coincidiste con el estilo del código existente?
+- [ ] ¿Preservaste todos los comentarios relevantes?
+- [ ] ¿Evitaste nombres temporales?
+- [ ] ¿Creaste pruebas exhaustivas (unitarias, integración, E2E)?
+- [ ] ¿La salida de las pruebas es impecable?
+- [ ] ¿Realizaste commits frecuentes?
+- [ ] ¿Pediste permiso antes de descartar implementaciones?
+
+**Si te encuentras considerando una excepción a CUALQUIER regla, DEBES DETENERTE y obtener permiso explícito de Alfredo primero.**
+
 ---
 **🏥 Sistema de Gestión Hospitalaria Integral**
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
