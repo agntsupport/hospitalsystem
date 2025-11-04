@@ -1,489 +1,669 @@
-# Action Plan - Frontend Improvements
+# Frontend Improvement Action Plan
 **Sistema de Gestión Hospitalaria Integral**
 
-**Fecha:** 3 de noviembre de 2025
-**Timeline:** 4-6 meses (10-12 semanas implementación P0-P1)
+**Fecha:** 3 de Noviembre de 2025
+**Objetivo:** Elevar calificación de 8.7/10 a 9.2/10
+**Timeline:** 2-4 sprints (4-8 semanas)
 
 ---
 
-## Phase 1: Foundation (Weeks 1-3)
+## Phase 1: High-Impact Optimizations (Sprint 1-2)
 
-### Week 1: Redux Expansion - Core Slices
+### Task 1.1: Implement React.memo in List Components
 
-**Objetivo:** Crear slices críticos para state management
+**Priority:** P1 - Critical
+**Effort:** 2-3 days
+**Impact:** +10-15% performance
+**Score Gain:** +0.2 points
 
-#### Tasks:
-1. **inventorySlice.ts** (2 días)
-   - Estado: productos, proveedores, movimientos, stats
-   - Thunks: fetchProducts, createProduct, updateStock
-   - Selectors: selectAllProducts, selectLowStockItems
+**Subtasks:**
 
-2. **posSlice.ts** (2 días)
-   - Estado: cuentas abiertas, transacciones, stats
-   - Thunks: fetchOpenAccounts, createAccount, closeAccount
-   - Selectors: selectOpenAccounts, selectAccountById
+1. **Identify Candidates** (4 hours)
+   - List all components rendered in loops
+   - Prioritize DataGrid rows, cards, list items
+   - Document props that change frequently
 
-3. **billingSlice.ts** (1 día)
-   - Estado: facturas, pagos, cuentas por cobrar
-   - Thunks: fetchInvoices, createInvoice, processPayment
-   - Selectors: selectPendingInvoices
+2. **Implement React.memo** (1.5 days)
+   ```typescript
+   // Target files:
+   - src/pages/patients/PatientsTab.tsx (patient rows)
+   - src/pages/inventory/ProductsTab.tsx (product cards)
+   - src/pages/employees/EmployeesPage.tsx (employee rows)
+   - src/components/pos/OpenAccountsList.tsx (account items)
+   - src/components/billing/BillingStatsCards.tsx (stat cards)
 
-**Deliverables:**
-- 3 nuevos slices con tests (80% coverage)
-- Documentación de API en cada slice
-- Migración de 3 páginas principales a Redux
+   // Pattern:
+   const ComponentName = React.memo(({ prop1, prop2 }) => {
+     return ( ... );
+   }, (prevProps, nextProps) => {
+     // Custom comparison if needed
+     return prevProps.id === nextProps.id &&
+            prevProps.updatedAt === nextProps.updatedAt;
+   });
+   ```
+
+3. **Add Performance Tests** (0.5 day)
+   - Measure renders with React DevTools Profiler
+   - Before/after comparison
+   - Document improvements
+
+**Acceptance Criteria:**
+- [ ] At least 15 components wrapped with React.memo
+- [ ] Performance improvement measured and documented
+- [ ] No functional regressions
+- [ ] All tests passing
+
+**Files to Modify:**
+- [ ] `src/pages/patients/PatientsTab.tsx`
+- [ ] `src/pages/inventory/ProductsTab.tsx`
+- [ ] `src/pages/employees/EmployeesPage.tsx`
+- [ ] `src/components/pos/OpenAccountsList.tsx`
+- [ ] `src/components/pos/AccountHistoryList.tsx`
+- [ ] `src/components/billing/BillingStatsCards.tsx`
+- [ ] `src/pages/reports/ExecutiveDashboardTab.tsx`
+- [ ] 8+ more component files
 
 ---
 
-### Week 2: Redux Expansion - Additional Slices
+### Task 1.2: Fix Failing UI Tests
 
-**Objetivo:** Completar state management de módulos restantes
+**Priority:** P1 - High
+**Effort:** 5-7 days
+**Impact:** Coverage 25% → 70%
+**Score Gain:** +0.3 points
 
-#### Tasks:
-1. **roomsSlice.ts** (1 día)
-   - Estado: habitaciones, consultorios, ocupación
-   - Thunks: fetchRooms, updateRoomStatus
+**Subtasks:**
 
-2. **employeesSlice.ts** (1 día)
-   - Estado: empleados, médicos, enfermeros, schedule
-   - Thunks: fetchEmployees, updateSchedule
+1. **Setup MSW (Mock Service Worker)** (1 day)
+   ```bash
+   npm install --save-dev msw
+   ```
 
-3. **hospitalizationSlice.ts** (1 día)
-   - Estado: ingresos, altas, notas médicas
-   - Thunks: fetchAdmissions, createDischarge
+   ```typescript
+   // src/mocks/handlers.ts
+   import { rest } from 'msw';
 
-4. **quirofanosSlice.ts** (1 día)
-   - Estado: quirófanos, cirugías programadas
-   - Thunks: fetchQuirofanos, scheduleSurgery
+   export const handlers = [
+     rest.get('/api/patients', (req, res, ctx) => {
+       return res(ctx.json({
+         success: true,
+         data: { patients: mockPatients, pagination: mockPagination }
+       }));
+     }),
+     // ... more handlers
+   ];
 
-5. **Refactoring de páginas para usar nuevos slices** (1 día)
+   // src/mocks/server.ts
+   import { setupServer } from 'msw/node';
+   import { handlers } from './handlers';
 
-**Deliverables:**
-- 4 nuevos slices adicionales
-- 7 páginas migradas a Redux
-- Coverage Redux: 17% → 80%
+   export const server = setupServer(...handlers);
+   ```
+
+2. **Complete Service Mocks** (2 days)
+   - [ ] `src/services/__mocks__/patientsService.ts` (completar)
+   - [ ] `src/services/__mocks__/inventoryService.ts` (crear)
+   - [ ] `src/services/__mocks__/employeeService.ts` (crear)
+   - [ ] `src/services/__mocks__/quirofanosService.ts` (completar)
+   - Ensure all mocks match TypeScript interfaces
+
+3. **Fix PatientFormDialog Tests** (1 day)
+   - [ ] `src/pages/patients/__tests__/PatientFormDialog.test.tsx`
+   - Complete Redux store mock
+   - Fix stepper navigation tests
+   - Address 85 failing tests
+
+4. **Fix PatientsTab Tests** (1 day)
+   - [ ] `src/pages/patients/__tests__/PatientsTab.test.tsx`
+   - Mock DataGrid correctly
+   - Fix pagination tests
+   - Address 60 failing tests
+
+5. **Fix ProductFormDialog Tests** (1 day)
+   - [ ] `src/pages/inventory/__tests__/ProductFormDialog.test.tsx`
+   - Mock inventory service
+   - Fix form validation tests
+   - Address 60 failing tests
+
+6. **Fix CirugiaFormDialog Tests** (0.5 day)
+   - [ ] `src/pages/quirofanos/__tests__/CirugiaFormDialog.test.tsx`
+   - Already partially fixed, complete remaining
+
+7. **Add Missing Component Tests** (0.5 day)
+   - Create tests for components without coverage
+   - Focus on critical paths
+
+**Acceptance Criteria:**
+- [ ] MSW configured and working
+- [ ] All service mocks complete and typed
+- [ ] 0 failing tests (312/312 passing)
+- [ ] Coverage: Components 20% → 70%
+- [ ] Coverage: Pages 25% → 70%
+
+**Test Count Target:**
+- Current: 227 passing / 85 failing
+- Target: 312 passing / 0 failing
 
 ---
 
-### Week 3: RTK Query Implementation
+### Task 1.3: Increase useMemo Usage
 
-**Objetivo:** Implementar RTK Query para caching automático
+**Priority:** P1 - High
+**Effort:** 1-2 days
+**Impact:** Reduce redundant calculations
+**Score Gain:** +0.1 points
 
-#### Tasks:
-1. **Configurar hospitalApi** (1 día)
+**Subtasks:**
+
+1. **Identify Expensive Calculations** (4 hours)
+   - Profile components with React DevTools
+   - Find calculations in render functions
+   - Document candidates for useMemo
+
+2. **Implement useMemo** (1 day)
+   ```typescript
+   // Target locations:
+
+   // 1. Statistics calculations
+   // src/pages/patients/PatientsPage.tsx
+   const patientStats = useMemo(() => {
+     return calculatePatientStats(patients);
+   }, [patients]);
+
+   // 2. Filtered lists
+   // src/pages/inventory/ProductsTab.tsx
+   const filteredProducts = useMemo(() => {
+     return products.filter(p =>
+       p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) &&
+       p.stock >= minStock
+     );
+   }, [products, searchTerm, minStock]);
+
+   // 3. Chart data transformations
+   // src/pages/reports/ExecutiveDashboardTab.tsx
+   const chartData = useMemo(() => {
+     return transformDataForChart(rawData);
+   }, [rawData]);
+
+   // 4. Sorted arrays
+   const sortedPatients = useMemo(() => {
+     return [...patients].sort((a, b) => a.nombre.localeCompare(b.nombre));
+   }, [patients]);
+
+   // 5. Complex derivations
+   const patientsByAge = useMemo(() => {
+     return groupPatientsByAgeGroup(patients);
+   }, [patients]);
+   ```
+
+3. **Target Files** (15 implementations)
+   - [ ] `src/pages/patients/PatientsPage.tsx` (stats)
+   - [ ] `src/pages/inventory/InventoryPage.tsx` (stats, filters)
+   - [ ] `src/pages/reports/ExecutiveDashboardTab.tsx` (charts)
+   - [ ] `src/pages/billing/BillingPage.tsx` (calculations)
+   - [ ] `src/pages/hospitalization/HospitalizationPage.tsx` (filters)
+   - [ ] `src/components/reports/ReportChart.tsx` (data transform)
+   - [ ] 9+ more locations
+
+4. **Performance Testing** (2 hours)
+   - Measure before/after with Profiler
+   - Document improvements
+
+**Acceptance Criteria:**
+- [ ] At least 15 new useMemo implementations
+- [ ] Performance improvement measured
+- [ ] No functional regressions
+- [ ] All tests passing
+
+---
+
+## Phase 2: Code Quality Improvements (Sprint 3)
+
+### Task 2.1: Refactor Large Components
+
+**Priority:** P2 - Medium
+**Effort:** 3-4 days
+**Impact:** Better maintainability
+**Score Gain:** +0.1 points
+
+**Target Components:**
+
+1. **HospitalizationPage (800 LOC) → 4 components**
+   ```
+   src/pages/hospitalization/
+   ├── HospitalizationPage.tsx (150 LOC)
+   ├── components/
+   │   ├── AdmissionsTable.tsx (200 LOC)
+   │   ├── AdmissionFilters.tsx (100 LOC)
+   │   ├── AdmissionStats.tsx (150 LOC)
+   │   └── index.ts
+   └── [existing dialogs]
+   ```
+
+2. **EmployeesPage (778 LOC) → 4 components**
+   ```
+   src/pages/employees/
+   ├── EmployeesPage.tsx (150 LOC)
+   ├── components/
+   │   ├── EmployeesTable.tsx (200 LOC)
+   │   ├── EmployeeFilters.tsx (100 LOC)
+   │   ├── EmployeeStats.tsx (150 LOC)
+   │   └── index.ts
+   └── [existing dialogs]
+   ```
+
+3. **SolicitudFormDialog (707 LOC) → 3 components**
+   ```
+   src/pages/solicitudes/
+   ├── SolicitudFormDialog.tsx (250 LOC)
+   ├── components/
+   │   ├── SolicitudBasicInfo.tsx (200 LOC)
+   │   ├── SolicitudItemsList.tsx (200 LOC)
+   │   └── index.ts
+   ```
+
+**Acceptance Criteria:**
+- [ ] All 3 components refactored
+- [ ] Each file <400 LOC
+- [ ] Functionality preserved
+- [ ] Tests updated and passing
+- [ ] Props interfaces documented
+
+---
+
+### Task 2.2: Consolidate Duplicate Types
+
+**Priority:** P2 - Medium
+**Effort:** 1 day
+**Impact:** Cleaner codebase
+**Score Gain:** +0.05 points
+
+**Subtasks:**
+
+1. **Merge patient types** (4 hours)
+   - Merge `patient.types.ts` and `patients.types.ts`
+   - Keep in `patient.types.ts`
+   - Update all imports
+
+2. **Review other duplications** (2 hours)
+   - Check for other type duplications
+   - Consolidate if found
+
+3. **Update imports** (2 hours)
+   - Find all imports with `patients.types`
+   - Replace with `patient.types`
+   - Verify build passes
+
+**Acceptance Criteria:**
+- [ ] Only 1 patient types file exists
+- [ ] All imports updated
+- [ ] No TypeScript errors
+- [ ] All tests passing
+
+---
+
+### Task 2.3: Implement Reselect Selectors
+
+**Priority:** P2 - Medium
+**Effort:** 2-3 days
+**Impact:** Performance in state derivations
+**Score Gain:** +0.05 points
+
+**Subtasks:**
+
+1. **Install reselect** (5 min)
+   ```bash
+   npm install reselect
+   ```
+
+2. **Create selectors for authSlice** (1 day)
+   ```typescript
+   // src/store/slices/authSlice.ts
+   import { createSelector } from '@reduxjs/toolkit';
+
+   // Base selectors
+   const selectAuthState = (state: RootState) => state.auth;
+
+   // Memoized selectors
+   export const selectUser = createSelector(
+     [selectAuthState],
+     (auth) => auth.user
+   );
+
+   export const selectUserRole = createSelector(
+     [selectUser],
+     (user) => user?.rol
+   );
+
+   export const selectIsAdmin = createSelector(
+     [selectUserRole],
+     (role) => role === 'administrador'
+   );
+   ```
+
+3. **Create selectors for patientsSlice** (1 day)
+   ```typescript
+   // src/store/slices/patientsSlice.ts
+   export const selectFilteredPatients = createSelector(
+     [(state: RootState) => state.patients.patients,
+      (state: RootState) => state.patients.filters],
+     (patients, filters) => {
+       return patients.filter(patient => {
+         if (filters.search && !patient.nombre.includes(filters.search)) {
+           return false;
+         }
+         if (filters.esMenorEdad !== undefined &&
+             patient.esMenorEdad !== filters.esMenorEdad) {
+           return false;
+         }
+         return true;
+       });
+     }
+   );
+   ```
+
+4. **Update components to use selectors** (0.5 day)
+
+**Acceptance Criteria:**
+- [ ] Selectors created for all 3 slices
+- [ ] Components updated to use selectors
+- [ ] Performance improvement measured
+- [ ] Tests passing
+
+---
+
+### Task 2.4: Fix TypeScript Errors in Tests
+
+**Priority:** P2 - Medium
+**Effort:** 1-2 days
+**Impact:** Complete type safety
+**Score Gain:** +0.05 points
+
+**Subtasks:**
+
+1. **Fix useAccountHistory test types** (4 hours)
+   - Complete PatientAccount mocks with all required fields
+   - Fix null assignments
+
+2. **Fix usePatientForm test types** (2 hours)
+   - Fix null assignments to Patient type
+
+3. **Fix usePatientSearch test types** (4 hours)
+   - Remove 'offset' from pagination mocks
+   - Fix null assignments
+
+4. **Verify all tests** (2 hours)
+   ```bash
+   npx tsc --noEmit
+   ```
+   - Should show 0 errors
+
+**Acceptance Criteria:**
+- [ ] 0 TypeScript errors in entire codebase
+- [ ] All mocks match interfaces
+- [ ] Tests still passing
+
+---
+
+## Phase 3: Nice-to-Have Improvements (Sprint 4 - Optional)
+
+### Task 3.1: Add Error Boundaries
+
+**Priority:** P3 - Low
+**Effort:** 1 day
+**Impact:** Better error handling
+
+**Implementation:**
+
 ```typescript
-// services/hospitalApi.ts
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+// src/components/common/ErrorBoundary.tsx
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
-export const hospitalApi = createApi({
-  reducerPath: 'hospitalApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-      if (token) headers.set('authorization', `Bearer ${token}`);
-      return headers;
-    }
-  }),
-  tagTypes: ['Patient', 'Invoice', 'Product', 'Room', 'Employee'],
-  endpoints: (builder) => ({
-    // Endpoints aquí
-  })
-});
-```
-
-2. **Migrar servicios críticos** (3 días)
-   - patientsService → hospitalApi.useGetPatientsQuery
-   - inventoryService → hospitalApi.useGetProductsQuery
-   - billingService → hospitalApi.useGetInvoicesQuery
-   - posService → hospitalApi.useGetAccountsQuery
-
-3. **Implementar cache invalidation** (1 día)
-   - Tags para cada entidad
-   - providesTags y invalidatesTags correctos
-
-**Deliverables:**
-- RTK Query configurado y funcionando
-- 4 servicios migrados con caching
-- Reducción de 70% en código boilerplate
-- Tests de endpoints (coverage 70%)
-
----
-
-## Phase 2: Quality & Testing (Weeks 4-6)
-
-### Week 4: Service Layer Testing
-
-**Objetivo:** Elevar coverage de servicios de 2% a 70%
-
-#### Tasks:
-1. **Tests de servicios críticos** (3 días)
-   - patientsService.test.ts (50+ tests)
-   - inventoryService.test.ts (40+ tests)
-   - billingService.test.ts (40+ tests)
-   - posService.test.ts (40+ tests)
-
-2. **Tests de Redux slices** (2 días)
-   - authSlice.test.ts (mejora de 16% a 80%)
-   - patientsSlice.test.ts (mejora de 16% a 80%)
-   - Todos los nuevos slices (80% coverage)
-
-**Deliverables:**
-- Coverage servicios: 2.16% → 70%
-- Coverage slices: 17.16% → 80%
-- 200+ nuevos tests
-
----
-
-### Week 5: TypeScript Strictness
-
-**Objetivo:** Eliminar 169 `any` y habilitar strict mode
-
-#### Tasks:
-1. **Definir tipos de error estrictos** (1 día)
-```typescript
-// types/api.types.ts
-export interface ApiError {
-  error: string;
-  message?: string;
-  statusCode: number;
-  details?: Record<string, unknown>;
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
-export type ApiResponse<T> =
-  | { success: true; data: T }
-  | { success: false; error: string; statusCode: number };
-```
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
 
-2. **Eliminar `any` en servicios** (2 días)
-   - reportsService.ts (11 any → 0)
-   - hospitalizationService.ts (12 any → 0)
-   - quirofanosService.ts (16 any → 0)
-   - billingService.ts (7 any → 0)
+class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
-3. **Eliminar `any` en componentes** (1 día)
-   - hooks (23 any → 0)
-   - pages (45 any → 0)
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
 
-4. **Habilitar strict mode** (1 día)
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictPropertyInitialization": true
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+    // TODO: Send to error reporting service (Sentry, etc.)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <Box p={4} textAlign="center">
+          <Typography variant="h5" color="error">
+            Algo salió mal
+          </Typography>
+          <Button onClick={() => window.location.reload()}>
+            Recargar página
+          </Button>
+        </Box>
+      );
+    }
+
+    return this.props.children;
   }
 }
+
+// Usage in App.tsx
+<ErrorBoundary>
+  <Router>...</Router>
+</ErrorBoundary>
 ```
 
-**Deliverables:**
-- any: 169 → <10
-- TypeScript strict mode habilitado
-- 0 errores de compilación
+**Acceptance Criteria:**
+- [ ] ErrorBoundary component created
+- [ ] Wrapped around App in main.tsx
+- [ ] Error states tested
+- [ ] Fallback UI designed
 
 ---
 
-### Week 6: Accessibility Foundation
+### Task 3.2: Virtual Scrolling for Custom Lists (Optional)
 
-**Objetivo:** Mejorar accesibilidad de 4.0/10 a 7.0/10
+**Priority:** P3 - Low
+**Effort:** 1-2 days
 
-#### Tasks:
-1. **Agregar ARIA labels a componentes críticos** (2 días)
-   - Login.tsx
-   - Dashboard.tsx
-   - PatientsPage.tsx
-   - POSPage.tsx
-   - InventoryPage.tsx
-   - BillingPage.tsx
-   - HospitalizationPage.tsx
+Only implement if:
+- Lists exceed 500 items regularly
+- Not using DataGrid (which has built-in virtualization)
 
-2. **Implementar keyboard navigation** (2 días)
-   - Tab order lógico en formularios
-   - Shortcuts para tabs (Ctrl+Tab)
-   - Focus trap en diálogos
-   - Skip links para navegación
-
-3. **Agregar aria-live regions** (1 día)
-   - Toastify con aria-live="polite"
-   - Loading states con aria-busy
-   - Error messages con role="alert"
-
-**Deliverables:**
-- 50+ aria-labels agregados
-- Keyboard navigation en top 10 páginas
-- Accessibility score: 4.0 → 7.0
+**Libraries to Consider:**
+- react-window
+- react-virtualized
 
 ---
 
-## Phase 3: Refactoring (Weeks 7-9)
+## Timeline & Resource Allocation
 
-### Week 7: God Component Refactoring - Part 1
+### Sprint 1 (Weeks 1-2)
+**Focus:** High-impact optimizations
 
-**Objetivo:** Refactorizar top 3 God Components
+| Task | Days | Assignee | Dependencies |
+|------|------|----------|--------------|
+| 1.1 React.memo | 2-3 | Frontend Dev | None |
+| 1.3 useMemo | 1-2 | Frontend Dev | None |
 
-#### Tasks:
-1. **HospitalizationPage.tsx (800 LOC → 4 componentes)** (2 días)
-```
-HospitalizationPage.tsx (150 LOC - container)
-├── AdmissionsTab.tsx (250 LOC)
-├── DischargesTab.tsx (200 LOC)
-├── MedicalNotesTab.tsx (200 LOC)
-└── HospitalizationStats.tsx (150 LOC)
-```
+**Total:** 3-5 days
 
-2. **EmployeesPage.tsx (778 LOC → 3 componentes)** (2 días)
-```
-EmployeesPage.tsx (200 LOC - container)
-├── EmployeesList.tsx (250 LOC)
-├── EmployeeSchedule.tsx (200 LOC)
-└── EmployeePermissions.tsx (150 LOC)
-```
+### Sprint 2 (Weeks 3-4)
+**Focus:** Testing improvements
 
-3. **Tests para nuevos componentes** (1 día)
+| Task | Days | Assignee | Dependencies |
+|------|------|----------|--------------|
+| 1.2 Fix UI Tests | 5-7 | Frontend Dev + QA | None |
 
-**Deliverables:**
-- 2 páginas refactorizadas (7 nuevos componentes)
-- Tests para todos los componentes nuevos
-- Reducción de LOC: 1,578 → 1,500 (distribuido mejor)
+**Total:** 5-7 days
 
----
+### Sprint 3 (Weeks 5-6)
+**Focus:** Code quality
 
-### Week 8: God Component Refactoring - Part 2
+| Task | Days | Assignee | Dependencies |
+|------|------|----------|--------------|
+| 2.1 Refactor Large Components | 3-4 | Frontend Dev | None |
+| 2.2 Consolidate Types | 1 | Frontend Dev | None |
+| 2.3 Reselect Selectors | 2-3 | Frontend Dev | None |
+| 2.4 Fix TS Errors in Tests | 1-2 | Frontend Dev | Task 1.2 |
 
-**Objetivo:** Refactorizar QuickSalesTab y ProductFormDialog
+**Total:** 7-10 days
 
-#### Tasks:
-1. **QuickSalesTab.tsx (752 LOC → 4 componentes)** (2 días)
-```
-QuickSalesTab.tsx (200 LOC - orquestador)
-├── ProductSearch.tsx (200 LOC)
-├── ShoppingCart.tsx (200 LOC)
-├── PaymentForm.tsx (150 LOC)
-└── QuickSalesStats.tsx (100 LOC)
-```
+### Sprint 4 (Weeks 7-8 - Optional)
+**Focus:** Nice-to-have
 
-2. **ProductFormDialog.tsx (698 LOC → 3 componentes)** (2 días)
-```
-ProductFormDialog.tsx (150 LOC - wizard)
-├── ProductBasicInfo.tsx (200 LOC)
-├── ProductPricing.tsx (200 LOC)
-└── ProductStock.tsx (150 LOC)
-```
+| Task | Days | Assignee | Dependencies |
+|------|------|----------|--------------|
+| 3.1 Error Boundaries | 1 | Frontend Dev | None |
 
-3. **Tests** (1 día)
-
-**Deliverables:**
-- 2 componentes refactorizados (7 nuevos componentes)
-- Tests completos
-
----
-
-### Week 9: Performance Optimizations
-
-**Objetivo:** Agregar React.memo y optimizar re-renders
-
-#### Tasks:
-1. **Memoizar Stats Cards** (1 día)
-   - PatientStatsCard (246 LOC)
-   - InventoryStatsCard
-   - POSStatsCards
-   - RoomsStatsCard (251 LOC)
-   - OfficesStatsCard (190 LOC)
-   - QuirofanoDetailsDialog (381 LOC)
-
-2. **Agregar useMemo a cálculos complejos** (2 días)
-   - Filtrado de listas
-   - Cálculos de stats
-   - Transformación de datos en reportes
-
-3. **Implementar virtualización** (2 días)
-   - Integrar react-window
-   - Virtualizar listas de pacientes
-   - Virtualizar listas de productos
-
-**Deliverables:**
-- 6 componentes con React.memo
-- 30+ useMemo agregados
-- Virtualización en 3 listas grandes
-- Reducción de re-renders: 30-50%
-
----
-
-## Phase 4: Polish (Weeks 10-12)
-
-### Week 10: MUI Deprecations & Consistency
-
-**Objetivo:** Eliminar warnings y mejorar consistencia
-
-#### Tasks:
-1. **Migrar DatePicker renderInput** (1 día)
-   - 11 archivos con renderInput
-   - Migrar a slotProps pattern
-
-2. **Consistencia en sx prop** (2 días)
-   - Reemplazar style inline con sx
-   - Aprovechar theme tokens
-
-3. **Actualizar theme** (2 días)
-   - Agregar custom palette tokens
-   - High contrast mode support
-   - Dark mode foundation
-
-**Deliverables:**
-- 0 deprecation warnings
-- sx prop usado consistentemente
-- Theme mejorado con accesibilidad
-
----
-
-### Week 11: Component Testing
-
-**Objetivo:** Completar tests de componentes principales
-
-#### Tasks:
-1. **Tests de páginas sin coverage** (3 días)
-   - POSPage.test.tsx
-   - InventoryPage.test.tsx
-   - RoomsPage.test.tsx
-   - ReportsPage.test.tsx
-
-2. **Fijar tests fallando** (2 días)
-   - 85 tests → 0 tests fallando
-   - Completar mocks
-   - Ajustar aserciones
-
-**Deliverables:**
-- 4 páginas con tests (60%+ coverage)
-- Pass rate: 72.8% → 95%
-- 85 tests fallando → 0
-
----
-
-### Week 12: Documentation & Validation
-
-**Objetivo:** Documentar y validar mejoras
-
-#### Tasks:
-1. **Documentación de componentes** (2 días)
-   - JSDoc para componentes clave
-   - README para cada módulo
-   - Guías de uso de hooks
-
-2. **Accessibility audit** (1 día)
-   - Testear con screen readers
-   - Validar keyboard navigation
-   - Verificar contraste de colores
-
-3. **Performance audit** (1 día)
-   - Lighthouse scores
-   - Bundle size analysis
-   - Re-render profiling
-
-4. **Final validation** (1 día)
-   - E2E tests actualizados
-   - Smoke tests completos
-   - Documentar métricas finales
-
-**Deliverables:**
-- Documentación completa
-- Accessibility score: 7.0 → 8.5
-- Performance metrics documentadas
-- Sistema production-ready
+**Total:** 1 day
 
 ---
 
 ## Success Metrics
 
-### Before vs After (6 months)
+### Performance Metrics
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Redux Coverage | 20% | 80% | +300% |
-| TypeScript `any` | 169 | <10 | -94% |
-| Test Coverage | 30% | 70% | +133% |
-| Test Pass Rate | 72.8% | 95% | +30% |
-| God Components (>500 LOC) | 7 | 0 | -100% |
-| Accessibility Score | 4.0/10 | 8.5/10 | +112% |
-| Bundle Size (inicial) | 400KB | 300KB | -25% |
-| useCallback | 78 | 120 | +54% |
-| useMemo | 3 | 30 | +900% |
-| React.memo | 0 | 15 | ∞ |
+**Before:**
+- Initial bundle load: ~400KB
+- Largest chunk: 554KB
+- Average component re-renders: Baseline (measure)
+- Page load time: Baseline (measure)
 
----
+**After (Target):**
+- Initial bundle load: ~400KB (same)
+- Largest chunk: 554KB (same)
+- Average component re-renders: -10-15%
+- Page load time: -5-10%
 
-## Resource Requirements
+### Testing Metrics
 
-### Development Team
-- 1 Senior Frontend Developer (full-time, 12 weeks)
-- 1 QA Engineer (part-time, weeks 4-12)
-- 1 Accessibility Specialist (consulting, weeks 6, 12)
+**Before:**
+- Total tests: 312
+- Passing: 227 (73%)
+- Coverage: Hooks 95%, Components 20%, Pages 25%
 
-### Estimated Hours
-- Phase 1: 120 hours
-- Phase 2: 120 hours
-- Phase 3: 120 hours
-- Phase 4: 120 hours
-- **Total: 480 hours**
+**After (Target):**
+- Total tests: 312+
+- Passing: 312 (100%)
+- Coverage: Hooks 95%, Components 70%, Pages 70%
 
-### Risk Mitigation
-- Crear feature branches por fase
-- Testing continuo (no esperar al final)
-- Code reviews obligatorios
-- Documentar decisiones arquitectónicas
-- Rollback plan para cada fase
+### Code Quality Metrics
 
----
+**Before:**
+- Components >600 LOC: 5
+- React.memo usage: 0
+- useMemo usage: 3
+- TypeScript errors: 25 (in tests)
 
-## Dependencies & Blockers
-
-### External Dependencies
-- Ninguna (todas las librerías ya están instaladas)
-- RTK Query: Incluido en @reduxjs/toolkit
-
-### Internal Dependencies
-- Backend debe mantener contratos API estables
-- Coordinación con equipo backend para nuevos endpoints si necesario
-
-### Potential Blockers
-- God components pueden tener lógica compleja difícil de separar
-- Tests fallando pueden revelar bugs reales
-- TypeScript strict mode puede revelar bugs ocultos
+**After (Target):**
+- Components >600 LOC: 0
+- React.memo usage: 15+
+- useMemo usage: 18+
+- TypeScript errors: 0
 
 ---
 
-## Rollback Strategy
+## Risk Assessment
 
-### Per Phase
-1. **Mantener branches separados** por fase
-2. **Feature flags** para nuevas implementaciones
-3. **Tests de regresión** antes de merge
-4. **Backup de estado actual** antes de cada fase
-
-### Emergency Rollback
-- Revertir a commit anterior (cada fase es un commit)
-- Restaurar slices antiguos si RTK Query falla
-- Deshabilitar strict mode si bloquea desarrollo
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|------------|
+| React.memo breaks functionality | Low | High | Thorough testing, gradual rollout |
+| MSW setup complex | Medium | Medium | Allocate extra time, seek help if needed |
+| Refactoring introduces bugs | Medium | High | Comprehensive test coverage first |
+| Timeline slippage | Medium | Low | Prioritize P1 tasks, P3 are optional |
 
 ---
 
-## Communication Plan
+## Rollout Strategy
 
-### Weekly Updates
-- Status report cada viernes
-- Demos de features completadas
-- Identificación de blockers
+### Week 1-2 (Sprint 1)
+1. Create feature branch: `feature/frontend-optimizations-phase1`
+2. Implement React.memo + useMemo
+3. Run performance tests
+4. Create PR, get review
+5. Merge to main
 
-### Milestones
-- Week 3: Redux foundation completo
-- Week 6: Testing & TypeScript completo
-- Week 9: Refactoring completo
-- Week 12: Production ready
+### Week 3-4 (Sprint 2)
+1. Create feature branch: `feature/frontend-testing-improvements`
+2. Setup MSW
+3. Fix all failing tests
+4. Achieve 100% pass rate
+5. Create PR, merge
+
+### Week 5-6 (Sprint 3)
+1. Create feature branch: `feature/frontend-code-quality`
+2. Refactor large components
+3. Consolidate types
+4. Implement selectors
+5. Create PR, merge
+
+### Week 7-8 (Sprint 4 - Optional)
+1. Error boundaries
+2. Additional improvements
 
 ---
 
-**Creado:** 3 de noviembre de 2025
-**Responsable:** Frontend Architecture Team
-**Próxima revisión:** Mensual durante implementación
+## Monitoring & Validation
+
+### Performance Monitoring
+- Use React DevTools Profiler before/after
+- Measure with Lighthouse (Performance score)
+- Track bundle sizes with webpack-bundle-analyzer
+
+### Testing Validation
+- CI/CD must pass (GitHub Actions)
+- Manual QA testing of critical paths
+- E2E tests must remain at 100% pass rate
+
+### Code Quality Validation
+- ESLint checks pass
+- TypeScript compilation passes
+- No console errors/warnings
+
+---
+
+## Post-Implementation Review
+
+After all phases complete:
+
+1. **Measure Improvements**
+   - Performance metrics
+   - Test coverage
+   - Code quality metrics
+
+2. **Update Documentation**
+   - Update CLAUDE.md with new scores
+   - Document new patterns
+   - Update architectural diagrams
+
+3. **Team Retrospective**
+   - What went well?
+   - What could be improved?
+   - Lessons learned
+
+4. **Final Health Report**
+   - Re-run this analysis
+   - Confirm 9.2/10 score achieved
+   - Document final state
+
+---
+
+**Action Plan Created By:** Claude Code - Frontend Architect Agent
+**Date:** November 3, 2025
+**Next Review:** After Sprint 1 completion

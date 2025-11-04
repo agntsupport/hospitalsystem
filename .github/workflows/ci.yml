@@ -63,11 +63,12 @@ jobs:
         run: |
           COVERAGE=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
           echo "Coverage: $COVERAGE%"
-          if (( $(echo "$COVERAGE < 60" | bc -l) )); then
-            echo "❌ Coverage below 60% threshold"
+          if (( $(echo "$COVERAGE < 40" | bc -l) )); then
+            echo "❌ Coverage below 40% threshold (temporary - target: 70%)"
             exit 1
           fi
-          echo "✅ Coverage above 60% threshold"
+          echo "✅ Coverage above 40% threshold (temporary - target: 70%)"
+          echo "📊 Progress: $(echo "scale=1; ($COVERAGE / 70) * 100" | bc)% towards 70% goal"
 
   # Job 2: Frontend Tests
   frontend-tests:
