@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const logger = require('../utils/logger');
-
-const prisma = new PrismaClient();
 
 // ==============================================
 // ENDPOINTS PARA MÓDULO POS - VENTAS RÁPIDAS
