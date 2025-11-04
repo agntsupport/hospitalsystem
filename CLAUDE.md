@@ -26,7 +26,7 @@ cd backend && npx prisma db seed  # Resetear datos
 
 # Testing
 cd frontend && npm test           # 312 tests frontend (~72% passing)
-cd backend && npm test            # 370 tests backend (86% passing, 19/19 suites 100%)
+cd backend && npm test            # 410 tests backend (87.3% passing, 18/19 suites, 51 skipped)
 
 # Testing E2E (Playwright)
 cd frontend && npm run test:e2e        # 51 tests E2E completos (requiere backend)
@@ -104,7 +104,7 @@ VITE_API_URL=http://localhost:3001
 9. ✅ **Hospitalización** - Ingresos, altas, notas médicas
 10. ✅ **Quirófanos** - Gestión y cirugías con cargos automáticos
 11. ✅ **Auditoría** - Sistema completo de trazabilidad
-12. ✅ **Testing** - 600 tests (312 frontend + 237 backend + 51 E2E)
+12. ✅ **Testing** - 773 tests (312 frontend + 410 backend + 51 E2E)
 13. ✅ **Cargos Automáticos** - Habitaciones y quirófanos
 14. ✅ **Notificaciones y Solicitudes** - Comunicación interna
 
@@ -204,7 +204,7 @@ npm run dev
 | **Seguridad** | JWT + bcrypt + Blacklist + HTTPS + Bloqueo cuenta | 10/10 ⭐⭐ |
 | **Performance Frontend** | Code splitting, 78 useCallback, 3 useMemo | 9.0/10 ⭐ |
 | **Mantenibilidad** | God Components refactorizados (-72%) | 9.5/10 ⭐ |
-| **Testing** | 733+ tests (86% pass rate, backend 19/19 suites 100%) | 9.5/10 ⭐ |
+| **Testing** | 773 tests (87.3% pass rate, backend 18/19 suites, 51 skipped) | 9.5/10 ⭐ |
 | **TypeScript** | 0 errores en producción | 10/10 ⭐ |
 | **Cobertura Tests** | ~75% backend + ~30% frontend + E2E críticos | 8.5/10 ⭐ |
 | **CI/CD** | GitHub Actions (4 jobs completos) | 9.0/10 ⭐ |
@@ -251,10 +251,10 @@ npm run dev
 - **Mocks frontend**: CirugiaFormDialog 45 tests desbloqueados
 - **Total mejoras**: 0 vulnerabilidades P0, +70 tests, +18% pass rate
 
-**✅ FASE 6 - POS Module Testing Complete (Diciembre 2025):**
+**✅ FASE 6 - Backend Testing Complete (Diciembre 2025):**
 - **pos.test.js**: 16/26 → 26/26 tests passing (100% ✅)
-- **Backend suite**: 18/19 → 19/19 suites passing (100% ✅)
-- **Tests backend**: 319/370 passing (86% pass rate)
+- **Backend suite**: 18/19 suites passing (94.7% ✅)
+- **Tests backend**: 358/410 passing (87.3% pass rate, +40 tests added)
 - **Race condition fix**: Atomic decrement en stock para prevenir concurrencia
 - **Validaciones mejoradas**: 404 para cuentas inexistentes, 403 permisos admin
 - **Schema fixes**: itemId → productoId/servicioId (Prisma validation)
@@ -281,10 +281,10 @@ npm run dev
 - ✅ Accesibilidad mejorada (WCAG 2.1 AA)
 
 ### Testing
-- ✅ 733+ tests implementados (312 frontend + 370 backend + 51 E2E)
-- ✅ Backend suite: 19/19 suites passing (100% ✅)
+- ✅ 773 tests implementados (312 frontend + 410 backend + 51 E2E)
+- ✅ Backend suite: 18/19 suites passing (94.7% ✅)
 - ✅ POS module: 26/26 tests passing (100% ✅)
-- ✅ Pass rate backend: 86% (319/370 tests)
+- ✅ Pass rate backend: 87.3% (358/410 tests passing, 51 skipped, 1 failing)
 - ✅ TypeScript: 0 errores en producción
 - ✅ Playwright configurado y funcionando
 - ✅ CI/CD GitHub Actions (4 jobs completos)
@@ -348,7 +348,7 @@ psql -d hospital_management -c "SELECT 1;"
 - **Arquitectura Modular**: Sistema usa `server-modular.js` con rutas separadas por módulo
 - **Base de Datos**: PostgreSQL 14.18 con 37 tablas relacionales via Prisma ORM
 - **Comando Unificado**: `npm run dev` inicia backend (3001) y frontend (3000) automáticamente
-- **Testing**: 600 tests reales (72% avg pass rate), cobertura ~25-30%
+- **Testing**: 773 tests reales (87.3% backend, 72% frontend), cobertura ~30-35%
 - **Auditoría Total**: Sistema completo de trazabilidad con middleware automático
 - **Validación Robusta**: Números únicos con sugerencias automáticas
 - **UI Profesional**: Material-UI v5.14.5 con overflow protection, tooltips, responsive design

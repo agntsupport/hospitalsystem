@@ -7,9 +7,9 @@
 
 ![Estado del Proyecto](https://img.shields.io/badge/Estado-90%25%20Funcional-brightgreen)
 ![Versión](https://img.shields.io/badge/Versión-2.1.0--stable-blue)
-![Tests Unit](https://img.shields.io/badge/Tests%20Unit-733%20Total%20(86%25%20pass)-brightgreen)
+![Tests Unit](https://img.shields.io/badge/Tests%20Unit-773%20Total%20(87.3%25%20pass)-brightgreen)
 ![Frontend Pass Rate](https://img.shields.io/badge/Frontend-~72%25%20(312%20tests)-yellow)
-![Backend Pass Rate](https://img.shields.io/badge/Backend-86%25%20(370%20tests%2C%2019%2F19%20suites)-brightgreen)
+![Backend Pass Rate](https://img.shields.io/badge/Backend-87.3%25%20(410%20tests%2C%2018%2F19%20suites)-brightgreen)
 ![Tests E2E](https://img.shields.io/badge/Tests%20E2E-51%20Playwright-brightgreen)
 ![Base de Datos](https://img.shields.io/badge/BD-PostgreSQL%2014.18-blue)
 ![Arquitectura](https://img.shields.io/badge/Arquitectura-Modular-green)
@@ -33,7 +33,7 @@
 9. **🏥 Hospitalización Avanzada** - Ingresos con anticipo automático, notas médicas, control por roles ✅
 10. **🏢 Quirófanos** - Gestión completa de quirófanos y cirugías ✅
 11. **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones ✅
-12. **🧪 Framework de Testing** - 733+ tests totales (86% pass rate, **19/19 backend suites 100%**, POS 26/26) ✅
+12. **🧪 Framework de Testing** - 773 tests totales (87.3% pass rate, **18/19 backend suites**, POS 26/26) ✅
 13. **⚡ Cargos Automáticos** - Habitaciones y quirófanos con servicios auto-generados ✅
 14. **🔔 Notificaciones y Solicitudes** - Sistema de comunicación interna ✅
 
@@ -64,7 +64,7 @@
 - **📦 Inventario Inteligente** - Control de stock, alertas automáticas
 - **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones
 - **📊 Reportes Operativos** - Productividad y análisis detallado
-- **🧪 Testing Automatizado** - ~670 tests totales (~92% avg pass rate) + 51 tests E2E Playwright
+- **🧪 Testing Automatizado** - 773 tests totales (87.3% backend, 72% frontend) + 51 tests E2E Playwright
 
 ## 👥 Roles del Sistema
 
@@ -94,9 +94,9 @@
 - **Validación Robusta** - Esquemas y middleware de validación
 
 ### Testing y Calidad
-- **~670 tests totales** - ~92% avg pass rate (↑ +18% desde FASE 4)
+- **773 tests totales** - 87.3% backend, 72% frontend (↑ +40 tests desde FASE 5)
 - **312 tests unit frontend** - ~72% passing (stable)
-- **~270 tests backend** - ~92% passing (↑ desde 78.5%) ✅
+- **410 tests backend** - 87.3% passing (358/410 pass, 51 skipped, 1 failing) ✅
 - **51 tests E2E Playwright** - 100% passing ✅
 - **20+ tests hospitalización** - Critical business logic covered ✅
 - **15+ tests concurrencia** - Race conditions validated ✅
@@ -278,9 +278,9 @@ VITE_API_URL=http://localhost:3001
 - **Middleware automático** de auditoría
 
 ### 🧪 12. Testing Framework
-- **~670 tests totales** con ~92% avg pass rate
-- **Frontend**: ~312 tests (~72% passing - stable)
-- **Backend**: ~270 tests (~92% passing - ↑ +18%)
+- **773 tests totales** con 87.3% backend, 72% frontend pass rate
+- **Frontend**: 312 tests (~72% passing - stable)
+- **Backend**: 410 tests (87.3% passing - 358/410 pass, 51 skipped, 1 failing)
 - **E2E Playwright**: 51/51 passing (100%)
 - **Tests Hospitalización**: 20+ tests críticos (admisiones, altas, cuentas) ✅
 - **Tests Concurrencia**: 15+ tests race conditions (inventario, quirófanos, habitaciones) ✅
@@ -460,7 +460,7 @@ npm run dev
 
 ### ✅ Sistema Funcional (88% - Production Ready)
 - **14/14 módulos** implementados con seguridad reforzada
-- **~670 tests reales** automatizados (~92% avg pass rate)
+- **773 tests reales** automatizados (87.3% backend, 72% frontend pass rate)
 - **121 endpoints API** verificados (115 modulares + 6 legacy) con validaciones robustas
 - **7 roles de usuario** con permisos granulares
 - **Sistema de auditoría** completo
