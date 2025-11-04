@@ -86,11 +86,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.data.items.every(item => item.tipo === 'cirugia_general')).toBe(true);
       });
 
-      it.skip('should search quirófanos by numero', async () => {
-        // SKIPPED: Backend search functionality not filtering correctly by numero
-        // Expected: Search should filter quirófanos by numero
-        // Received: Returns all quirófanos without filtering
-        // TODO: Fix search parameter handling in GET /api/quirofanos
+      it('should search quirófanos by numero', async () => {
         const response = await request(app)
           .get(`/api/quirofanos?search=${testQuirofano.numero}`)
           .set('Authorization', `Bearer ${authToken}`);
@@ -377,11 +373,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.success).toBe(false);
       });
 
-      it.skip('should fail with past dates', async () => {
-        // SKIPPED: Backend accepts past dates instead of rejecting with 400
-        // Expected: 400 validation error
-        // Received: 201 success
-        // TODO: Add date validation in POST /api/quirofanos/cirugias
+      it('should fail with past dates', async () => {
         const pastData = {
           ...validCirugiaData,
           fechaInicio: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
@@ -398,11 +390,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.message).toContain('pasada');
       });
 
-      it.skip('should fail with fechaFin before fechaInicio', async () => {
-        // SKIPPED: Backend accepts invalid date range (fechaFin before/equal fechaInicio)
-        // Expected: 400 validation error
-        // Received: 201 success
-        // TODO: Add date range validation in POST /api/quirofanos/cirugias
+      it('should fail with fechaFin before fechaInicio', async () => {
         const invalidData = {
           ...validCirugiaData,
           fechaFin: validCirugiaData.fechaInicio // Same time
@@ -418,11 +406,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.message).toContain('posterior');
       });
 
-      it.skip('should fail with non-existent quirófano', async () => {
-        // SKIPPED: Backend returns 500 instead of 404 for non-existent quirófano
-        // Expected: 404 not found
-        // Received: 500 server error
-        // TODO: Add proper error handling in POST /api/quirofanos/cirugias
+      it('should fail with non-existent quirófano', async () => {
         const invalidData = {
           ...validCirugiaData,
           quirofanoId: 99999
@@ -438,11 +422,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.message).toContain('Quirófano no encontrado');
       });
 
-      it.skip('should fail with non-existent patient', async () => {
-        // SKIPPED: Backend returns 500 instead of 404 for non-existent patient
-        // Expected: 404 not found
-        // Received: 500 server error
-        // TODO: Add proper error handling in POST /api/quirofanos/cirugias
+      it('should fail with non-existent patient', async () => {
         const invalidData = {
           ...validCirugiaData,
           pacienteId: 99999
@@ -458,10 +438,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.message).toContain('Paciente no encontrado');
       });
 
-      it.skip('should fail with non-existent medico', async () => {
-        // SKIPPED: Backend returns 500 instead of 404 for non-existent medico
-        // Expected: 404 not found
-        // Received: 500 server error
+      it('should fail with non-existent medico', async () => {
         // TODO: Add proper error handling in POST /api/quirofanos/cirugias
         const invalidData = {
           ...validCirugiaData,
@@ -541,19 +518,15 @@ describe('Quirófanos Endpoints', () => {
         });
       });
 
-      it.skip('should update cirugía estado successfully', async () => {
-        // SKIPPED: Backend returns 400 instead of 200 for estado update
-        // Expected: 200 success
-        // Received: 400 bad request
-        // TODO: Investigate PUT /api/quirofanos/cirugias/:id/estado endpoint
+      it('should update cirugía estado successfully', async () => {
         const response = await request(app)
           .put(`/api/quirofanos/cirugias/${testCirugia.id}/estado`)
           .set('Authorization', `Bearer ${authToken}`)
-          .send({ estado: 'en_proceso' });
+          .send({ estado: 'en_progreso' });
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.estado).toBe('en_proceso');
+        expect(response.body.data.estado).toBe('en_progreso');
       });
 
       it('should fail with invalid estado', async () => {
@@ -586,11 +559,7 @@ describe('Quirófanos Endpoints', () => {
         });
       });
 
-      it.skip('should cancel cirugía successfully', async () => {
-        // SKIPPED: Backend returns 400 instead of 200 for DELETE cirugía
-        // Expected: 200 success
-        // Received: 400 bad request
-        // TODO: Investigate DELETE /api/quirofanos/cirugias/:id endpoint
+      it('should cancel cirugía successfully', async () => {
         const response = await request(app)
           .delete(`/api/quirofanos/cirugias/${testCirugia.id}`)
           .set('Authorization', `Bearer ${authToken}`);
@@ -600,11 +569,7 @@ describe('Quirófanos Endpoints', () => {
         expect(response.body.message).toContain('cancelada');
       });
 
-      it.skip('should return 404 for non-existent cirugía', async () => {
-        // SKIPPED: Backend returns 400 instead of 404 for non-existent cirugía
-        // Expected: 404 not found
-        // Received: 400 bad request
-        // TODO: Investigate DELETE /api/quirofanos/cirugias/:id error handling
+      it('should return 404 for non-existent cirugía', async () => {
         const response = await request(app)
           .delete('/api/quirofanos/cirugias/99999')
           .set('Authorization', `Bearer ${authToken}`);

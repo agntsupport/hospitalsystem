@@ -12,7 +12,8 @@ const logger = require('../utils/logger');
 // GET /api/quirofanos - Obtener lista de quirófanos con filtros
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { 
+    const {
+      search,
       estado,
       tipo,
       especialidad,
@@ -29,6 +30,14 @@ router.get('/', authenticateToken, async (req, res) => {
         not: 'fuera_de_servicio'
       }
     };
+
+    // Filtro de búsqueda por número
+    if (search) {
+      whereClause.numero = {
+        contains: search,
+        mode: 'insensitive'
+      };
+    }
 
     // Filtros opcionales
     if (estado) {
@@ -414,6 +423,62 @@ router.post('/cirugias', authenticateToken, auditMiddleware('cirugias'), async (
       });
     }
 
+    // Validar que las fechas no sean pasadas
+    const now = new Date();
+    const fechaInicioDate = new Date(fechaInicio);
+    const fechaFinDate = new Date(fechaFin);
+
+    if (fechaInicioDate < now) {
+      return res.status(400).json({
+        success: false,
+        message: 'La fecha de inicio no puede ser una fecha pasada'
+      });
+    }
+
+    // Validar que fechaFin sea posterior a fechaInicio
+    if (fechaFinDate <= fechaInicioDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'La fecha de fin debe ser posterior a la fecha de inicio'
+      });
+    }
+
+    // Validar existencia del quirófano
+    const quirofano = await prisma.quirofano.findUnique({
+      where: { id: parseInt(quirofanoId) }
+    });
+
+    if (!quirofano) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quirófano no encontrado'
+      });
+    }
+
+    // Validar existencia del paciente
+    const paciente = await prisma.paciente.findUnique({
+      where: { id: parseInt(pacienteId) }
+    });
+
+    if (!paciente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Paciente no encontrado'
+      });
+    }
+
+    // Validar existencia del médico
+    const medico = await prisma.empleado.findUnique({
+      where: { id: parseInt(medicoId) }
+    });
+
+    if (!medico) {
+      return res.status(404).json({
+        success: false,
+        message: 'Médico no encontrado'
+      });
+    }
+
     // Verificar disponibilidad del quirófano
     const conflictos = await prisma.cirugiaQuirofano.findMany({
       where: {
@@ -777,12 +842,8 @@ router.delete('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), a
       });
     }
 
-    if (!motivo) {
-      return res.status(400).json({
-        success: false,
-        message: 'Se requiere un motivo para cancelar la cirugía'
-      });
-    }
+    // Motivo opcional pero recomendado
+    const motivoTexto = motivo || 'Sin motivo especificado';
 
     const cirugia = await prisma.cirugiaQuirofano.findUnique({
       where: { id: parseInt(id) }
@@ -806,9 +867,9 @@ router.delete('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), a
       where: { id: parseInt(id) },
       data: {
         estado: 'cancelada',
-        observaciones: cirugia.observaciones 
-          ? `${cirugia.observaciones}\n[CANCELADA - ${new Date().toISOString()}]: ${motivo}` 
-          : `[CANCELADA - ${new Date().toISOString()}]: ${motivo}`
+        observaciones: cirugia.observaciones
+          ? `${cirugia.observaciones}\n[CANCELADA - ${new Date().toISOString()}]: ${motivoTexto}`
+          : `[CANCELADA - ${new Date().toISOString()}]: ${motivoTexto}`
       }
     });
 
