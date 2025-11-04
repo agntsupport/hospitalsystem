@@ -417,9 +417,16 @@ router.post('/products', authenticateToken, auditMiddleware('inventario'), valid
       }
     });
 
+    // Convertir Decimal a number para JSON
+    const productoResponse = {
+      ...producto,
+      precioCompra: producto.precioCompra ? parseFloat(producto.precioCompra.toString()) : null,
+      precioVenta: parseFloat(producto.precioVenta.toString())
+    };
+
     res.status(201).json({
       success: true,
-      data: { product: producto },
+      data: { producto: productoResponse },
       message: 'Producto creado correctamente'
     });
 
@@ -477,9 +484,16 @@ router.put('/products/:id', authenticateToken, auditMiddleware('inventario'), va
       }
     });
 
+    // Convertir Decimal a number para JSON
+    const productoResponse = {
+      ...producto,
+      precioCompra: producto.precioCompra ? parseFloat(producto.precioCompra.toString()) : null,
+      precioVenta: parseFloat(producto.precioVenta.toString())
+    };
+
     res.json({
       success: true,
-      data: { product: producto },
+      data: { producto: productoResponse },
       message: 'Producto actualizado correctamente'
     });
 
@@ -499,6 +513,18 @@ router.delete('/products/:id', authenticateToken, auditMiddleware('inventario'),
       return res.status(400).json({
         success: false,
         message: 'ID de producto inválido'
+      });
+    }
+
+    // Verificar que el producto existe
+    const producto = await prisma.producto.findUnique({
+      where: { id: productoId }
+    });
+
+    if (!producto) {
+      return res.status(404).json({
+        success: false,
+        message: 'Producto no encontrado'
       });
     }
 
@@ -615,16 +641,17 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
   try {
     const {
       productoId,
-      tipo,
+      tipoMovimiento,
       cantidad,
       motivo,
       observaciones,
-      usuarioId = 16 // Usuario por defecto
+      usuarioId
     } = req.body;
 
     const cantidadNum = parseInt(cantidad);
     const productoIdNum = parseInt(productoId);
-    const usuarioIdNum = parseInt(usuarioId);
+    // Usar el usuario autenticado si no se proporciona usuarioId
+    const usuarioIdNum = usuarioId ? parseInt(usuarioId) : req.user.id;
 
     if (cantidadNum <= 0) {
       return res.status(400).json({
@@ -646,9 +673,9 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
 
       // Calcular nuevo stock
       let nuevoStock = producto.stockActual;
-      if (tipo === 'entrada') {
+      if (tipoMovimiento === 'entrada') {
         nuevoStock += cantidadNum;
-      } else if (tipo === 'salida') {
+      } else if (tipoMovimiento === 'salida') {
         nuevoStock -= cantidadNum;
         if (nuevoStock < 0) {
           throw new Error('Stock insuficiente');
@@ -665,7 +692,7 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
       const movimiento = await tx.movimientoInventario.create({
         data: {
           productoId: productoIdNum,
-          tipoMovimiento: tipo,
+          tipoMovimiento: tipoMovimiento,
           cantidad: cantidadNum,
           motivo,
           observaciones,
@@ -697,7 +724,7 @@ router.post('/movements', authenticateToken, auditMiddleware('inventario'), vali
 
     res.status(201).json({
       success: true,
-      data: { movement: result },
+      data: { movimiento: result },
       message: 'Movimiento creado correctamente'
     });
 

@@ -118,7 +118,7 @@ describe('Inventory Endpoints', () => {
         };
       });
 
-      it.skip('should create a new product with valid data', async () => {
+      it('should create a new product with valid data', async () => {
         // SKIPPED: Backend returns unexpected response structure
         // Expected response.body.data.producto but backend returns different format
         // TODO: Investigate backend POST /api/inventory/products response structure
@@ -182,7 +182,7 @@ describe('Inventory Endpoints', () => {
     });
 
     describe('PUT /api/inventory/products/:id', () => {
-      it.skip('should update product successfully', async () => {
+      it('should update product successfully', async () => {
         // SKIPPED: Backend returns unexpected response structure
         // Expected response.body.data.producto but backend returns different format
         // TODO: Investigate backend PUT /api/inventory/products/:id response structure
@@ -215,24 +215,30 @@ describe('Inventory Endpoints', () => {
     });
 
     describe('DELETE /api/inventory/products/:id', () => {
-      it.skip('should delete product successfully', async () => {
+      it('should delete product successfully', async () => {
         // SKIPPED: Backend DELETE endpoint needs investigation
         // TODO: Verify DELETE /api/inventory/products/:id implementation
         const response = await request(app)
           .delete(`/api/inventory/products/${testProduct.id}`)
-          .set('Authorization', `Bearer ${authToken}`);
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ motivo: 'Producto de prueba eliminado' });
+
+        if (response.status !== 200) {
+          console.log('DEBUG DELETE - Response:', response.status, response.body);
+        }
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
         expect(response.body.message).toContain('eliminado');
       });
 
-      it.skip('should return 404 for non-existent product', async () => {
+      it('should return 404 for non-existent product', async () => {
         // SKIPPED: Backend DELETE endpoint needs investigation
         // TODO: Verify DELETE /api/inventory/products/:id error handling
         const response = await request(app)
           .delete('/api/inventory/products/99999')
-          .set('Authorization', `Bearer ${authToken}`);
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({ motivo: 'Intentando eliminar producto inexistente' });
 
         expect(response.status).toBe(404);
         expect(response.body.success).toBe(false);
@@ -300,7 +306,7 @@ describe('Inventory Endpoints', () => {
         expect(response.body.data.contacto.nombre).toBe(validSupplierData.contactoNombre);
       });
 
-      it.skip('should fail with missing required fields', async () => {
+      it('should fail with missing required fields', async () => {
         // SKIPPED: Backend validator makes contactoNombre optional
         // Only nombreEmpresa is required, so this test passes with incomplete data
         // TODO: Review if contactoNombre should be required
@@ -376,14 +382,13 @@ describe('Inventory Endpoints', () => {
       beforeEach(() => {
         validMovementData = {
           productoId: testProduct.id,
-          tipoMovimiento: 'entrada',  // Changed from 'tipo' to 'tipoMovimiento'
+          tipoMovimiento: 'entrada',
           cantidad: 50,
-          motivo: 'Compra de inventario',
-          numeroDocumento: 'TEST-001'  // Changed from 'referencia' to 'numeroDocumento'
+          motivo: 'Compra de inventario'
         };
       });
 
-      it.skip('should create a new movement with valid data', async () => {
+      it('should create a new movement with valid data', async () => {
         // SKIPPED: Backend returns 500 error
         // Possible issues: tipoMovimiento field mismatch or database constraint
         // TODO: Investigate POST /api/inventory/movements implementation
@@ -391,6 +396,10 @@ describe('Inventory Endpoints', () => {
           .post('/api/inventory/movements')
           .set('Authorization', `Bearer ${authToken}`)
           .send(validMovementData);
+
+        if (response.status !== 201) {
+          console.log('DEBUG - Response:', response.status, response.body);
+        }
 
         expect(response.status).toBe(201);
         expect(response.body.success).toBe(true);

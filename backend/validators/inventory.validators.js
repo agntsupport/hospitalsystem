@@ -175,8 +175,9 @@ const validateProveedor = [
     .withMessage('El nombre debe tener entre 3 y 200 caracteres'),
 
   body('contactoNombre')
-    .optional()
     .trim()
+    .notEmpty()
+    .withMessage('El nombre de contacto es requerido')
     .isLength({ max: 100 })
     .withMessage('El nombre de contacto debe tener máximo 100 caracteres'),
 
