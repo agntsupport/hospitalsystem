@@ -361,12 +361,12 @@ describe('Inventory Endpoints', () => {
 
       it('should filter movements by type', async () => {
         const response = await request(app)
-          .get('/api/inventory/movements?tipoMovimiento=entrada')
+          .get('/api/inventory/movements?tipo=entrada')
           .set('Authorization', `Bearer ${authToken}`);
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.items.every(item => item.tipoMovimiento === 'entrada')).toBe(true);
+        expect(response.body.data.items.every(item => item.tipo === 'entrada')).toBe(true);
       });
     });
 

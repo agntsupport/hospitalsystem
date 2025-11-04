@@ -15,10 +15,12 @@ describe('Concurrency Control - Race Condition Tests', () => {
   let testRoom;
 
   beforeAll(async () => {
+    const timestamp = Date.now();
+
     // Crear quirófano de prueba
     testQuirofano = await prisma.quirofano.create({
       data: {
-        numero: 'QTEST-001',
+        numero: `QTEST-${timestamp}`,
         tipo: 'cirugia_general',
         estado: 'disponible',
         capacidadEquipo: 10,
@@ -30,14 +32,12 @@ describe('Concurrency Control - Race Condition Tests', () => {
     testProduct = await prisma.producto.create({
       data: {
         nombre: 'Test Medicine Concurrency',
-        codigo: 'TMC001',
-        categoria: 'medicamento',
+        codigo: `TMC-${timestamp}`,
+        categoria: 'medicamento', // Required field
         unidadMedida: 'pieza',
-        cantidadDisponible: 10, // Stock limitado
-        precioUnitario: 100,
+        stockActual: 10, // Stock limitado (was cantidadDisponible)
         precioVenta: 150,
         stockMinimo: 5,
-        stockMaximo: 100,
         activo: true
       }
     });
@@ -45,23 +45,32 @@ describe('Concurrency Control - Race Condition Tests', () => {
     // Crear habitación de prueba
     testRoom = await prisma.habitacion.create({
       data: {
-        numero: 'HTEST-001',
+        numero: `HTEST-${timestamp}`,
         tipo: 'individual',
-        piso: 1,
         estado: 'disponible',
-        precioNoche: 1500
+        precioPorDia: 1500 // was precioNoche
       }
     });
   });
 
   afterAll(async () => {
-    // Limpiar datos de prueba
-    await prisma.cirugiaQuirofano.deleteMany({ where: { quirofanoId: testQuirofano.id } });
-    await prisma.movimientoInventario.deleteMany({ where: { productoId: testProduct.id } });
-    await prisma.hospitalizacion.deleteMany({ where: { habitacionId: testRoom.id } });
-    await prisma.quirofano.delete({ where: { id: testQuirofano.id } });
-    await prisma.producto.delete({ where: { id: testProduct.id } });
-    await prisma.habitacion.delete({ where: { id: testRoom.id } });
+    // Limpiar datos de prueba - safe cleanup even if beforeAll failed
+    try {
+      if (testQuirofano) {
+        await prisma.cirugiaQuirofano.deleteMany({ where: { quirofanoId: testQuirofano.id } });
+        await prisma.quirofano.delete({ where: { id: testQuirofano.id } });
+      }
+      if (testProduct) {
+        await prisma.movimientoInventario.deleteMany({ where: { productoId: testProduct.id } });
+        await prisma.producto.delete({ where: { id: testProduct.id } });
+      }
+      if (testRoom) {
+        await prisma.hospitalizacion.deleteMany({ where: { habitacionId: testRoom.id } });
+        await prisma.habitacion.delete({ where: { id: testRoom.id } });
+      }
+    } catch (error) {
+      console.warn('Cleanup warning in concurrency.test.js:', error.message);
+    }
   });
 
   describe('Surgery Scheduling - Concurrent Booking Prevention', () => {
@@ -99,7 +108,8 @@ describe('Concurrency Control - Race Condition Tests', () => {
             fechaNacimiento: new Date('1980-01-01'),
             genero: 'M',
             telefono: '1234567891',
-            rol: 'medico_especialista',
+            tipoEmpleado: 'medico_especialista', // was rol
+            fechaIngreso: new Date(),
             activo: true
           }
         }),
@@ -112,7 +122,8 @@ describe('Concurrency Control - Race Condition Tests', () => {
             fechaNacimiento: new Date('1980-01-01'),
             genero: 'F',
             telefono: '1234567892',
-            rol: 'medico_especialista',
+            tipoEmpleado: 'medico_especialista', // was rol
+            fechaIngreso: new Date(),
             activo: true
           }
         })
@@ -128,8 +139,7 @@ describe('Concurrency Control - Race Condition Tests', () => {
             pacienteId: testPatients[0].id,
             medicoId: testDoctors[0].id,
             tipoIntervencion: 'Test Surgery 1',
-            fechaHoraProgramada: fechaHora,
-            duracionEstimada: 120,
+            fechaInicio: fechaHora,
             estado: 'programada'
           }
         }),
@@ -139,8 +149,7 @@ describe('Concurrency Control - Race Condition Tests', () => {
             pacienteId: testPatients[1].id,
             medicoId: testDoctors[1].id,
             tipoIntervencion: 'Test Surgery 2',
-            fechaHoraProgramada: fechaHora,
-            duracionEstimada: 120,
+            fechaInicio: fechaHora,
             estado: 'programada'
           }
         })
@@ -157,7 +166,7 @@ describe('Concurrency Control - Race Condition Tests', () => {
       const cirugiasEnQuirofano = await prisma.cirugiaQuirofano.findMany({
         where: {
           quirofanoId: testQuirofano.id,
-          fechaHoraProgramada: fechaHora
+          fechaInicio: fechaHora
         }
       });
 
@@ -183,12 +192,12 @@ describe('Concurrency Control - Race Condition Tests', () => {
             where: { id: testProduct.id }
           });
 
-          if (product.cantidadDisponible >= 3) {
+          if (product.stockActual >= 3) {
             // Deducir 3 unidades
             const updated = await tx.producto.update({
               where: { id: testProduct.id },
               data: {
-                cantidadDisponible: {
+                stockActual: {
                   decrement: 3
                 }
               }
@@ -201,8 +210,9 @@ describe('Concurrency Control - Race Condition Tests', () => {
                 tipo: 'salida',
                 cantidad: 3,
                 motivo: `Concurrent test ${i}`,
-                stockAnterior: product.cantidadDisponible,
-                stockNuevo: updated.cantidadDisponible
+                stockAnterior: product.stockActual,
+                stockNuevo: updated.stockActual,
+                usuarioId: 1 // Required field
               }
             });
 
@@ -224,7 +234,7 @@ describe('Concurrency Control - Race Condition Tests', () => {
       });
 
       // El stock nunca debería ser negativo
-      expect(finalProduct.cantidadDisponible).toBeGreaterThanOrEqual(0);
+      expect(finalProduct.stockActual).toBeGreaterThanOrEqual(0);
 
       // Como mucho 3 operaciones deberían tener éxito (3*3=9, más cercano a 10)
       expect(succeeded.length).toBeLessThanOrEqual(3);
@@ -233,7 +243,7 @@ describe('Concurrency Control - Race Condition Tests', () => {
       await prisma.movimientoInventario.deleteMany({ where: { productoId: testProduct.id } });
       await prisma.producto.update({
         where: { id: testProduct.id },
-        data: { cantidadDisponible: 10 }
+        data: { stockActual: 10 }
       });
     });
   });
@@ -263,22 +273,40 @@ describe('Concurrency Control - Race Condition Tests', () => {
         })
       ]);
 
+      // Crear cuentas de pacientes primero
+      const cuentas = await Promise.all(testPatients.map(async patient => {
+        return await prisma.cuentaPaciente.create({
+          data: {
+            pacienteId: patient.id,
+            tipoAtencion: 'hospitalizacion',
+            cajeroAperturaId: 1,
+            anticipo: 0,
+            totalServicios: 0,
+            totalProductos: 0,
+            totalCuenta: 0,
+            saldoPendiente: 0
+          }
+        });
+      }));
+
       // Intentar admitir 2 pacientes en la misma habitación simultáneamente
-      const admissions = testPatients.map(patient =>
+      const admissions = cuentas.map(cuenta =>
         prisma.$transaction(async (tx) => {
-          // Verificar disponibilidad
-          const room = await tx.habitacion.findUnique({
-            where: { id: testRoom.id }
-          });
+          // Verificar disponibilidad con SELECT FOR UPDATE (bloqueo de fila)
+          const rooms = await tx.$queryRaw`
+            SELECT * FROM habitaciones WHERE id = ${testRoom.id} FOR UPDATE
+          `;
+          const room = rooms[0];
 
           if (room.estado === 'disponible') {
             // Crear hospitalización
             const hospitalizacion = await tx.hospitalizacion.create({
               data: {
-                pacienteId: patient.id,
+                cuentaPacienteId: cuenta.id,
                 habitacionId: testRoom.id,
+                medicoEspecialistaId: 1, // Required field
                 fechaIngreso: new Date(),
-                motivoIngreso: 'Concurrent test',
+                motivoHospitalizacion: 'Concurrent test',
                 diagnosticoIngreso: 'Test'
               }
             });
@@ -311,6 +339,7 @@ describe('Concurrency Control - Race Condition Tests', () => {
 
       // Limpiar
       await prisma.hospitalizacion.deleteMany({ where: { habitacionId: testRoom.id } });
+      await prisma.cuentaPaciente.deleteMany({ where: { id: { in: cuentas.map(c => c.id) } } });
       await Promise.all(testPatients.map(p => prisma.paciente.delete({ where: { id: p.id } })));
       await prisma.habitacion.update({
         where: { id: testRoom.id },

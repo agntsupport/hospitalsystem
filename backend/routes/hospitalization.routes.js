@@ -50,7 +50,7 @@ async function generarCargosHabitacion(cuentaId, habitacionId, fechaIngreso, emp
           nombre: `Habitación ${habitacion.numero} - ${habitacion.tipo} (por día)`,
           descripcion: `Servicio de hospedaje en habitación ${habitacion.numero} tipo ${habitacion.tipo}`,
           precio: habitacion.precioPorDia,
-          categoria: 'hospedaje',
+          tipo: 'hospitalizacion',
           activo: true
         }
       });
@@ -301,6 +301,25 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
       observaciones
     });
 
+    // Validar que la habitación esté disponible
+    const habitacion = await prisma.habitacion.findUnique({
+      where: { id: parseInt(habitacionId) }
+    });
+
+    if (!habitacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habitación no encontrada'
+      });
+    }
+
+    if (habitacion.estado !== 'disponible') {
+      return res.status(409).json({
+        success: false,
+        message: `La habitación ${habitacion.numero} no está disponible para ingreso (estado: ${habitacion.estado})`
+      });
+    }
+
     // No necesitamos generar numero de ingreso aquí, se genera después con el ID
 
     const admision = await prisma.$transaction(async (tx) => {
@@ -426,20 +445,18 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
   }
 });
 
-// PUT /:id/discharge - Dar de alta
-router.put('/:id/discharge', authenticateToken, authorizeRoles(['enfermero', 'medico_residente', 'medico_especialista', 'administrador']), auditMiddleware('hospitalizacion'), criticalOperationAudit, captureOriginalData('hospitalizacion'), async (req, res) => {
+// PUT /admissions/:id/discharge - Dar de alta
+router.put('/admissions/:id/discharge', authenticateToken, authorizeRoles(['enfermero', 'medico_residente', 'medico_especialista', 'administrador']), auditMiddleware('hospitalizacion'), criticalOperationAudit, captureOriginalData('hospitalizacion'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
+    const {
       diagnosticoAlta,
-      tipoAlta,
-      observacionesAlta,
-      medicoAlta
+      observacionesAlta
     } = req.body;
 
     const admision = await prisma.$transaction(async (tx) => {
       // Obtener admisión actual
-      const admisionActual = await tx.admisionHospitalaria.findUnique({
+      const admisionActual = await tx.hospitalizacion.findUnique({
         where: { id: parseInt(id) },
         include: { habitacion: true }
       });
@@ -455,15 +472,13 @@ router.put('/:id/discharge', authenticateToken, authorizeRoles(['enfermero', 'me
       });
 
       // Actualizar admisión
-      return await tx.admisionHospitalaria.update({
+      return await tx.hospitalizacion.update({
         where: { id: parseInt(id) },
         data: {
           fechaAlta: new Date(),
           diagnosticoAlta,
-          tipoAlta,
-          observacionesAlta,
-          medicoAlta: medicoAlta ? parseInt(medicoAlta) : null,
-          estado: 'alta'
+          indicacionesGenerales: observacionesAlta,
+          estado: 'alta_medica'
         }
       });
     }, {

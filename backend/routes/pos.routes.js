@@ -109,13 +109,20 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
 
           totalVenta += item.cantidad * item.precioUnitario;
 
-          // Reducir stock
-          await tx.producto.update({
+          // Reducir stock (atomic decrement para prevenir race conditions)
+          const productoActualizado = await tx.producto.update({
             where: { id: item.itemId },
             data: {
-              stockActual: producto.stockActual - item.cantidad
+              stockActual: {
+                decrement: item.cantidad
+              }
             }
           });
+
+          // Verificar que el stock no sea negativo después de la reducción
+          if (productoActualizado.stockActual < 0) {
+            throw new Error(`Stock insuficiente para ${producto.nombre}. Operación causó stock negativo.`);
+          }
 
           // Registrar movimiento de inventario
           logger.info(`Creando movimiento de inventario con usuarioId: ${cajeroId}, tipo: ${typeof cajeroId}`);
@@ -205,7 +212,16 @@ router.post('/quick-sale', authenticateToken, auditMiddleware('pos'), async (req
 
   } catch (error) {
     logger.logError('PROCESS_QUICK_SALE', error);
-    res.status(500).json({
+
+    // Determinar código de status apropiado basado en el mensaje de error
+    let statusCode = 500;
+    if (error.message && error.message.includes('no encontrado')) {
+      statusCode = 404;
+    } else if (error.message && (error.message.includes('insuficiente') || error.message.includes('inválido'))) {
+      statusCode = 400;
+    }
+
+    res.status(statusCode).json({
       success: false,
       message: error.message || 'Error procesando venta rápida'
     });
@@ -462,6 +478,18 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
     } = req.query;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Verificar que la cuenta existe
+    const cuenta = await prisma.cuentaPaciente.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!cuenta) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cuenta de paciente no encontrada'
+      });
+    }
 
     // Construir filtros
     const where = {

@@ -14,25 +14,33 @@ describe('Hospitalization Module - Critical Tests', () => {
   let adminToken;
   let testPatient;
   let testRoom;
+  let adminUser;
+  let testMedico;
+  let testCuentaPaciente;
 
   beforeAll(async () => {
-    // Crear admin para autenticación
-    const adminHash = await bcrypt.hash('admin123', 12);
-    const admin = await prisma.usuario.create({
-      data: {
-        username: 'test_hosp_admin',
-        passwordHash: adminHash,
-        email: 'hosp_admin@test.com',
-        rol: 'administrador',
-        activo: true
-      }
+    const timestamp = Date.now();
+    const testHelpers = global.testHelpers;
+
+    // Crear admin para autenticación usando testHelpers (solo una vez)
+    adminUser = await testHelpers.createTestUser({
+      username: `hosp_admin_${timestamp}`,
+      password: 'admin123',
+      rol: 'administrador',
+      email: `hosp_admin_${timestamp}@test.com`
     });
 
     // Login para obtener token
     const loginRes = await request(app)
       .post('/api/auth/login')
-      .send({ username: 'test_hosp_admin', password: 'admin123' });
+      .send({ username: adminUser.username, password: 'admin123' });
     adminToken = loginRes.body.data.token;
+  });
+
+  beforeEach(async () => {
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const testHelpers = global.testHelpers;
 
     // Crear paciente de prueba
     testPatient = await prisma.paciente.create({
@@ -41,7 +49,7 @@ describe('Hospitalization Module - Critical Tests', () => {
         apellidoPaterno: 'Hospitalization',
         fechaNacimiento: new Date('1990-01-01'),
         genero: 'M',
-        telefono: '1234567890',
+        telefono: `${timestamp}${randomSuffix}`,
         activo: true
       }
     });
@@ -49,25 +57,62 @@ describe('Hospitalization Module - Critical Tests', () => {
     // Crear habitación de prueba
     testRoom = await prisma.habitacion.create({
       data: {
-        numero: 'TEST-101',
+        numero: `TEST-${timestamp}-${randomSuffix}`,
         tipo: 'individual',
-        piso: 1,
+        precioPorDia: 1500.00,
         estado: 'disponible',
-        precioNoche: 1500,
-        caracteristicas: 'Test room'
+        descripcion: 'Test room'
       }
     });
+
+    // Crear médico especialista de prueba
+    testMedico = await testHelpers.createTestEmployee({
+      nombre: 'Dr Test',
+      apellidoPaterno: 'Hospital',
+      tipoEmpleado: 'medico_especialista'
+    });
+
+    // Crear cuenta paciente de prueba
+    const { cuenta } = await testHelpers.createTestCuentaPaciente({
+      paciente: testPatient,
+      cajeroAperturaId: adminUser.id,
+      anticipo: 10000
+    });
+    testCuentaPaciente = cuenta;
   });
 
   afterAll(async () => {
     // Limpiar datos de prueba
-    await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId: { gt: 1000 } } });
-    await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: { gt: 1000 } } });
-    await prisma.cuentaPaciente.deleteMany({ where: { pacienteId: testPatient.id } });
-    await prisma.hospitalizacion.deleteMany({ where: { pacienteId: testPatient.id } });
-    await prisma.paciente.delete({ where: { id: testPatient.id } });
-    await prisma.habitacion.delete({ where: { id: testRoom.id } });
-    await prisma.usuario.deleteMany({ where: { username: 'test_hosp_admin' } });
+    try {
+      await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId: { gt: 1000 } } });
+      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: { gt: 1000 } } });
+
+      if (testPatient) {
+        // Eliminar hospitalizaciones relacionadas a través de cuentaPaciente
+        const cuentas = await prisma.cuentaPaciente.findMany({
+          where: { pacienteId: testPatient.id },
+          select: { id: true }
+        });
+        const cuentaIds = cuentas.map(c => c.id);
+
+        if (cuentaIds.length > 0) {
+          await prisma.hospitalizacion.deleteMany({ where: { cuentaPacienteId: { in: cuentaIds } } });
+        }
+
+        await prisma.cuentaPaciente.deleteMany({ where: { pacienteId: testPatient.id } });
+        await prisma.paciente.delete({ where: { id: testPatient.id } });
+      }
+
+      if (testRoom) {
+        await prisma.habitacion.delete({ where: { id: testRoom.id } });
+      }
+
+      if (adminUser) {
+        await prisma.usuario.deleteMany({ where: { id: adminUser.id } });
+      }
+    } catch (error) {
+      console.warn('Cleanup warning in hospitalization.test.js:', error.message);
+    }
   });
 
   describe('POST /api/hospitalization/admissions - Create Admission', () => {
@@ -78,42 +123,48 @@ describe('Hospitalization Module - Critical Tests', () => {
         .send({
           pacienteId: testPatient.id,
           habitacionId: testRoom.id,
+          medicoTratanteId: testMedico.id,
           motivoIngreso: 'Test admission',
           diagnosticoIngreso: 'Test diagnosis'
         });
 
+      if (response.status !== 201) {
+        console.log('Response body:', JSON.stringify(response.body, null, 2));
+      }
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.hospitalizacion).toBeDefined();
+      expect(response.body.data.admission).toBeDefined();
 
-      const hospitalizacionId = response.body.data.hospitalizacion.id;
+      const hospitalizacionId = response.body.data.admission.id;
 
       // Verificar que se creó la cuenta del paciente con anticipo
-      const cuenta = await prisma.cuentaPaciente.findFirst({
-        where: { hospitalizacionId }
+      const hospitalizacion = await prisma.hospitalizacion.findUnique({
+        where: { id: hospitalizacionId },
+        include: { cuentaPaciente: true }
       });
+      const cuenta = hospitalizacion.cuentaPaciente;
 
       expect(cuenta).toBeTruthy();
-      expect(cuenta.anticipo).toBe(10000); // $10,000 MXN
-      expect(cuenta.saldo).toBe(10000);
+      expect(parseFloat(cuenta.anticipo)).toBe(10000); // $10,000 MXN
       expect(cuenta.estado).toBe('abierta');
 
-      // Limpiar
+      // Limpiar (orden correcto para FK constraints)
       await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId } });
+      await prisma.hospitalizacion.delete({ where: { id: hospitalizacionId } });
       await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.cuentaPaciente.delete({ where: { id: cuenta.id } });
-      await prisma.hospitalizacion.delete({ where: { id: hospitalizacionId } });
     });
 
     it('should prevent admission when room is already occupied', async () => {
       // Crear primera admisión
       const firstAdmission = await prisma.hospitalizacion.create({
         data: {
-          pacienteId: testPatient.id,
           habitacionId: testRoom.id,
           fechaIngreso: new Date(),
-          motivoIngreso: 'First admission',
-          diagnosticoIngreso: 'Test'
+          motivoHospitalizacion: 'First admission',
+          diagnosticoIngreso: 'Test',
+          medicoEspecialistaId: testMedico.id,
+          cuentaPacienteId: testCuentaPaciente.id
         }
       });
 
@@ -130,6 +181,7 @@ describe('Hospitalization Module - Critical Tests', () => {
         .send({
           pacienteId: testPatient.id,
           habitacionId: testRoom.id,
+          medicoTratanteId: testMedico.id,
           motivoIngreso: 'Second admission',
           diagnosticoIngreso: 'Test'
         });
@@ -151,46 +203,39 @@ describe('Hospitalization Module - Critical Tests', () => {
       // Crear admisión con cuenta
       const admission = await prisma.hospitalizacion.create({
         data: {
-          pacienteId: testPatient.id,
           habitacionId: testRoom.id,
           fechaIngreso: new Date(),
-          motivoIngreso: 'Test',
-          diagnosticoIngreso: 'Test'
-        }
-      });
-
-      const cuenta = await prisma.cuentaPaciente.create({
-        data: {
-          pacienteId: testPatient.id,
-          hospitalizacionId: admission.id,
-          anticipo: 10000,
-          saldo: 10000,
-          estado: 'abierta'
+          motivoHospitalizacion: 'Test',
+          diagnosticoIngreso: 'Test',
+          medicoEspecialistaId: testMedico.id,
+          cuentaPacienteId: testCuentaPaciente.id
         }
       });
 
       // Agregar cargo adicional
       await prisma.transaccionCuenta.create({
         data: {
-          cuentaId: cuenta.id,
-          tipo: 'cargo',
-          monto: 5000,
+          cuentaId: testCuentaPaciente.id,
+          tipo: 'servicio',
           concepto: 'Extra charge',
-          saldoAnterior: 10000,
-          saldoNuevo: 5000
+          cantidad: 1,
+          precioUnitario: 5000,
+          subtotal: 5000
         }
       });
 
       // Alta del paciente
       const response = await request(app)
-        .put('/api/hospitalization/discharge')
+        .put(`/api/hospitalization/admissions/${admission.id}/discharge`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          hospitalizacionId: admission.id,
           diagnosticoAlta: 'Recovered',
-          indicacionesAlta: 'Rest at home'
+          observacionesAlta: 'Rest at home'
         });
 
+      if (response.status !== 200) {
+        console.log('Discharge error:', JSON.stringify(response.body, null, 2));
+      }
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
 
@@ -201,8 +246,7 @@ describe('Hospitalization Module - Critical Tests', () => {
       expect(updatedAdmission.fechaAlta).not.toBeNull();
 
       // Limpiar
-      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: cuenta.id } });
-      await prisma.cuentaPaciente.delete({ where: { id: cuenta.id } });
+      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: testCuentaPaciente.id } });
       await prisma.hospitalizacion.delete({ where: { id: admission.id } });
     });
   });
@@ -212,21 +256,24 @@ describe('Hospitalization Module - Critical Tests', () => {
       // Crear admisión
       const admission = await prisma.hospitalizacion.create({
         data: {
-          pacienteId: testPatient.id,
           habitacionId: testRoom.id,
           fechaIngreso: new Date(),
-          motivoIngreso: 'Test',
-          diagnosticoIngreso: 'Test'
+          motivoHospitalizacion: 'Test',
+          diagnosticoIngreso: 'Test',
+          medicoEspecialistaId: testMedico.id,
+          cuentaPacienteId: testCuentaPaciente.id
         }
       });
 
       const response = await request(app)
-        .post('/api/hospitalization/notes')
+        .post(`/api/hospitalization/admissions/${admission.id}/notes`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          hospitalizacionId: admission.id,
           tipoNota: 'evolucion',
-          nota: 'Patient is recovering well'
+          turno: 'matutino',
+          estadoGeneral: 'Patient is recovering well',
+          temperatura: 36.5,
+          empleadoId: testMedico.id
         });
 
       expect(response.status).toBe(201);

@@ -41,7 +41,7 @@ describe('POS Routes Tests', () => {
 
     // Generar token
     authToken = jwt.sign(
-      { id: testUser.id, username: testUser.username, rol: testUser.rol },
+      { userId: testUser.id, rol: testUser.rol, id: testUser.id },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -74,11 +74,11 @@ describe('POS Routes Tests', () => {
       fechaNacimiento: new Date('1990-01-01')
     });
 
-    testCuentaPaciente = await createTestCuentaPaciente({
-      pacienteId: testPatient.id,
-      cajeroAperturaId: testUser.id,
-      saldoTotal: 0
+    const { cuenta } = await createTestCuentaPaciente({
+      paciente: testPatient,
+      cajeroAperturaId: testUser.id
     });
+    testCuentaPaciente = cuenta;
   });
 
   afterEach(async () => {
@@ -186,16 +186,16 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('venta');
-      expect(response.body.data.venta).toHaveProperty('total');
-      expect(parseFloat(response.body.data.venta.total)).toBe(200.00);
-      expect(response.body.data).toHaveProperty('cambio');
+      expect(response.body.data).toHaveProperty('sale');
+      expect(response.body.data.sale).toHaveProperty('total');
+      expect(parseFloat(response.body.data.sale.total)).toBe(200.00);
+      expect(response.body.data.sale).toHaveProperty('cambio');
 
       // Verificar que el stock se dedujo
       const productoActualizado = await prisma.producto.findUnique({
         where: { id: testProduct.id }
       });
-      expect(productoActualizado.stock).toBe(48); // 50 - 2
+      expect(productoActualizado.stockActual).toBe(48); // 50 - 2
     });
 
     it('should process quick sale with services successfully', async () => {
@@ -219,7 +219,7 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(parseFloat(response.body.data.venta.total)).toBe(500.00);
+      expect(parseFloat(response.body.data.sale.total)).toBe(500.00);
     });
 
     it('should process quick sale with mixed items (products and services)', async () => {
@@ -249,7 +249,7 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(parseFloat(response.body.data.venta.total)).toBe(600.00);
+      expect(parseFloat(response.body.data.sale.total)).toBe(600.00);
     });
 
     it('should reject sale without items', async () => {
@@ -314,7 +314,7 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('stock insuficiente');
+      expect(response.body.message).toContain('Stock insuficiente');
     });
 
     it('should reject sale when product does not exist', async () => {
@@ -381,7 +381,7 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(parseFloat(response.body.data.cambio)).toBe(100.00);
+      expect(parseFloat(response.body.data.sale.cambio)).toBe(100.00);
     });
   });
 
@@ -391,8 +391,10 @@ describe('POS Routes Tests', () => {
   describe('GET /api/pos/sales-history', () => {
     beforeEach(async () => {
       // Crear algunas ventas de prueba
+      const timestamp = Date.now();
       await prisma.ventaRapida.create({
         data: {
+          numeroVenta: `VR-TEST-${timestamp}`,
           cajeroId: testUser.id,
           total: 150.00,
           metodoPago: 'efectivo',
@@ -401,7 +403,9 @@ describe('POS Routes Tests', () => {
           items: {
             create: {
               tipo: 'producto',
-              itemId: testProduct.id,
+              nombre: 'Producto Test',
+              productoId: testProduct.id,
+              servicioId: null,
               cantidad: 1,
               precioUnitario: 100.00,
               subtotal: 100.00
@@ -448,8 +452,10 @@ describe('POS Routes Tests', () => {
   describe('GET /api/pos/stats', () => {
     beforeEach(async () => {
       // Crear ventas para estadísticas
+      const timestamp = Date.now();
       await prisma.ventaRapida.create({
         data: {
+          numeroVenta: `VENTA-${timestamp}`,
           cajeroId: testUser.id,
           total: 500.00,
           metodoPago: 'efectivo',
@@ -458,7 +464,9 @@ describe('POS Routes Tests', () => {
           items: {
             create: {
               tipo: 'servicio',
-              itemId: testServicio.id,
+              nombre: 'Servicio Test',
+              servicioId: testServicio.id,
+              productoId: null,
               cantidad: 1,
               precioUnitario: 500.00,
               subtotal: 500.00
@@ -474,8 +482,11 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('totalVentas');
-      expect(response.body.data).toHaveProperty('montoTotal');
+      expect(response.body.data).toHaveProperty('stats');
+      expect(response.body.data.stats).toHaveProperty('totalVentasHoy');
+      expect(response.body.data.stats).toHaveProperty('totalVentasMes');
+      expect(response.body.data.stats).toHaveProperty('cuentasAbiertas');
+      expect(response.body.data.stats).toHaveProperty('productosVendidos');
     });
 
     it('should filter stats by date range', async () => {
@@ -499,12 +510,14 @@ describe('POS Routes Tests', () => {
       // Crear transacción de prueba
       testTransaccion = await prisma.transaccionCuenta.create({
         data: {
-          cuentaPacienteId: testCuentaPaciente.id,
-          tipo: 'cargo',
+          cuentaId: testCuentaPaciente.id,
+          tipo: 'servicio',
           concepto: 'Servicio de prueba',
-          monto: 500.00,
+          cantidad: 1,
+          precioUnitario: 500.00,
+          subtotal: 500.00,
           servicioId: testServicio.id,
-          usuarioId: testUser.id
+          empleadoCargoId: testUser.id
         }
       });
     });
@@ -542,9 +555,23 @@ describe('POS Routes Tests', () => {
   // ==============================================
   describe('POST /api/pos/recalcular-cuentas', () => {
     it('should recalculate patient accounts', async () => {
+      // Crear usuario administrador para este test
+      const adminUser = await createTestUser({
+        username: `admin_test_${Date.now()}`,
+        password: 'admin123',
+        rol: 'administrador'
+      });
+
+      // Generar token de administrador
+      const adminToken = jwt.sign(
+        { userId: adminUser.id, rol: adminUser.rol, id: adminUser.id },
+        JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
       const response = await request(app)
         .post('/api/pos/recalcular-cuentas')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -600,7 +627,7 @@ describe('POS Routes Tests', () => {
       const productoFinal = await prisma.producto.findUnique({
         where: { id: testProduct.id }
       });
-      expect(productoFinal.stock).toBe(48); // 50 - 2
+      expect(productoFinal.stockActual).toBe(48); // 50 - 2
     });
 
     it('should handle large sale with many items', async () => {
@@ -617,7 +644,7 @@ describe('POS Routes Tests', () => {
         tipo: 'producto',
         itemId: p.id,
         cantidad: 1,
-        precioUnitario: parseFloat(p.precio)
+        precioUnitario: parseFloat(p.precioVenta)
       }));
 
       const response = await request(app)

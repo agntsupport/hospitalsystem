@@ -45,13 +45,21 @@ async function cleanTestData() {
     try { await prisma.auditoriaOperacion.deleteMany({ where: { usuarioId: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.cirugiaQuirofano.deleteMany({ where: { medicoId: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.hospitalizacion.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.hospitalizacion.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.cuentaPaciente.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.paciente.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.empleado.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.usuario.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    // Clean test products - both by ID and by codigo pattern
+    try {
+      await prisma.itemVentaRapida.deleteMany({ where: { producto: { codigo: { startsWith: 'TEST-' } } } });
+    } catch (e) {}
+    try {
+      await prisma.movimientoInventario.deleteMany({ where: { producto: { codigo: { startsWith: 'TEST-' } } } });
+    } catch (e) {}
     try { await prisma.producto.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+    try { await prisma.producto.deleteMany({ where: { codigo: { startsWith: 'TEST-' } } }); } catch (e) {}
     try { await prisma.proveedor.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.quirofano.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
     try { await prisma.solicitudProductos.deleteMany({ where: { solicitanteId: { gt: 1000 } } }); } catch (e) {}
