@@ -148,7 +148,7 @@ describe('Patients Endpoints', () => {
       expect(response.body.success).toBe(false);
     });
 
-    it.skip('should fail with invalid gender', async () => {
+    it('should fail with invalid gender', async () => {
       // SKIPPED: Backend returns 500 instead of 400 for invalid gender
       // Backend needs validation fix for gender field
       const invalidData = {
@@ -227,22 +227,24 @@ describe('Patients Endpoints', () => {
   });
 
   describe('DELETE /api/patients/:id', () => {
-    it.skip('should soft delete patient', async () => {
+    it('should soft delete patient', async () => {
       // SKIPPED: Backend DELETE endpoint needs investigation
       const response = await request(app)
         .delete(`/api/patients/${testPatient.id}`)
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ motivo: 'Paciente de prueba eliminado' });
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.message).toContain('eliminado');
     });
 
-    it.skip('should return 404 for non-existent patient', async () => {
+    it('should return 404 for non-existent patient', async () => {
       // SKIPPED: Backend DELETE endpoint needs investigation
       const response = await request(app)
         .delete('/api/patients/99999')
-        .set('Authorization', `Bearer ${authToken}`);
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ motivo: 'Intentando eliminar paciente inexistente' });
 
       expect(response.status).toBe(404);
       expect(response.body.success).toBe(false);

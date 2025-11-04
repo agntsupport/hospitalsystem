@@ -382,6 +382,15 @@ router.post('/', authenticateToken, auditMiddleware('pacientes'), validateRequir
       });
     }
 
+    // Validar género
+    const generosValidos = ['M', 'F', 'Otro'];
+    if (genero && !generosValidos.includes(genero)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Género inválido. Valores permitidos: M, F, Otro'
+      });
+    }
+
     // Calcular si es menor de edad
     const edad = calcularEdad(new Date(fechaNacimiento));
     const esMenorEdad = edad !== null && edad < 18;

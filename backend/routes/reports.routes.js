@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { prisma, handlePrismaError } = require('../utils/database');
 const { validateDateRange } = require('../middleware/validation.middleware');
+const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
 // ==============================================
 // ENDPOINTS DE REPORTES
 // ==============================================
 
-// GET /financial - Reporte financiero
-router.get('/financial', validateDateRange, async (req, res) => {
+// GET /financial - Reporte financiero (solo admin y socio)
+router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'socio']), validateDateRange, async (req, res) => {
   try {
     const { dateRange } = req;
     const where = {};

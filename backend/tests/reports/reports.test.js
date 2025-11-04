@@ -48,7 +48,7 @@ describe('Reports Endpoints', () => {
       expect(response.body.success).toBe(true);
     });
 
-    it.skip('should require admin role (role auth not implemented)', async () => {
+    it('should require admin role (role auth not implemented)', async () => {
       const userToken = await createTokenForRole('cajero');
       const response = await request(app)
         .get('/api/reports/financial')
