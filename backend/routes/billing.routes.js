@@ -508,4 +508,201 @@ router.get('/accounts-receivable', validateDateRange, async (req, res) => {
   }
 });
 
+// GET /invoices/:id - Obtener factura específica
+router.get('/invoices/:id', async (req, res) => {
+  try {
+    const facturaId = parseInt(req.params.id);
+
+    if (!facturaId || isNaN(facturaId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de factura inválido'
+      });
+    }
+
+    const factura = await prisma.factura.findUnique({
+      where: { id: facturaId },
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            numeroExpediente: true
+          }
+        },
+        cuenta: {
+          select: {
+            id: true,
+            tipoAtencion: true,
+            totalCuenta: true,
+            saldoPendiente: true
+          }
+        }
+      }
+    });
+
+    if (!factura) {
+      return res.status(404).json({
+        success: false,
+        message: 'Factura no encontrada'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        factura: {
+          id: factura.id,
+          numeroFactura: factura.numeroFactura,
+          fechaFactura: factura.fechaFactura,
+          fechaVencimiento: factura.fechaVencimiento,
+          subtotal: parseFloat(factura.subtotal),
+          impuestos: parseFloat(factura.impuestos),
+          descuentos: parseFloat(factura.descuentos),
+          total: parseFloat(factura.total),
+          saldoPendiente: parseFloat(factura.saldoPendiente),
+          estado: factura.estado,
+          metodoPago: factura.metodoPago,
+          observaciones: factura.observaciones,
+          paciente: factura.paciente,
+          cuenta: {
+            id: factura.cuenta.id,
+            tipoAtencion: factura.cuenta.tipoAtencion,
+            totalCuenta: parseFloat(factura.cuenta.totalCuenta),
+            saldoPendiente: parseFloat(factura.cuenta.saldoPendiente)
+          }
+        }
+      },
+      message: 'Factura obtenida correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_INVOICE_BY_ID', error, { facturaId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
+// PUT /invoices/:id - Actualizar estado de factura
+router.put('/invoices/:id', authenticateToken, auditMiddleware('facturacion'), async (req, res) => {
+  try {
+    const facturaId = parseInt(req.params.id);
+    const { estado, observaciones } = req.body;
+
+    if (!facturaId || isNaN(facturaId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de factura inválido'
+      });
+    }
+
+    // Verificar que la factura existe
+    const facturaActual = await prisma.factura.findUnique({
+      where: { id: facturaId }
+    });
+
+    if (!facturaActual) {
+      return res.status(404).json({
+        success: false,
+        message: 'Factura no encontrada'
+      });
+    }
+
+    // No permitir modificar facturas pagadas
+    if (facturaActual.estado === 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede modificar una factura pagada'
+      });
+    }
+
+    // Actualizar factura
+    const facturaActualizada = await prisma.factura.update({
+      where: { id: facturaId },
+      data: {
+        estado: estado || facturaActual.estado,
+        observaciones: observaciones !== undefined ? observaciones : facturaActual.observaciones
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        factura: {
+          id: facturaActualizada.id,
+          numeroFactura: facturaActualizada.numeroFactura,
+          estado: facturaActualizada.estado,
+          observaciones: facturaActualizada.observaciones,
+          subtotal: parseFloat(facturaActualizada.subtotal),
+          impuestos: parseFloat(facturaActualizada.impuestos),
+          total: parseFloat(facturaActualizada.total),
+          saldoPendiente: parseFloat(facturaActualizada.saldoPendiente)
+        }
+      },
+      message: 'Factura actualizada correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('UPDATE_INVOICE', error, { facturaId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
+// DELETE /invoices/:id - Cancelar factura (solo si no está pagada)
+router.delete('/invoices/:id', authenticateToken, auditMiddleware('facturacion'), async (req, res) => {
+  try {
+    const facturaId = parseInt(req.params.id);
+
+    if (!facturaId || isNaN(facturaId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de factura inválido'
+      });
+    }
+
+    // Verificar que la factura existe
+    const factura = await prisma.factura.findUnique({
+      where: { id: facturaId }
+    });
+
+    if (!factura) {
+      return res.status(404).json({
+        success: false,
+        message: 'Factura no encontrada'
+      });
+    }
+
+    // No permitir eliminar facturas pagadas
+    if (factura.estado === 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede eliminar una factura pagada'
+      });
+    }
+
+    // Cancelar factura (cambiar estado a cancelled)
+    const facturaCancelada = await prisma.factura.update({
+      where: { id: facturaId },
+      data: { estado: 'cancelled' }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        factura: {
+          id: facturaCancelada.id,
+          numeroFactura: facturaCancelada.numeroFactura,
+          estado: facturaCancelada.estado
+        }
+      },
+      message: 'Factura cancelada correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('DELETE_INVOICE', error, { facturaId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
 module.exports = router;

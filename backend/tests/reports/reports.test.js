@@ -81,7 +81,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/inventory (endpoint not implemented)', () => {
+  describe('GET /api/reports/inventory', () => {
     it('should get inventory report', async () => {
       const response = await request(app)
         .get('/api/reports/inventory')
@@ -102,7 +102,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/patients (endpoint not implemented)', () => {
+  describe('GET /api/reports/patients', () => {
     it('should get patients report', async () => {
       const response = await request(app)
         .get('/api/reports/patients')
@@ -131,7 +131,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/hospitalization (endpoint not implemented)', () => {
+  describe('GET /api/reports/hospitalization', () => {
     it('should get hospitalization report', async () => {
       const response = await request(app)
         .get('/api/reports/hospitalization')
@@ -143,7 +143,7 @@ describe('Reports Endpoints', () => {
 
     it('should show active admissions', async () => {
       const response = await request(app)
-        .get('/api/reports/hospitalization?estado=activo')
+        .get('/api/reports/hospitalization?estado=en_observacion')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);

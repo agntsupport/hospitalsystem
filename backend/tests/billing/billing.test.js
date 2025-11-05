@@ -191,7 +191,7 @@ describe('Billing Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/billing/invoices/:id (endpoint not implemented)', () => {
+  describe('GET /api/billing/invoices/:id', () => {
     it('should get invoice by ID with details', async () => {
       // Create invoice first
       const createResponse = await request(app)
@@ -223,7 +223,7 @@ describe('Billing Endpoints', () => {
     });
   });
 
-  describe.skip('PUT /api/billing/invoices/:id (endpoint not implemented)', () => {
+  describe('PUT /api/billing/invoices/:id', () => {
     it('should update invoice status', async () => {
       // Create invoice first
       const createResponse = await request(app)
@@ -427,7 +427,7 @@ describe('Billing Endpoints', () => {
     });
   });
 
-  describe.skip('DELETE /api/billing/invoices/:id (endpoint not implemented)', () => {
+  describe('DELETE /api/billing/invoices/:id', () => {
     it('should cancel an unpaid invoice', async () => {
       // Create invoice first
       const createResponse = await request(app)

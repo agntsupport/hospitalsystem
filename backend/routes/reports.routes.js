@@ -458,4 +458,257 @@ router.get('/managerial/kpis', async (req, res) => {
   }
 });
 
+// GET /inventory - Reporte de inventario
+router.get('/inventory', validateDateRange, async (req, res) => {
+  try {
+    const { bajoStock } = req.query;
+    const where = { activo: true };
+
+    // Filtro de bajo stock
+    if (bajoStock === 'true') {
+      where.stockActual = { lte: prisma.producto.fields.stockMinimo };
+    }
+
+    const productos = await prisma.producto.findMany({
+      where,
+      include: {
+        proveedor: {
+          select: {
+            id: true,
+            nombreEmpresa: true
+          }
+        }
+      },
+      orderBy: { stockActual: 'asc' }
+    });
+
+    const productosBajoStock = await prisma.$queryRaw`
+      SELECT COUNT(*) as count
+      FROM productos
+      WHERE stock_actual <= stock_minimo AND activo = true
+    `;
+
+    res.json({
+      success: true,
+      data: {
+        productos: productos.map(p => ({
+          id: p.id,
+          nombre: p.nombre,
+          codigo: p.codigo,
+          categoria: p.categoria,
+          stockActual: p.stockActual,
+          stockMinimo: p.stockMinimo,
+          stockMaximo: p.stockMaximo,
+          precioVenta: parseFloat(p.precioVenta),
+          proveedor: p.proveedor
+        })),
+        resumen: {
+          totalProductos: productos.length,
+          productosBajoStock: parseInt(productosBajoStock[0]?.count || 0)
+        }
+      },
+      message: 'Reporte de inventario generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_INVENTORY_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /patients - Reporte de pacientes
+router.get('/patients', validateDateRange, async (req, res) => {
+  try {
+    const { groupBy } = req.query;
+    const { dateRange } = req;
+    const whereDate = dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {};
+
+    // Query raw sin fecha o con fecha
+    let pacientesPorEdadQuery;
+    if (dateRange) {
+      pacientesPorEdadQuery = prisma.$queryRaw`
+        SELECT
+          CASE
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) < 18 THEN 'Menores de 18'
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) BETWEEN 18 AND 30 THEN '18-30'
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) BETWEEN 31 AND 50 THEN '31-50'
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) BETWEEN 51 AND 70 THEN '51-70'
+            ELSE 'Mayores de 70'
+          END as rango_edad,
+          COUNT(*) as cantidad
+        FROM pacientes
+        WHERE created_at >= ${dateRange.start} AND created_at <= ${dateRange.end}
+        GROUP BY rango_edad
+        ORDER BY rango_edad
+      `;
+    } else {
+      pacientesPorEdadQuery = prisma.$queryRaw`
+        SELECT
+          CASE
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) < 18 THEN 'Menores de 18'
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) BETWEEN 18 AND 30 THEN '18-30'
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) BETWEEN 31 AND 50 THEN '31-50'
+            WHEN EXTRACT(YEAR FROM AGE(fecha_nacimiento)) BETWEEN 51 AND 70 THEN '51-70'
+            ELSE 'Mayores de 70'
+          END as rango_edad,
+          COUNT(*) as cantidad
+        FROM pacientes
+        GROUP BY rango_edad
+        ORDER BY rango_edad
+      `;
+    }
+
+    const [totalPacientes, distribucionGenero, pacientesPorEdad] = await Promise.all([
+      // Total de pacientes
+      prisma.paciente.count({ where: whereDate }),
+
+      // Distribución por género
+      prisma.paciente.groupBy({
+        by: ['genero'],
+        _count: { genero: true },
+        where: whereDate
+      }),
+
+      // Pacientes por rango de edad
+      pacientesPorEdadQuery
+    ]);
+
+    const data = {
+      resumen: {
+        totalPacientes
+      }
+    };
+
+    // Agrupar por género si se solicita
+    if (groupBy === 'genero' || !groupBy) {
+      data.distribucionGenero = distribucionGenero.reduce((acc, item) => {
+        acc[item.genero] = item._count.genero;
+        return acc;
+      }, {});
+    }
+
+    // Agrupar por edad si se solicita
+    if (groupBy === 'edad' || !groupBy) {
+      data.rangoEdades = pacientesPorEdad.reduce((acc, item) => {
+        acc[item.rango_edad] = Number(item.cantidad);
+        return acc;
+      }, {});
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de pacientes generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_PATIENTS_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /hospitalization - Reporte de hospitalización
+router.get('/hospitalization', validateDateRange, async (req, res) => {
+  try {
+    const { estado, metrics } = req.query;
+    const { dateRange } = req;
+    const where = {};
+
+    // Validar estado válido
+    const estadosValidos = ['en_observacion', 'estable', 'critico', 'alta_medica', 'alta_voluntaria'];
+    if (estado && !estadosValidos.includes(estado)) {
+      return res.status(400).json({
+        success: false,
+        message: `Estado inválido. Valores permitidos: ${estadosValidos.join(', ')}`
+      });
+    }
+
+    // Filtrar por estado
+    if (estado) {
+      where.estado = estado;
+    }
+
+    // Filtrar por rango de fechas
+    if (dateRange?.start || dateRange?.end) {
+      where.fechaIngreso = {};
+      if (dateRange.start) where.fechaIngreso.gte = dateRange.start;
+      if (dateRange.end) where.fechaIngreso.lte = dateRange.end;
+    }
+
+    const [hospitalizaciones, totalHospitalizaciones, hospitalizacionesActivas] = await Promise.all([
+      prisma.hospitalizacion.findMany({
+        where,
+        include: {
+          cuentaPaciente: {
+            select: {
+              id: true,
+              paciente: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true
+                }
+              }
+            }
+          },
+          habitacion: {
+            select: {
+              id: true,
+              numero: true,
+              tipo: true
+            }
+          }
+        },
+        orderBy: { fechaIngreso: 'desc' }
+      }),
+      prisma.hospitalizacion.count({ where }),
+      prisma.hospitalizacion.count({ where: { estado: 'en_observacion' } })
+    ]);
+
+    const data = {
+      resumen: {
+        totalHospitalizaciones,
+        hospitalizacionesActivas
+      },
+      hospitalizaciones: hospitalizaciones.map(h => ({
+        id: h.id,
+        paciente: h.cuentaPaciente.paciente,
+        habitacion: h.habitacion,
+        fechaIngreso: h.fechaIngreso,
+        fechaAlta: h.fechaAlta,
+        diagnostico: h.diagnosticoIngreso,
+        estado: h.estado,
+        diasEstancia: h.fechaAlta
+          ? Math.ceil((new Date(h.fechaAlta) - new Date(h.fechaIngreso)) / (1000 * 60 * 60 * 24))
+          : Math.ceil((new Date() - new Date(h.fechaIngreso)) / (1000 * 60 * 60 * 24))
+      }))
+    };
+
+    // Calcular estancia promedio si se solicita
+    if (metrics === 'true') {
+      const hospitalizacionesConAlta = hospitalizaciones.filter(h => h.fechaAlta);
+      if (hospitalizacionesConAlta.length > 0) {
+        const sumaDias = hospitalizacionesConAlta.reduce((sum, h) => {
+          const dias = Math.ceil((new Date(h.fechaAlta) - new Date(h.fechaIngreso)) / (1000 * 60 * 60 * 24));
+          return sum + dias;
+        }, 0);
+        data.estanciaPromedio = Math.round(sumaDias / hospitalizacionesConAlta.length);
+      } else {
+        data.estanciaPromedio = 0;
+      }
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de hospitalización generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_HOSPITALIZATION_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
 module.exports = router;
