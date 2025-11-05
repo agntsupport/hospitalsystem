@@ -160,7 +160,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/revenue (endpoint not implemented)', () => {
+  describe('GET /api/reports/revenue', () => {
     it('should get revenue report by period', async () => {
       const response = await request(app)
         .get('/api/reports/revenue?periodo=mensual')
@@ -180,7 +180,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/rooms-occupancy (endpoint not implemented)', () => {
+  describe('GET /api/reports/rooms-occupancy', () => {
     it('should get rooms occupancy report', async () => {
       const response = await request(app)
         .get('/api/reports/rooms-occupancy')
@@ -201,7 +201,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/appointments (endpoint not implemented)', () => {
+  describe('GET /api/reports/appointments', () => {
     it('should get appointments report', async () => {
       const response = await request(app)
         .get('/api/reports/appointments')
@@ -221,7 +221,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/employees (endpoint not implemented)', () => {
+  describe('GET /api/reports/employees', () => {
     it('should get employees report', async () => {
       const response = await request(app)
         .get('/api/reports/employees')
@@ -241,7 +241,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/services (endpoint not implemented)', () => {
+  describe('GET /api/reports/services', () => {
     it('should get services usage report', async () => {
       const response = await request(app)
         .get('/api/reports/services')
@@ -275,7 +275,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/audit (endpoint not implemented)', () => {
+  describe('GET /api/reports/audit', () => {
     it('should get audit report', async () => {
       const response = await request(app)
         .get('/api/reports/audit')
@@ -304,7 +304,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('POST /api/reports/custom (endpoint not implemented)', () => {
+  describe('POST /api/reports/custom', () => {
     it('should generate custom report', async () => {
       const reportConfig = {
         tipo: 'facturacion',
@@ -324,7 +324,7 @@ describe('Reports Endpoints', () => {
     });
   });
 
-  describe.skip('GET /api/reports/export/:tipo (endpoint not implemented)', () => {
+  describe('GET /api/reports/export/:tipo', () => {
     it('should export report as PDF', async () => {
       const response = await request(app)
         .get('/api/reports/export/financial?format=pdf')

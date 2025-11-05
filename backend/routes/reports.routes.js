@@ -711,4 +711,599 @@ router.get('/hospitalization', validateDateRange, async (req, res) => {
   }
 });
 
+// GET /revenue - Reporte de ingresos
+router.get('/revenue', validateDateRange, async (req, res) => {
+  try {
+    const { periodo, groupBy } = req.query;
+    const { dateRange } = req;
+
+    // Calcular fechas según período
+    let startDate, endDate;
+    if (periodo === 'mensual') {
+      endDate = new Date();
+      startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (periodo === 'trimestral') {
+      endDate = new Date();
+      startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (periodo === 'anual') {
+      endDate = new Date();
+      startDate = new Date();
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    } else if (dateRange) {
+      startDate = dateRange.start;
+      endDate = dateRange.end;
+    }
+
+    const whereDate = startDate && endDate ? {
+      createdAt: { gte: startDate, lte: endDate }
+    } : {};
+
+    // Ingresos por ventas rápidas + facturas
+    const [ventasRapidas, facturas, servicios] = await Promise.all([
+      prisma.ventaRapida.aggregate({
+        where: whereDate,
+        _sum: { total: true },
+        _count: { id: true }
+      }),
+      prisma.factura.aggregate({
+        where: whereDate.createdAt ? { fechaFactura: whereDate.createdAt } : {},
+        _sum: { total: true },
+        _count: { id: true }
+      }),
+      // Transacciones de servicios
+      prisma.transaccionCuenta.groupBy({
+        by: ['concepto'],
+        where: {
+          tipo: 'servicio',
+          fechaTransaccion: whereDate.createdAt || {}
+        },
+        _sum: { subtotal: true },
+        _count: { concepto: true }
+      })
+    ]);
+
+    const data = {
+      resumen: {
+        totalIngresos: parseFloat(ventasRapidas._sum.total || 0) + parseFloat(facturas._sum.total || 0),
+        ventasRapidas: {
+          monto: parseFloat(ventasRapidas._sum.total || 0),
+          cantidad: ventasRapidas._count.id
+        },
+        facturas: {
+          monto: parseFloat(facturas._sum.total || 0),
+          cantidad: facturas._count.id
+        }
+      }
+    };
+
+    // Agrupar por servicio si se solicita
+    if (groupBy === 'servicio') {
+      data.porServicio = servicios.reduce((acc, item) => {
+        acc[item.concepto] = {
+          monto: parseFloat(item._sum.subtotal || 0),
+          cantidad: item._count.concepto
+        };
+        return acc;
+      }, {});
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de ingresos generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_REVENUE_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /rooms-occupancy - Reporte de ocupación de habitaciones
+router.get('/rooms-occupancy', validateDateRange, async (req, res) => {
+  try {
+    const { groupBy } = req.query;
+
+    const [totalHabitaciones, habitacionesOcupadas, habitacionesPorTipo] = await Promise.all([
+      prisma.habitacion.count(),
+      prisma.habitacion.count({ where: { estado: 'ocupada' } }),
+      prisma.habitacion.groupBy({
+        by: ['tipo'],
+        _count: { tipo: true },
+        where: { estado: 'ocupada' }
+      })
+    ]);
+
+    const tasaOcupacion = totalHabitaciones > 0
+      ? ((habitacionesOcupadas / totalHabitaciones) * 100).toFixed(2)
+      : 0;
+
+    const data = {
+      tasaOcupacion: parseFloat(tasaOcupacion),
+      resumen: {
+        totalHabitaciones,
+        habitacionesOcupadas,
+        habitacionesDisponibles: totalHabitaciones - habitacionesOcupadas
+      }
+    };
+
+    // Agrupar por tipo si se solicita
+    if (groupBy === 'tipo') {
+      const habitacionesTotalesPorTipo = await prisma.habitacion.groupBy({
+        by: ['tipo'],
+        _count: { tipo: true }
+      });
+
+      data.porTipo = habitacionesTotalesPorTipo.map(tipoTotal => {
+        const ocupadas = habitacionesPorTipo.find(t => t.tipo === tipoTotal.tipo)?._count.tipo || 0;
+        const total = tipoTotal._count.tipo;
+        return {
+          tipo: tipoTotal.tipo,
+          total,
+          ocupadas,
+          disponibles: total - ocupadas,
+          tasaOcupacion: total > 0 ? parseFloat(((ocupadas / total) * 100).toFixed(2)) : 0
+        };
+      });
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de ocupación generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_ROOMS_OCCUPANCY_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /appointments - Reporte de citas médicas
+router.get('/appointments', validateDateRange, async (req, res) => {
+  try {
+    const { estado } = req.query;
+    const { dateRange } = req;
+    const where = {};
+
+    // Filtrar por estado
+    if (estado) {
+      where.estado = estado;
+    }
+
+    // Filtrar por rango de fechas
+    if (dateRange?.start || dateRange?.end) {
+      where.fechaCita = {};
+      if (dateRange.start) where.fechaCita.gte = dateRange.start;
+      if (dateRange.end) where.fechaCita.lte = dateRange.end;
+    }
+
+    const [citas, totalCitas, citasPorEstado] = await Promise.all([
+      prisma.citaMedica.findMany({
+        where,
+        include: {
+          paciente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidoPaterno: true,
+              apellidoMaterno: true
+            }
+          },
+          medico: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidoPaterno: true
+            }
+          }
+        },
+        orderBy: { fechaCita: 'desc' },
+        take: 100
+      }),
+      prisma.citaMedica.count({ where }),
+      prisma.citaMedica.groupBy({
+        by: ['estado'],
+        _count: { estado: true },
+        where
+      })
+    ]);
+
+    const data = {
+      resumen: {
+        totalCitas,
+        distribucionEstado: citasPorEstado.reduce((acc, item) => {
+          acc[item.estado] = item._count.estado;
+          return acc;
+        }, {})
+      },
+      citas: citas.map(c => ({
+        id: c.id,
+        fechaCita: c.fechaCita,
+        tipoCita: c.tipoCita,
+        paciente: c.paciente,
+        medico: c.medico,
+        motivo: c.motivo,
+        estado: c.estado
+      }))
+    };
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de citas generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_APPOINTMENTS_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /employees - Reporte de empleados
+router.get('/employees', validateDateRange, async (req, res) => {
+  try {
+    const { groupBy } = req.query;
+
+    const [totalEmpleados, empleadosActivos, empleadosPorRol] = await Promise.all([
+      prisma.empleado.count(),
+      prisma.empleado.count({ where: { activo: true } }),
+      prisma.empleado.groupBy({
+        by: ['tipoEmpleado'],
+        _count: { tipoEmpleado: true }
+      })
+    ]);
+
+    const data = {
+      resumen: {
+        totalEmpleados,
+        empleadosActivos,
+        empleadosInactivos: totalEmpleados - empleadosActivos
+      }
+    };
+
+    // Agrupar por rol si se solicita
+    if (groupBy === 'rol') {
+      data.porRol = empleadosPorRol.reduce((acc, item) => {
+        acc[item.tipoEmpleado] = item._count.tipoEmpleado;
+        return acc;
+      }, {});
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de empleados generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_EMPLOYEES_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /services - Reporte de uso de servicios
+router.get('/services', validateDateRange, async (req, res) => {
+  try {
+    const { orderBy, order } = req.query;
+    const { dateRange } = req;
+
+    // Construir filtro de fecha
+    const whereDate = {};
+    if (dateRange?.start || dateRange?.end) {
+      whereDate.createdAt = {};
+      if (dateRange.start) whereDate.createdAt.gte = dateRange.start;
+      if (dateRange.end) whereDate.createdAt.lte = dateRange.end;
+    }
+
+    // Obtener todos los servicios con su uso
+    const servicios = await prisma.servicio.findMany({
+      include: {
+        _count: {
+          select: {
+            transacciones: true,
+            itemsVentaRapida: true,
+            detallesFactura: true
+          }
+        }
+      },
+      where: { activo: true }
+    });
+
+    // Calcular uso total de cada servicio
+    let serviciosConUso = servicios.map(s => ({
+      id: s.id,
+      codigo: s.codigo,
+      nombre: s.nombre,
+      tipo: s.tipo,
+      precio: parseFloat(s.precio),
+      cantidadUsos: s._count.transacciones + s._count.itemsVentaRapida + s._count.detallesFactura
+    }));
+
+    // Ordenar si se solicita
+    if (orderBy === 'cantidad') {
+      serviciosConUso.sort((a, b) => {
+        const comparison = a.cantidadUsos - b.cantidadUsos;
+        return order === 'desc' ? -comparison : comparison;
+      });
+    }
+
+    const data = {
+      resumen: {
+        totalServicios: servicios.length,
+        serviciosMasSolicitados: serviciosConUso.slice(0, 10)
+      },
+      servicios: serviciosConUso
+    };
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de servicios generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_SERVICES_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /audit - Reporte de auditoría
+router.get('/audit', validateDateRange, async (req, res) => {
+  try {
+    const { entidad, accion } = req.query;
+    const { dateRange } = req;
+    const where = {};
+
+    // Filtrar por entidad
+    if (entidad) {
+      where.entidadTipo = entidad;
+    }
+
+    // Filtrar por acción
+    if (accion) {
+      where.tipoOperacion = accion;
+    }
+
+    // Filtrar por rango de fechas
+    if (dateRange?.start || dateRange?.end) {
+      where.createdAt = {};
+      if (dateRange.start) where.createdAt.gte = dateRange.start;
+      if (dateRange.end) where.createdAt.lte = dateRange.end;
+    }
+
+    const [registros, totalRegistros, registrosPorTipo, registrosPorEntidad] = await Promise.all([
+      prisma.auditoriaOperacion.findMany({
+        where,
+        include: {
+          usuario: {
+            select: {
+              id: true,
+              username: true,
+              rol: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100
+      }),
+      prisma.auditoriaOperacion.count({ where }),
+      prisma.auditoriaOperacion.groupBy({
+        by: ['tipoOperacion'],
+        _count: { tipoOperacion: true },
+        where
+      }),
+      prisma.auditoriaOperacion.groupBy({
+        by: ['entidadTipo'],
+        _count: { entidadTipo: true },
+        where
+      })
+    ]);
+
+    const data = {
+      resumen: {
+        totalRegistros,
+        distribucionPorTipo: registrosPorTipo.reduce((acc, item) => {
+          acc[item.tipoOperacion] = item._count.tipoOperacion;
+          return acc;
+        }, {}),
+        distribucionPorEntidad: registrosPorEntidad.reduce((acc, item) => {
+          acc[item.entidadTipo] = item._count.entidadTipo;
+          return acc;
+        }, {})
+      },
+      registros: registros.map(r => ({
+        id: r.id,
+        modulo: r.modulo,
+        tipoOperacion: r.tipoOperacion,
+        entidadTipo: r.entidadTipo,
+        entidadId: r.entidadId,
+        usuario: r.usuario,
+        motivo: r.motivo,
+        ipAddress: r.ipAddress,
+        createdAt: r.createdAt
+      }))
+    };
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de auditoría generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_AUDIT_REPORT', error, { filters: req.query });
+    handlePrismaError(error, res);
+  }
+});
+
+// POST /custom - Generar reporte personalizado
+router.post('/custom', validateDateRange, async (req, res) => {
+  try {
+    const { tipo, campos, filtros } = req.body;
+
+    if (!tipo || !campos) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere tipo y campos para el reporte personalizado'
+      });
+    }
+
+    let data = {};
+
+    // Generar reporte según el tipo
+    switch (tipo) {
+      case 'facturacion':
+        const where = {};
+        if (filtros?.estado) {
+          // Convertir valores en español a inglés si es necesario
+          const estadoMap = {
+            'pagada': 'paid',
+            'pendiente': 'pending',
+            'parcial': 'partial',
+            'vencida': 'overdue',
+            'cancelada': 'cancelled',
+            'borrador': 'draft'
+          };
+          where.estado = estadoMap[filtros.estado] || filtros.estado;
+        }
+
+        const facturas = await prisma.factura.findMany({
+          where,
+          include: {
+            paciente: {
+              select: {
+                id: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true
+              }
+            }
+          },
+          take: 100
+        });
+
+        // Filtrar solo los campos solicitados
+        data.registros = facturas.map(f => {
+          const registro = {};
+          if (campos.includes('paciente')) {
+            registro.paciente = f.paciente;
+          }
+          if (campos.includes('total')) {
+            registro.total = parseFloat(f.total);
+          }
+          if (campos.includes('fecha')) {
+            registro.fecha = f.fechaFactura;
+          }
+          if (campos.includes('estado')) {
+            registro.estado = f.estado;
+          }
+          return registro;
+        });
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: `Tipo de reporte '${tipo}' no soportado`
+        });
+    }
+
+    data.resumen = {
+      totalRegistros: data.registros?.length || 0,
+      tipo,
+      campos,
+      filtros
+    };
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte personalizado generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GENERATE_CUSTOM_REPORT', error, { body: req.body });
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /export/:tipo - Exportar reporte en diferentes formatos
+router.get('/export/:tipo', validateDateRange, async (req, res) => {
+  try {
+    const { tipo } = req.params;
+    const { format } = req.query;
+
+    if (!format) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere el parámetro format (pdf, xlsx, csv)'
+      });
+    }
+
+    // Obtener datos del reporte según el tipo
+    let reportData = {};
+
+    // Por ahora, solo implementamos financial como ejemplo
+    if (tipo === 'financial') {
+      const [ventasRapidas, facturas] = await Promise.all([
+        prisma.ventaRapida.aggregate({
+          _sum: { total: true },
+          _count: { id: true }
+        }),
+        prisma.factura.aggregate({
+          _sum: { total: true },
+          _count: { id: true }
+        })
+      ]);
+
+      reportData = {
+        tipo: 'Reporte Financiero',
+        ingresos: {
+          ventasRapidas: parseFloat(ventasRapidas._sum.total || 0),
+          facturas: parseFloat(facturas._sum.total || 0),
+          total: parseFloat(ventasRapidas._sum.total || 0) + parseFloat(facturas._sum.total || 0)
+        }
+      };
+    }
+
+    // Generar respuesta según formato
+    switch (format.toLowerCase()) {
+      case 'pdf':
+        // Por ahora devolvemos un mock de PDF
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}.pdf`);
+        res.send(Buffer.from(`PDF Mock - ${JSON.stringify(reportData)}`));
+        break;
+
+      case 'xlsx':
+        // Por ahora devolvemos un mock de Excel
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}.xlsx`);
+        res.send(Buffer.from(`XLSX Mock - ${JSON.stringify(reportData)}`));
+        break;
+
+      case 'csv':
+        // Generar CSV simple
+        const csvData = `Tipo,Valor\nVentas Rápidas,${reportData.ingresos?.ventasRapidas || 0}\nFacturas,${reportData.ingresos?.facturas || 0}\nTotal,${reportData.ingresos?.total || 0}`;
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}.csv`);
+        res.send(csvData);
+        break;
+
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Formato no soportado. Use: pdf, xlsx, csv'
+        });
+    }
+
+  } catch (error) {
+    logger.logError('EXPORT_REPORT', error, { tipo: req.params.tipo, format: req.query.format });
+    handlePrismaError(error, res);
+  }
+});
+
 module.exports = router;
