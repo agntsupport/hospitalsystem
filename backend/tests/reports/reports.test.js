@@ -48,13 +48,15 @@ describe('Reports Endpoints', () => {
       expect(response.body.success).toBe(true);
     });
 
-    it('should require admin role (role auth not implemented)', async () => {
+    it('should require admin or socio role', async () => {
       const userToken = await createTokenForRole('cajero');
       const response = await request(app)
         .get('/api/reports/financial')
         .set('Authorization', `Bearer ${userToken}`);
 
       expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('permisos');
     });
   });
 

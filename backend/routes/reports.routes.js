@@ -3,6 +3,7 @@ const router = express.Router();
 const { prisma, handlePrismaError } = require('../utils/database');
 const { validateDateRange } = require('../middleware/validation.middleware');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth.middleware');
+const { exportLimiter, customReportLimiter } = require('../middleware/rateLimiter.middleware');
 const logger = require('../utils/logger');
 
 // ==============================================
@@ -80,8 +81,8 @@ router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'so
   }
 });
 
-// GET /operational - Reporte operacional
-router.get('/operational', validateDateRange, async (req, res) => {
+// GET /operational - Reporte operacional (Admin, Socio, Médico Especialista)
+router.get('/operational', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista']), validateDateRange, async (req, res) => {
   try {
     const { dateRange } = req;
     const whereMovimiento = {};
@@ -131,8 +132,8 @@ router.get('/operational', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /executive - Reporte ejecutivo
-router.get('/executive', validateDateRange, async (req, res) => {
+// GET /executive - Reporte ejecutivo (Admin, Socio)
+router.get('/executive', authenticateToken, authorizeRoles(['administrador', 'socio']), validateDateRange, async (req, res) => {
   try {
     const { dateRange } = req;
 
@@ -203,8 +204,8 @@ router.get('/executive', validateDateRange, async (req, res) => {
 // ENDPOINTS MANAGERIAL PARA FRONTEND
 // ==============================================
 
-// GET /managerial/executive-summary - Resumen ejecutivo gerencial
-router.get('/managerial/executive-summary', async (req, res) => {
+// GET /managerial/executive-summary - Resumen ejecutivo gerencial (Admin, Socio)
+router.get('/managerial/executive-summary', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
   try {
     const { periodo = 'mes', fechaInicio, fechaFin } = req.query;
     
@@ -280,8 +281,8 @@ router.get('/managerial/executive-summary', async (req, res) => {
   }
 });
 
-// GET /managerial/kpis - KPIs gerenciales
-router.get('/managerial/kpis', async (req, res) => {
+// GET /managerial/kpis - KPIs gerenciales (Admin, Socio)
+router.get('/managerial/kpis', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
   try {
     const { periodo = 'mes', fechaInicio, fechaFin } = req.query;
     
@@ -458,8 +459,8 @@ router.get('/managerial/kpis', async (req, res) => {
   }
 });
 
-// GET /inventory - Reporte de inventario
-router.get('/inventory', validateDateRange, async (req, res) => {
+// GET /inventory - Reporte de inventario (Admin, Socio, Médico Especialista, Almacenista)
+router.get('/inventory', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista', 'almacenista']), validateDateRange, async (req, res) => {
   try {
     const { bajoStock } = req.query;
     const where = { activo: true };
@@ -516,8 +517,8 @@ router.get('/inventory', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /patients - Reporte de pacientes
-router.get('/patients', validateDateRange, async (req, res) => {
+// GET /patients - Reporte de pacientes (Admin, Socio, Médico Especialista)
+router.get('/patients', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista']), validateDateRange, async (req, res) => {
   try {
     const { groupBy } = req.query;
     const { dateRange } = req;
@@ -607,8 +608,8 @@ router.get('/patients', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /hospitalization - Reporte de hospitalización
-router.get('/hospitalization', validateDateRange, async (req, res) => {
+// GET /hospitalization - Reporte de hospitalización (Admin, Socio, Médico Especialista)
+router.get('/hospitalization', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista']), validateDateRange, async (req, res) => {
   try {
     const { estado, metrics } = req.query;
     const { dateRange } = req;
@@ -711,8 +712,8 @@ router.get('/hospitalization', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /revenue - Reporte de ingresos
-router.get('/revenue', validateDateRange, async (req, res) => {
+// GET /revenue - Reporte de ingresos (Admin, Socio)
+router.get('/revenue', authenticateToken, authorizeRoles(['administrador', 'socio']), validateDateRange, async (req, res) => {
   try {
     const { periodo, groupBy } = req.query;
     const { dateRange } = req;
@@ -801,8 +802,8 @@ router.get('/revenue', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /rooms-occupancy - Reporte de ocupación de habitaciones
-router.get('/rooms-occupancy', validateDateRange, async (req, res) => {
+// GET /rooms-occupancy - Reporte de ocupación de habitaciones (Admin, Socio, Médico Especialista)
+router.get('/rooms-occupancy', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista']), validateDateRange, async (req, res) => {
   try {
     const { groupBy } = req.query;
 
@@ -861,8 +862,8 @@ router.get('/rooms-occupancy', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /appointments - Reporte de citas médicas
-router.get('/appointments', validateDateRange, async (req, res) => {
+// GET /appointments - Reporte de citas médicas (Admin, Socio, Médico Especialista)
+router.get('/appointments', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista']), validateDateRange, async (req, res) => {
   try {
     const { estado } = req.query;
     const { dateRange } = req;
@@ -942,8 +943,8 @@ router.get('/appointments', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /employees - Reporte de empleados
-router.get('/employees', validateDateRange, async (req, res) => {
+// GET /employees - Reporte de empleados (Admin only)
+router.get('/employees', authenticateToken, authorizeRoles(['administrador']), validateDateRange, async (req, res) => {
   try {
     const { groupBy } = req.query;
 
@@ -984,8 +985,8 @@ router.get('/employees', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /services - Reporte de uso de servicios
-router.get('/services', validateDateRange, async (req, res) => {
+// GET /services - Reporte de uso de servicios (Admin, Socio, Médico Especialista)
+router.get('/services', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista']), validateDateRange, async (req, res) => {
   try {
     const { orderBy, order } = req.query;
     const { dateRange } = req;
@@ -1050,8 +1051,8 @@ router.get('/services', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /audit - Reporte de auditoría
-router.get('/audit', validateDateRange, async (req, res) => {
+// GET /audit - Reporte de auditoría (Admin only)
+router.get('/audit', authenticateToken, authorizeRoles(['administrador']), validateDateRange, async (req, res) => {
   try {
     const { entidad, accion } = req.query;
     const { dateRange } = req;
@@ -1139,8 +1140,8 @@ router.get('/audit', validateDateRange, async (req, res) => {
   }
 });
 
-// POST /custom - Generar reporte personalizado
-router.post('/custom', validateDateRange, async (req, res) => {
+// POST /custom - Generar reporte personalizado (Admin only con rate limiting)
+router.post('/custom', authenticateToken, authorizeRoles(['administrador']), customReportLimiter, validateDateRange, async (req, res) => {
   try {
     const { tipo, campos, filtros } = req.body;
 
@@ -1230,8 +1231,8 @@ router.post('/custom', validateDateRange, async (req, res) => {
   }
 });
 
-// GET /export/:tipo - Exportar reporte en diferentes formatos
-router.get('/export/:tipo', validateDateRange, async (req, res) => {
+// GET /export/:tipo - Exportar reporte en diferentes formatos (Admin, Socio con rate limiting estricto)
+router.get('/export/:tipo', authenticateToken, authorizeRoles(['administrador', 'socio']), exportLimiter, validateDateRange, async (req, res) => {
   try {
     const { tipo } = req.params;
     const { format } = req.query;
