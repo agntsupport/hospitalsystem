@@ -43,10 +43,12 @@ La API de Reportes del Sistema de Gestión Hospitalaria proporciona **11 endpoin
 - ✅ **11 reportes predefinidos** con métricas clave
 - ✅ **Filtrado avanzado** por fechas, estados, tipos
 - ✅ **Agrupación dinámica** de datos
-- ✅ **Reportes personalizados** con campos configurables
-- ✅ **Exportación** en PDF, Excel (XLSX), CSV
+- ✅ **Reportes personalizados** con campos configurables (admin only)
+- ✅ **Exportación** en PDF, Excel (XLSX), CSV con rate limiting
 - ✅ **Paginación** automática (límite 100 registros por defecto)
-- ✅ **Validación de permisos** por rol de usuario
+- ✅ **Autorización granular** por roles (16 endpoints protegidos)
+- ✅ **Rate limiting** específico para exports (10/10min) y custom reports (20/15min)
+- ✅ **Logging de seguridad** para violaciones de rate limit
 
 ### Base URL
 
@@ -71,16 +73,35 @@ curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   http://localhost:3001/api/reports/financial
 ```
 
-### Permisos por Rol
+### 🔐 Matriz de Permisos por Rol
 
-| Endpoint | Administrador | Socio | Médico | Cajero | Otros |
-|----------|:-------------:|:-----:|:------:|:------:|:-----:|
-| Financial | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Operational | ✅ | ✅ | ⚠️ | ⚠️ | ❌ |
-| Inventory | ✅ | ⚠️ | ❌ | ❌ | ⚠️ |
-| All Others | ✅ | ⚠️ | ⚠️ | ⚠️ | ❌ |
+Todos los endpoints están protegidos con autorización granular por roles:
 
-⚠️ = Acceso parcial según permisos específicos
+| Reporte | Admin | Socio | Médico Especialista | Almacenista | Rate Limit |
+|---------|:-----:|:-----:|:-------------------:|:-----------:|:----------:|
+| **Financial** | ✅ | ✅ | ❌ | ❌ | - |
+| **Operational** | ✅ | ✅ | ✅ | ❌ | - |
+| **Executive** | ✅ | ✅ | ❌ | ❌ | - |
+| **Managerial/**** | ✅ | ✅ | ❌ | ❌ | - |
+| **Inventory** | ✅ | ✅ | ✅ | ✅ | - |
+| **Patients** | ✅ | ✅ | ✅ | ❌ | - |
+| **Hospitalization** | ✅ | ✅ | ✅ | ❌ | - |
+| **Revenue** | ✅ | ✅ | ❌ | ❌ | - |
+| **Rooms Occupancy** | ✅ | ✅ | ✅ | ❌ | - |
+| **Appointments** | ✅ | ✅ | ✅ | ❌ | - |
+| **Employees** | ✅ | ❌ | ❌ | ❌ | - |
+| **Services** | ✅ | ✅ | ✅ | ❌ | - |
+| **Audit** | ✅ | ❌ | ❌ | ❌ | - |
+| **Custom Reports** | ✅ | ❌ | ❌ | ❌ | **20/15min** |
+| **Export (PDF/Excel/CSV)** | ✅ | ✅ | ❌ | ❌ | **10/10min** |
+
+#### Notas de Seguridad
+- ✅ **Admin only (3)**: Audit, Employees, Custom Reports
+- ✅ **Admin + Socio (5)**: Financial, Executive, Managerial, Revenue, Export
+- ✅ **Admin + Socio + Especialista (7)**: Operational, Patients, Hospitalization, Rooms, Appointments, Services
+- ✅ **Incluye Almacenista (1)**: Inventory
+- 🔒 **Rate limiting** aplicado a exports y custom reports para prevenir abuso
+- 📝 **Logging automático** de violaciones de permisos y rate limit
 
 ---
 

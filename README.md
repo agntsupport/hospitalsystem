@@ -29,7 +29,7 @@
 5. **💰 Punto de Venta (POS)** - Integrado con inventario ✅
 6. **📦 Inventario Completo** - Productos, proveedores, movimientos ✅
 7. **💳 Facturación Integrada** - Automática desde POS ✅
-8. **📊 Reportes Ejecutivos Completos** - 11 tipos de reportes + custom + export (PDF/Excel/CSV) ✅
+8. **📊 Reportes Ejecutivos Completos** - 11 tipos + custom + export (PDF/Excel/CSV) + **Rate limiting** + **Autorización por roles** ✅
 9. **🏥 Hospitalización Avanzada** - Ingresos con anticipo automático, notas médicas, control por roles ✅
 10. **🏢 Quirófanos** - Gestión completa de quirófanos y cirugías ✅
 11. **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones ✅
@@ -41,7 +41,7 @@
 
 **✅ FASE 5 COMPLETADA** - Seguridad Avanzada (Bloqueo cuenta, JWT Blacklist, HTTPS, Tests críticos)
 **✅ FASE 6 COMPLETADA** - Backend Testing 100% (19/19 suites, POS 26/26, race conditions fix)
-**✅ FASE 7 COMPLETADA** - Reportes Completos (11 endpoints, custom reports, export PDF/Excel/CSV, 31/31 tests)
+**✅ FASE 7 COMPLETADA** - Reportes Completos + Seguridad (11 endpoints, custom reports, export PDF/Excel/CSV, **rate limiting**, **autorización por roles**, 31/31 tests)
 **FASE 8**: Sistema de Citas Médicas - Calendarios y horarios
 **FASE 9**: Dashboard Tiempo Real - WebSockets y notificaciones
 **FASE 10**: Expediente Médico Completo - Historia clínica digital
@@ -259,10 +259,13 @@ VITE_API_URL=http://localhost:3001
 
 ### 📊 8. Reportes Ejecutivos Completos
 - **11 tipos de reportes** predefinidos (financiero, operativo, inventario, pacientes, hospitalización, ingresos, ocupación, citas, empleados, servicios, auditoría)
-- **Reportes personalizados** con campos y filtros configurables
-- **Exportación múltiple** formatos (PDF, Excel, CSV)
+- **Reportes personalizados** con campos y filtros configurables (admin only)
+- **Exportación múltiple** formatos (PDF, Excel, CSV) con rate limiting (10/10min)
 - **Dashboard financiero** con KPIs en tiempo real
 - **Análisis operativo** detallado con métricas avanzadas
+- **Autorización granular** por roles (16 endpoints protegidos)
+- **Rate limiting** específico para exports y custom reports
+- **Seguridad empresarial** con logging de violaciones
 
 ### 🏥 9. Hospitalización Avanzada
 - **Ingresos hospitalarios** con anticipo automático de $10,000 MXN
@@ -325,7 +328,11 @@ Ver documentación completa en `/docs/hospital_erd_completo.md`
 - **JWT Blacklist** con PostgreSQL para revocación de tokens
 - **Bloqueo de cuenta** automático (5 intentos = 15 min bloqueo)
 - **HTTPS forzado** en producción con HSTS headers (1 año)
-- **Autorización granular** por roles y permisos
+- **Autorización granular** por roles y permisos (16 endpoints de reportes protegidos)
+- **Rate Limiting** específico para reportes:
+  - Exports (PDF/Excel/CSV): 10 requests/10min por usuario
+  - Custom Reports: 20 requests/15min por usuario
+  - Logging de violaciones automático
 - **Validación robusta** en frontend y backend
 - **Sistema de auditoría** completo con trazabilidad
 - **Encriptación bcrypt** para contraseñas (12 rounds)
@@ -501,7 +508,7 @@ npm run dev
 ### 🎯 Próximos Desarrollos
 **✅ FASE 5 COMPLETADA**: Seguridad Avanzada (JWT Blacklist, Account Locking, HTTPS, Tests críticos)
 **✅ FASE 6 COMPLETADA**: Backend Testing 100% (19/19 suites, POS 26/26, race conditions fix)
-**✅ FASE 7 COMPLETADA**: Reportes Completos (11 endpoints + custom + export, 31/31 tests)
+**✅ FASE 7 COMPLETADA**: Reportes Completos + Seguridad (11 endpoints + custom + export, rate limiting, autorización por roles, 31/31 tests)
 **FASE 8**: Sistema de Citas Médicas
 **FASE 9**: Dashboard Tiempo Real
 **FASE 10**: Expediente Médico Digital
