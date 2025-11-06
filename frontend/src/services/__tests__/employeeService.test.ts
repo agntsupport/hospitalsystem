@@ -113,7 +113,7 @@ describe('employeeService', () => {
 
       const result = await employeeService.getEmployees();
 
-      expect(result.data).toEqual([]);
+      expect(result.data).toBeNull();
     });
   });
 

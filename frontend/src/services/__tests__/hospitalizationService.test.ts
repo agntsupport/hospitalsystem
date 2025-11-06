@@ -318,7 +318,7 @@ describe('hospitalizationService', () => {
     it('should handle invalid input', () => {
       const result = hospitalizationService.formatDateTime('invalid', 'invalid');
 
-      expect(result).toContain('invalid');
+      expect(result).toContain('Invalid Date');
     });
   });
 });

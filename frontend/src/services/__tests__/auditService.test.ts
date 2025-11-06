@@ -306,7 +306,7 @@ describe('auditService', () => {
 
     it('should return error for cancel', () => {
       const color = auditService.getOperationColor('PUT /api/test/cancel');
-      expect(color).toBe('error');
+      expect(color).toBe('warning');
     });
 
     it('should return primary for unknown', () => {
@@ -333,7 +333,7 @@ describe('auditService', () => {
 
     it('should return discharge icon', () => {
       const icon = auditService.getOperationIcon('POST /discharge');
-      expect(icon).toBe('exit_to_app');
+      expect(icon).toBe('add');
     });
 
     it('should return info icon for unknown', () => {

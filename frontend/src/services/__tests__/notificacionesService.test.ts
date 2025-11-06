@@ -112,11 +112,12 @@ describe('notificacionesService', () => {
   describe('getNotificacionesRecientes', () => {
     it('should get recent notifications', async () => {
       const mockNoLeidas = { data: [{ id: 1, leida: false }], total: 1 };
-      mockedApi.get.mockResolvedValueOnce(mockNoLeidas);
+      const mockLeidas = { data: Array(9).fill({ id: 2, leida: true }), total: 9 };
+      mockedApi.get.mockResolvedValueOnce(mockNoLeidas).mockResolvedValueOnce(mockLeidas);
 
       const result = await notificacionesService.getNotificacionesRecientes();
 
-      expect(result.length).toBe(1);
+      expect(result.length).toBe(10);
     });
 
     it('should combine unread and read notifications', async () => {

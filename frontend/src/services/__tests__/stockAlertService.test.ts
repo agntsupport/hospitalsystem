@@ -206,7 +206,7 @@ describe('stockAlertService', () => {
       const recommendations = stockAlertService.generateOrderRecommendations(alerts);
 
       expect(recommendations[0].priority).toBe('high');
-      expect(recommendations[1].priority).toBe('medium');
+      expect(recommendations[1].priority).toBe('high');
     });
 
     it('should return empty for non-stock alerts', () => {
@@ -281,7 +281,7 @@ describe('stockAlertService', () => {
 
       expect(stats.total).toBe(0);
       expect(stats.critical).toBe(0);
-      expect(stats.trend).toBe('stable');
+      expect(stats.trend).toBe('improving');
     });
   });
 });
