@@ -1,7 +1,18 @@
 export default {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
+  setupFiles: ['<rootDir>/src/setupImportMeta.ts'],
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+  globals: {
+    'import.meta': {
+      env: {
+        VITE_API_URL: 'http://localhost:3001/api',
+        MODE: 'test',
+        DEV: false,
+        PROD: false,
+      },
+    },
+  },
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     // Mock constants FIRST (before @/ pattern) to catch all imports
