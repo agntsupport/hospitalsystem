@@ -248,93 +248,12 @@ app.use('/api/solicitudes',
 app.use('/api/notificaciones', notificacionesRoutes);
 
 // ==============================================
-// ENDPOINTS LEGACY (COMPATIBILIDAD)
+// ENDPOINTS LEGACY (COMPATIBILIDAD POS)
 // ==============================================
-
-// Servicios (compatibilidad con endpoints existentes)
-app.get('/api/services', async (req, res) => {
-  try {
-    const servicios = await prisma.servicio.findMany({
-      where: { activo: true },
-      orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }]
-    });
-
-    const serviciosFormatted = servicios.map(servicio => ({
-      id: servicio.id,
-      codigo: servicio.codigo,
-      nombre: servicio.nombre,
-      descripcion: servicio.descripcion,
-      tipo: servicio.tipo,
-      precio: parseFloat(servicio.precio.toString()),
-      activo: servicio.activo
-    }));
-
-    res.json({
-      success: true,
-      data: { items: serviciosFormatted },
-      message: 'Servicios obtenidos correctamente'
-    });
-
-  } catch (error) {
-    console.error('Error obteniendo servicios:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
-  }
-});
-
-// Proveedores (compatibilidad)
-app.get('/api/suppliers', async (req, res) => {
-  try {
-    const { limit = 50, offset = 0, search } = req.query;
-    
-    const where = { activo: true };
-    if (search) {
-      where.OR = [
-        { nombreEmpresa: { contains: search, mode: 'insensitive' } },
-        { contactoNombre: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-
-    const [proveedores, total] = await Promise.all([
-      prisma.proveedor.findMany({
-        where,
-        orderBy: { nombreEmpresa: 'asc' },
-        take: parseInt(limit),
-        skip: parseInt(offset)
-      }),
-      prisma.proveedor.count({ where })
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        items: proveedores.map(p => ({
-          id: p.id,
-          nombreEmpresa: p.nombreEmpresa,
-          contactoNombre: p.contactoNombre,
-          telefono: p.telefono,
-          email: p.email,
-          direccion: p.direccion,
-          activo: p.activo
-        })),
-        pagination: {
-          total,
-          limit: parseInt(limit),
-          offset: parseInt(offset)
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Error obteniendo proveedores:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
-  }
-});
+// NOTA FASE 1: Los endpoints /api/services y /api/suppliers fueron migrados exitosamente a:
+//   - routes/inventory.routes.js (GET /api/inventory/services y GET /api/inventory/suppliers)
+//   - routes/pos.routes.js (GET /api/pos/services para POS)
+// Los endpoints patient-accounts permanecen aquí temporalmente y serán migrados a billing.routes.js en FASE 2
 
 // Patient Accounts (compatibilidad POS)
 app.get('/api/patient-accounts', authenticateToken, async (req, res) => {
