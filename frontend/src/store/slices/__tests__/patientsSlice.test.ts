@@ -14,7 +14,7 @@ import patientsReducer, {
   setCurrentPatient,
   clearCurrentPatient
 } from '../patientsSlice';
-import { Patient } from '@/types/patient.types';
+import { Patient } from '@/types/patient.redux.types';
 
 // Mock the api module
 jest.mock('@/utils/api', () => ({

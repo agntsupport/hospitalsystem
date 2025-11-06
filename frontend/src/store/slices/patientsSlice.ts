@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { 
-  Patient, 
-  PatientsResponse, 
-  PatientResponse, 
-  CreatePatientData, 
+import {
+  Patient,
+  PatientsResponse,
+  PatientResponse,
+  CreatePatientData,
   UpdatePatientData,
   PatientsFilters,
   PaginationParams,
-  PatientsStatsResponse 
-} from '@/types/patient.types';
+  PatientsStatsResponse
+} from '@/types/patient.redux.types';
 import { api } from '@/utils/api';
 import { API_ROUTES } from '@/utils/constants';
 
