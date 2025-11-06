@@ -173,10 +173,14 @@ class AuditService {
    * Obtener color para el tipo de operación
    */
   getOperationColor(tipoOperacion: string): 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info' {
+    // Evaluar casos específicos primero (antes de métodos HTTP genéricos)
+    if (tipoOperacion.includes('cancel')) return 'error';
+    if (tipoOperacion.includes('descuento')) return 'secondary';
+
+    // Métodos HTTP genéricos
     if (tipoOperacion.includes('POST')) return 'success';
     if (tipoOperacion.includes('PUT') || tipoOperacion.includes('PATCH')) return 'warning';
-    if (tipoOperacion.includes('DELETE') || tipoOperacion.includes('cancel')) return 'error';
-    if (tipoOperacion.includes('descuento')) return 'secondary';
+    if (tipoOperacion.includes('DELETE')) return 'error';
     return 'primary';
   }
 
@@ -184,12 +188,16 @@ class AuditService {
    * Obtener ícono para el tipo de operación
    */
   getOperationIcon(tipoOperacion: string): string {
-    if (tipoOperacion.includes('POST')) return 'add';
-    if (tipoOperacion.includes('PUT') || tipoOperacion.includes('PATCH')) return 'edit';
-    if (tipoOperacion.includes('DELETE') || tipoOperacion.includes('cancel')) return 'delete';
+    // Evaluar casos específicos primero (antes de métodos HTTP genéricos)
+    if (tipoOperacion.includes('cancel')) return 'delete';
     if (tipoOperacion.includes('descuento')) return 'money_off';
     if (tipoOperacion.includes('discharge')) return 'exit_to_app';
     if (tipoOperacion.includes('close')) return 'lock';
+
+    // Métodos HTTP genéricos
+    if (tipoOperacion.includes('POST')) return 'add';
+    if (tipoOperacion.includes('PUT') || tipoOperacion.includes('PATCH')) return 'edit';
+    if (tipoOperacion.includes('DELETE')) return 'delete';
     return 'info';
   }
 

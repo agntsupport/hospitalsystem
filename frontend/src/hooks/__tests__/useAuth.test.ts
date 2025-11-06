@@ -89,6 +89,13 @@ describe('useAuth', () => {
     localStorageMock.clear();
   });
 
+  afterEach(() => {
+    // Limpiar todos los timers pendientes para evitar memory leaks
+    jest.clearAllTimers();
+    // Forzar garbage collection de mocks
+    jest.restoreAllMocks();
+  });
+
   describe('Initial State', () => {
     it('should initialize with default unauthenticated state', () => {
       const store = createMockStore();
