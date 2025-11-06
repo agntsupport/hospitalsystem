@@ -285,7 +285,7 @@ router.post('/',
       // Verificar que los productos existen
       const productosIds = productos.map(p => parseInt(p.productoId));
       const productosExistentes = await prisma.producto.findMany({
-        where: { 
+        where: {
           id: { in: productosIds },
           activo: true
         }
@@ -293,6 +293,21 @@ router.post('/',
 
       if (productosExistentes.length !== productosIds.length) {
         return res.status(400).json({ error: 'Algunos productos no existen o están inactivos' });
+      }
+
+      // Verificar stock disponible y crear advertencias
+      const advertencias = [];
+      for (const producto of productos) {
+        const productoData = productosExistentes.find(p => p.id === parseInt(producto.productoId));
+        if (productoData && productoData.stockActual < parseInt(producto.cantidadSolicitada)) {
+          advertencias.push({
+            productoId: productoData.id,
+            productoNombre: productoData.nombre,
+            stockActual: productoData.stockActual,
+            cantidadSolicitada: parseInt(producto.cantidadSolicitada),
+            mensaje: `Stock insuficiente para ${productoData.nombre}. Disponible: ${productoData.stockActual}, Solicitado: ${parseInt(producto.cantidadSolicitada)}`
+          });
+        }
       }
 
       // Generar número de solicitud
@@ -385,10 +400,18 @@ router.post('/',
         datosNuevos: solicitud
       };
 
-      res.status(201).json({
+      const response = {
         message: 'Solicitud creada exitosamente',
         solicitud
-      });
+      };
+
+      // Agregar advertencias si existen
+      if (advertencias.length > 0) {
+        response.advertencias = advertencias;
+        response.message = 'Solicitud creada con advertencias de stock';
+      }
+
+      res.status(201).json(response);
     } catch (error) {
       logger.logError('CREATE_REQUEST', error, { solicitanteId: req.user.id });
       res.status(500).json({ 
@@ -743,6 +766,95 @@ router.put('/:id/confirmar',
       res.status(500).json({ 
         error: 'Error al confirmar recepción',
         details: error.message 
+      });
+    }
+  }
+);
+
+// PUT /api/solicitudes/:id/cancelar - Cancelar solicitud
+router.put('/:id/cancelar',
+  authenticateToken,
+  authorizeRoles(['administrador', 'enfermero', 'medico_especialista', 'medico_residente', 'almacenista']),
+  auditMiddleware('solicitudes_productos', 'cancelar'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { motivo } = req.body;
+
+      const solicitud = await prisma.solicitudProductos.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!solicitud) {
+        return res.status(404).json({ error: 'Solicitud no encontrada' });
+      }
+
+      // Validar que la solicitud no esté ya entregada o recibida
+      if (['ENTREGADO', 'RECIBIDO', 'APLICADO'].includes(solicitud.estado)) {
+        return res.status(400).json({
+          error: 'No se puede cancelar una solicitud que ya fue entregada o recibida'
+        });
+      }
+
+      // Validar que la solicitud no esté ya cancelada
+      if (solicitud.estado === 'CANCELADO') {
+        return res.status(400).json({ error: 'La solicitud ya está cancelada' });
+      }
+
+      // Solo el solicitante o un administrador pueden cancelar
+      if (req.user.rol !== 'administrador' && solicitud.solicitanteId !== req.user.id) {
+        return res.status(403).json({
+          error: 'Solo el solicitante o un administrador pueden cancelar la solicitud'
+        });
+      }
+
+      // Actualizar solicitud
+      const solicitudActualizada = await prisma.solicitudProductos.update({
+        where: { id: parseInt(id) },
+        data: {
+          estado: 'CANCELADO',
+          historial: {
+            create: {
+              estadoAnterior: solicitud.estado,
+              estadoNuevo: 'CANCELADO',
+              usuarioId: req.user.id,
+              observaciones: motivo || 'Solicitud cancelada'
+            }
+          }
+        }
+      });
+
+      // Crear notificación para el almacenista si está asignado
+      if (solicitud.almacenistaId) {
+        await prisma.notificacionSolicitud.create({
+          data: {
+            solicitudId: solicitud.id,
+            usuarioId: solicitud.almacenistaId,
+            tipo: 'NUEVA_SOLICITUD',
+            titulo: 'Solicitud Cancelada',
+            mensaje: `La solicitud #${solicitud.numero} ha sido cancelada. Motivo: ${motivo || 'No especificado'}`,
+            leida: false
+          }
+        });
+      }
+
+      // Registrar en auditoría
+      req.auditData = {
+        entidadId: parseInt(id),
+        datosAnteriores: solicitud,
+        datosNuevos: solicitudActualizada
+      };
+
+      res.json({
+        success: true,
+        message: 'Solicitud cancelada exitosamente',
+        solicitud: solicitudActualizada
+      });
+    } catch (error) {
+      logger.logError('CANCEL_REQUEST', error, { requestId: req.params.id });
+      res.status(500).json({
+        error: 'Error al cancelar solicitud',
+        details: error.message
       });
     }
   }

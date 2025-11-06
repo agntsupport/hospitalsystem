@@ -439,7 +439,6 @@ describe('Quirófanos Endpoints', () => {
       });
 
       it('should fail with non-existent medico', async () => {
-        // TODO: Add proper error handling in POST /api/quirofanos/cirugias
         const invalidData = {
           ...validCirugiaData,
           medicoId: 99999
