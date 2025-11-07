@@ -445,6 +445,8 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     const { montoRecibido, metodoPago = 'efectivo', diagnosticoAlta } = req.body;
     const userId = req.user?.id;
 
+    console.log(`[CIERRE CUENTA] Iniciando cierre cuenta #${id} por usuario ${userId}`);
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -453,9 +455,10 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     }
 
     // Obtener cuenta con todas las relaciones necesarias
+    console.log(`[CIERRE CUENTA] Buscando cuenta #${id}...`);
     const cuenta = await prisma.cuentaPaciente.findUnique({
       where: { id: parseInt(id) },
-      include: { 
+      include: {
         paciente: true,
         transacciones: true,
         habitacion: true
@@ -463,11 +466,14 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     });
 
     if (!cuenta) {
+      console.log(`[CIERRE CUENTA] Cuenta #${id} no encontrada`);
       return res.status(404).json({
         success: false,
         message: 'Cuenta no encontrada'
       });
     }
+
+    console.log(`[CIERRE CUENTA] Cuenta encontrada. Estado: ${cuenta.estado}, Tipo: ${cuenta.tipoAtencion}`);
 
     if (cuenta.estado === 'cerrada') {
       return res.status(400).json({
@@ -477,15 +483,24 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     }
 
     // Verificar si hay hospitalización activa
+    console.log(`[CIERRE CUENTA] Buscando hospitalización para cuenta #${id}...`);
     const hospitalizacion = await prisma.hospitalizacion.findUnique({
       where: { cuentaPacienteId: parseInt(id) }
     });
+
+    console.log(`[CIERRE CUENTA] Hospitalización:`, hospitalizacion ? {
+      id: hospitalizacion.id,
+      estado: hospitalizacion.estado,
+      fechaAlta: hospitalizacion.fechaAlta
+    } : 'No existe');
 
     // Validar nota SOAP de alta médica para hospitalizaciones SOLO si aún no fue dado de alta
     if (hospitalizacion && cuenta.tipoAtencion === 'hospitalizacion') {
       // Si la hospitalización ya tiene alta médica/voluntaria, no validar nota
       const yaFueDadoDeAlta = hospitalizacion.fechaAlta &&
         ['alta_medica', 'alta_voluntaria'].includes(hospitalizacion.estado);
+
+      console.log(`[CIERRE CUENTA] Ya fue dado de alta: ${yaFueDadoDeAlta}`);
 
       if (!yaFueDadoDeAlta) {
         // Solo validar nota de alta si aún NO fue dado de alta
@@ -500,6 +515,7 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
         });
 
         if (!notaAlta) {
+          console.log(`[CIERRE CUENTA] Falta nota de alta`);
           return res.status(400).json({
             success: false,
             message: 'No se puede cerrar la cuenta. Falta "Nota de Alta" por parte de un médico.',
@@ -542,7 +558,8 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
       };
     };
 
-    const saldos = calcularSaldoReal(cuenta.transacciones);
+    let saldos = calcularSaldoReal(cuenta.transacciones);
+    console.log(`[CIERRE CUENTA] Saldos iniciales:`, saldos);
 
     // Mapear método de pago al enum correcto
     const metodoPagoMap = {
@@ -555,25 +572,31 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     const metodoPagoEnum = metodoPagoMap[metodoPago] || 'cash';
 
     // Ejecutar transacción completa con timeout configurado
+    console.log(`[CIERRE CUENTA] Iniciando transacción de base de datos...`);
     const result = await prisma.$transaction(async (tx) => {
       // 1. Si hay hospitalización, calcular y cargar días de habitación antes de cerrar
       if (hospitalizacion && cuenta.habitacionId) {
+        console.log(`[CIERRE CUENTA] Calculando cargo por habitación...`);
         // Calcular días de estancia
         const fechaIngreso = new Date(hospitalizacion.fechaIngreso);
         const fechaAlta = new Date();
         const diasEstancia = Math.max(1, Math.ceil((fechaAlta - fechaIngreso) / (1000 * 60 * 60 * 24)));
-        
+
+        console.log(`[CIERRE CUENTA] Días de estancia: ${diasEstancia}`);
+
         // Buscar el servicio de habitación correspondiente
         const habitacion = cuenta.habitacion;
         const codigoServicio = `HAB-${habitacion.numero}`;
-        
+
+        console.log(`[CIERRE CUENTA] Buscando servicio habitación: ${codigoServicio}`);
         const servicioHabitacion = await tx.servicio.findFirst({
-          where: { 
-            codigo: codigoServicio 
+          where: {
+            codigo: codigoServicio
           }
         });
 
         if (servicioHabitacion) {
+          console.log(`[CIERRE CUENTA] Servicio habitación encontrado, agregando cargo...`);
           // Crear transacción por uso de habitación
           await tx.transaccionCuenta.create({
             data: {
@@ -593,8 +616,11 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
           const transaccionesActualizadas = await tx.transaccionCuenta.findMany({
             where: { cuentaId: parseInt(id) }
           });
-          
+
           saldos = calcularSaldoReal(transaccionesActualizadas);
+          console.log(`[CIERRE CUENTA] Saldos recalculados:`, saldos);
+        } else {
+          console.log(`[CIERRE CUENTA] Servicio habitación NO encontrado (código: ${codigoServicio})`);
         }
       }
 
@@ -703,6 +729,8 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
       timeout: 10000  // Máximo 10 segundos ejecutando la transacción
     });
 
+    console.log(`[CIERRE CUENTA] Transacción completada exitosamente`);
+
     // Obtener cuenta actualizada con todas las relaciones
     const cuentaCompleta = await prisma.cuentaPaciente.findUnique({
       where: { id: parseInt(id) },
@@ -715,9 +743,11 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
       }
     });
 
+    console.log(`[CIERRE CUENTA] Cuenta cerrada exitosamente #${id}`);
+
     res.json({
       success: true,
-      data: { 
+      data: {
         account: cuentaCompleta,
         factura: result.factura,
         hospitalizacion: result.hospitalizacion
@@ -726,7 +756,8 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
     });
 
   } catch (error) {
-    console.error('Error cerrando cuenta:', error);
+    console.error('[CIERRE CUENTA] ERROR:', error);
+    console.error('[CIERRE CUENTA] Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
