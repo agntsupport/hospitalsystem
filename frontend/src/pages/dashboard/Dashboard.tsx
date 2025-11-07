@@ -312,61 +312,63 @@ const Dashboard: React.FC = () => {
         </Alert>
       )}
 
-      {/* KPIs Ejecutivos Principales */}
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Business color="primary" />
-          Resumen Ejecutivo - Último Mes
-        </Typography>
-        
-        {loadingExecutive && <LinearProgress sx={{ mb: 2 }} />}
-        
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Ingresos Totales"
-              value={executiveSummary?.ingresosTotales || 0}
-              icon={<AttachMoney />}
-              color="#4caf50"
-              format="currency"
-              subtitle="Ventas + Servicios"
-              trend={{ value: 12.5, isPositive: true }}
-            />
+      {/* KPIs Ejecutivos Principales - Solo para Administradores */}
+      {user?.rol === 'administrador' && (
+        <Paper sx={{ p: 3, mb: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Business color="primary" />
+            Resumen Ejecutivo - Último Mes
+          </Typography>
+
+          {loadingExecutive && <LinearProgress sx={{ mb: 2 }} />}
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Ingresos Totales"
+                value={executiveSummary?.ingresosTotales || 0}
+                icon={<AttachMoney />}
+                color="#4caf50"
+                format="currency"
+                subtitle="Ventas + Servicios"
+                trend={{ value: 12.5, isPositive: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Utilidad Neta"
+                value={executiveSummary?.utilidadNeta || 0}
+                icon={<TrendingUp />}
+                color="#2196f3"
+                format="currency"
+                subtitle={executiveSummary ? `${((executiveSummary.utilidadNeta / executiveSummary.ingresosTotales) * 100).toFixed(1)}% margen` : 'Margen de utilidad'}
+                trend={{ value: 8.3, isPositive: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Pacientes Atendidos"
+                value={executiveSummary?.pacientesAtendidos || stats?.totalPacientes || 0}
+                icon={<People />}
+                color="#9c27b0"
+                subtitle="Consultas y servicios"
+                trend={{ value: 15.7, isPositive: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                title="Ocupación Promedio"
+                value={executiveSummary?.ocupacionPromedio || 0}
+                icon={<Hotel />}
+                color="#ff9800"
+                format="percentage"
+                subtitle="Habitaciones ocupadas"
+                trend={{ value: 2.1, isPositive: true }}
+              />
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Utilidad Neta"
-              value={executiveSummary?.utilidadNeta || 0}
-              icon={<TrendingUp />}
-              color="#2196f3"
-              format="currency"
-              subtitle={executiveSummary ? `${((executiveSummary.utilidadNeta / executiveSummary.ingresosTotales) * 100).toFixed(1)}% margen` : 'Margen de utilidad'}
-              trend={{ value: 8.3, isPositive: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Pacientes Atendidos"
-              value={executiveSummary?.pacientesAtendidos || stats?.totalPacientes || 0}
-              icon={<People />}
-              color="#9c27b0"
-              subtitle="Consultas y servicios"
-              trend={{ value: 15.7, isPositive: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              title="Ocupación Promedio"
-              value={executiveSummary?.ocupacionPromedio || 0}
-              icon={<Hotel />}
-              color="#ff9800"
-              format="percentage"
-              subtitle="Habitaciones ocupadas"
-              trend={{ value: 2.1, isPositive: true }}
-            />
-          </Grid>
-        </Grid>
-      </Paper>
+        </Paper>
+      )}
 
       {/* Tabla de Ocupación en Tiempo Real */}
       <OcupacionTable />
