@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { prisma, formatPaginationResponse, handlePrismaError } = require('../utils/database');
 const { validatePagination, validateRequired } = require('../middleware/validation.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
 // ==============================================
@@ -95,8 +96,16 @@ router.get('/', validatePagination, async (req, res) => {
 });
 
 // POST / - Crear consultorio
-router.post('/', validateRequired(['numero']), async (req, res) => {
+router.post('/', authenticateToken, validateRequired(['numero']), async (req, res) => {
   try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden crear consultorios'
+      });
+    }
+
     const { numero, tipo = 'consulta_general', especialidad, descripcion, estado = 'disponible' } = req.body;
 
     const consultorioExistente = await prisma.consultorio.findUnique({
@@ -182,8 +191,16 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /:id - Actualizar consultorio
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden editar consultorios'
+      });
+    }
+
     const { id } = req.params;
     const { numero, especialidad, descripcion, estado } = req.body;
 
@@ -245,8 +262,16 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /:id - Eliminar consultorio
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden eliminar consultorios'
+      });
+    }
+
     const { id } = req.params;
 
     const consultorioExistente = await prisma.consultorio.findUnique({

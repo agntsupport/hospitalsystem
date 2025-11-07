@@ -48,12 +48,14 @@ import { roomsService } from '@/services/roomsService';
 import { Office, OfficeFilters, OFFICE_TYPES, OFFICE_STATES } from '@/types/rooms.types';
 import { toast } from 'react-toastify';
 import OfficeFormDialog from './OfficeFormDialog';
+import { useAuth } from '@/hooks/useAuth';
 
 interface OfficesTabProps {
   onStatsChange: () => void;
 }
 
 const OfficesTab: React.FC<OfficesTabProps> = ({ onStatsChange }) => {
+  const { user } = useAuth();
   const [offices, setOffices] = useState<Office[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,9 @@ const OfficesTab: React.FC<OfficesTabProps> = ({ onStatsChange }) => {
   const [editingOffice, setEditingOffice] = useState<Office | null>(null);
   const [doctorId, setDoctorId] = useState('');
   const [observations, setObservations] = useState('');
+
+  // Solo administradores pueden crear/editar/eliminar consultorios
+  const canEdit = user?.rol === 'administrador';
 
   useEffect(() => {
     loadOffices();
@@ -268,15 +273,17 @@ const OfficesTab: React.FC<OfficesTabProps> = ({ onStatsChange }) => {
           Gestión de Consultorios
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateOffice}
-            disabled={loading}
-            color="secondary"
-          >
-            Nuevo Consultorio
-          </Button>
+          {canEdit && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateOffice}
+              disabled={loading}
+              color="secondary"
+            >
+              Nuevo Consultorio
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
@@ -465,16 +472,18 @@ const OfficesTab: React.FC<OfficesTabProps> = ({ onStatsChange }) => {
                   </TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                      <Tooltip title="Editar consultorio">
-                        <IconButton
-                          size="small"
-                          color="secondary"
-                          onClick={() => handleEditOffice(office)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      
+                      {canEdit && (
+                        <Tooltip title="Editar consultorio">
+                          <IconButton
+                            size="small"
+                            color="secondary"
+                            onClick={() => handleEditOffice(office)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
                       {office.estado === 'disponible' && (
                         <Tooltip title="Asignar consultorio">
                           <IconButton
@@ -508,16 +517,18 @@ const OfficesTab: React.FC<OfficesTabProps> = ({ onStatsChange }) => {
                           </IconButton>
                         </Tooltip>
                       )}
-                      
-                      <Tooltip title="Eliminar consultorio">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteOffice(office)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
+
+                      {canEdit && (
+                        <Tooltip title="Eliminar consultorio">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteOffice(office)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
                   </TableCell>
                 </TableRow>
