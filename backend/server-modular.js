@@ -94,8 +94,15 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Cache preflight por 10 minutos
 }));
+
+// Manejo explícito de peticiones OPTIONS (preflight)
+app.options('*', cors());
 
 // ==============================================
 // PARSERS DE BODY
