@@ -22,15 +22,10 @@ import {
   TrendingUp,
   TrendingDown,
   Hotel,
-  Assignment,
-  PointOfSale,
-  Inventory,
   Refresh,
-  Receipt,
   AttachMoney,
   Assessment,
   Business,
-  Star,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { useDispatch, useSelector } from 'react-redux';
@@ -221,64 +216,6 @@ const Dashboard: React.FC = () => {
     return 'Buenas noches';
   };
 
-  const getModulesForRole = (role: string) => {
-    const modules = [
-      { 
-        name: 'Pacientes', 
-        path: '/patients', 
-        icon: <People />, 
-        color: '#1976d2',
-        roles: ['cajero', 'enfermero', 'almacenista', 'medico_residente', 'medico_especialista', 'administrador']
-      },
-      { 
-        name: 'Punto de Venta', 
-        path: '/pos', 
-        icon: <PointOfSale />, 
-        color: '#388e3c',
-        roles: ['cajero', 'administrador']
-      },
-      { 
-        name: 'Hospitalización', 
-        path: '/hospitalization', 
-        icon: <LocalHospital />, 
-        color: '#f57c00',
-        roles: ['enfermero', 'medico_residente', 'medico_especialista', 'administrador']
-      },
-      { 
-        name: 'Facturación', 
-        path: '/billing', 
-        icon: <Receipt />, 
-        color: '#d32f2f',
-        roles: ['cajero', 'administrador', 'socio']
-      },
-      { 
-        name: 'Inventario', 
-        path: '/inventory', 
-        icon: <Inventory />, 
-        color: '#7b1fa2',
-        roles: ['almacenista', 'administrador']
-      },
-      { 
-        name: 'Habitaciones', 
-        path: '/rooms', 
-        icon: <Hotel />, 
-        color: '#0288d1',
-        roles: ['cajero', 'enfermero', 'almacenista', 'medico_residente', 'medico_especialista', 'administrador']
-      },
-      { 
-        name: 'Reportes', 
-        path: '/reports', 
-        icon: <Assignment />, 
-        color: '#5d4037',
-        roles: ['cajero', 'almacenista', 'medico_especialista', 'administrador', 'socio']
-      },
-    ];
-
-    return modules.filter(module => module.roles.includes(role));
-  };
-
-  const availableModules = user ? getModulesForRole(user.rol) : [];
-
   return (
     <Box>
       {/* Header */}
@@ -423,108 +360,6 @@ const Dashboard: React.FC = () => {
           </Grid>
         </Paper>
       )}
-
-      {/* Módulos Disponibles */}
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Módulos Disponibles
-        </Typography>
-        <Grid container spacing={2}>
-          {availableModules.map((module) => (
-            <Grid item xs={12} sm={6} md={4} key={module.name}>
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                startIcon={module.icon}
-                sx={{
-                  p: 2,
-                  justifyContent: 'flex-start',
-                  borderColor: module.color,
-                  color: module.color,
-                  '&:hover': {
-                    borderColor: module.color,
-                    backgroundColor: `${module.color}10`,
-                  },
-                }}
-                onClick={() => navigate(module.path)}
-              >
-                {module.name}
-              </Button>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-
-      {/* Accesos Rápidos */}
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Accesos Rápidos
-        </Typography>
-        <Grid container spacing={2}>
-          {user?.rol === 'cajero' || user?.rol === 'administrador' ? (
-            <Grid item xs={12} sm={6} md={4}>
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                size="large"
-                startIcon={<PointOfSale />}
-                sx={{ p: 2 }}
-                onClick={() => navigate('/pos')}
-              >
-                Nueva Venta
-              </Button>
-            </Grid>
-          ) : null}
-          
-          {['enfermero', 'medico_residente', 'medico_especialista', 'administrador'].includes(user?.rol || '') ? (
-            <Grid item xs={12} sm={6} md={4}>
-              <Button
-                fullWidth
-                variant="contained"
-                color="secondary"
-                size="large"
-                startIcon={<LocalHospital />}
-                sx={{ p: 2 }}
-                onClick={() => navigate('/hospitalization')}
-              >
-                Ver Hospitalizados
-              </Button>
-            </Grid>
-          ) : null}
-          
-          {['cajero', 'administrador', 'socio'].includes(user?.rol || '') ? (
-            <Grid item xs={12} sm={6} md={4}>
-              <Button
-                fullWidth
-                variant="contained"
-                color="error"
-                size="large"
-                startIcon={<Receipt />}
-                sx={{ p: 2 }}
-                onClick={() => navigate('/billing')}
-              >
-                Ver Facturas
-              </Button>
-            </Grid>
-          ) : null}
-          
-          <Grid item xs={12} sm={6} md={4}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="success"
-              size="large"
-              startIcon={<People />}
-              sx={{ p: 2 }}
-              onClick={() => navigate('/patients')}
-            >
-              Buscar Paciente
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
     </Box>
   );
 };
