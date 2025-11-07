@@ -473,7 +473,7 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
                       />
                     </Grid>
 
-                    {watchedValues.tipoAlta === 'mejoria' && (
+                    {(watchedValues.tipoAlta === 'alta_medica' || watchedValues.tipoAlta === 'alta_voluntaria') && (
                       <Grid item xs={12}>
                         <Controller
                           name="planSeguimiento"
@@ -548,7 +548,7 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
                       />
                     </Grid>
 
-                    {watchedValues.tipoAlta === 'mejoria' && (
+                    {watchedValues.tipoAlta === 'alta_medica' && (
                       <Grid item xs={12}>
                         <Controller
                           name="citaControl"
@@ -557,10 +557,12 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
                             <TextField
                               {...field}
                               fullWidth
+                              required
                               label="Cita de Control"
+                              type="date"
+                              InputLabelProps={{ shrink: true }}
                               error={!!fieldState.error}
-                              helperText={fieldState.error?.message}
-                              placeholder="Especialidad y fecha sugerida para cita de control (ej: Consulta externa en 7 días)"
+                              helperText={fieldState.error?.message || 'Fecha de cita de control (debe ser en el futuro)'}
                             />
                           )}
                         />
