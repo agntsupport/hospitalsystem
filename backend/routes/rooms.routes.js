@@ -53,6 +53,14 @@ router.get('/', validatePagination, async (req, res) => {
 // POST / - Crear habitación
 router.post('/', authenticateToken, auditMiddleware('habitaciones'), validateRequired(['numero', 'tipo', 'precioPorDia']), async (req, res) => {
   try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden crear habitaciones'
+      });
+    }
+
     const { numero, tipo, precioPorDia, descripcion } = req.body;
 
     // Validar que el precio sea positivo
@@ -160,6 +168,14 @@ router.put('/:id/assign', authenticateToken, auditMiddleware('habitaciones'), ca
 // PUT /:id - Actualizar habitación
 router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), validateRequired(['numero', 'tipo', 'precioPorDia']), async (req, res) => {
   try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden editar habitaciones'
+      });
+    }
+
     const { id } = req.params;
     const { numero, tipo, precioPorDia, descripcion, estado } = req.body;
 
@@ -189,6 +205,14 @@ router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOr
 // DELETE /:id - Eliminar habitación
 router.delete('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), async (req, res) => {
   try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden eliminar habitaciones'
+      });
+    }
+
     const { id } = req.params;
     const habitacionId = parseInt(id);
 

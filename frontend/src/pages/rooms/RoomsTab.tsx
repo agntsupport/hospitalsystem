@@ -47,12 +47,14 @@ import { roomsService } from '@/services/roomsService';
 import { Room, RoomFilters, ROOM_TYPES, ROOM_STATES } from '@/types/rooms.types';
 import { toast } from 'react-toastify';
 import RoomFormDialog from './RoomFormDialog';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RoomsTabProps {
   onStatsChange: () => void;
 }
 
 const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
+  const { user } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,9 @@ const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [patientId, setPatientId] = useState('');
   const [observations, setObservations] = useState('');
+
+  // Solo administradores pueden crear/editar/eliminar habitaciones
+  const canEdit = user?.rol === 'administrador';
 
   useEffect(() => {
     loadRooms();
@@ -270,14 +275,16 @@ const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
           Gestión de Habitaciones
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateRoom}
-            disabled={loading}
-          >
-            Nueva Habitación
-          </Button>
+          {canEdit && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateRoom}
+              disabled={loading}
+            >
+              Nueva Habitación
+            </Button>
+          )}
           <Button
             variant="outlined"
             startIcon={<RefreshIcon />}
@@ -456,16 +463,18 @@ const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
                   </TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                      <Tooltip title="Editar habitación">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleEditRoom(room)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      
+                      {canEdit && (
+                        <Tooltip title="Editar habitación">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleEditRoom(room)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
                       {room.estado === 'disponible' && (
                         <Tooltip title="Asignar habitación">
                           <IconButton
@@ -499,16 +508,18 @@ const RoomsTab: React.FC<RoomsTabProps> = ({ onStatsChange }) => {
                           </IconButton>
                         </Tooltip>
                       )}
-                      
-                      <Tooltip title="Eliminar habitación">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteRoom(room)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
+
+                      {canEdit && (
+                        <Tooltip title="Eliminar habitación">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteRoom(room)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
                   </TableCell>
                 </TableRow>
