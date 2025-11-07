@@ -519,20 +519,42 @@ router.get('/cuentas', authenticateToken, async (req, res) => {
       prisma.cuentaPaciente.count({ where })
     ]);
 
-    const cuentasFormatted = cuentas.map(cuenta => ({
-      id: cuenta.id,
-      numeroExpediente: cuenta.numeroExpediente,
-      pacienteId: cuenta.pacienteId,
-      tipoAtencion: cuenta.tipoAtencion,
-      estado: cuenta.estado,
-      anticipo: parseFloat(cuenta.anticipo.toString()),
-      totalCuenta: parseFloat(cuenta.totalCuenta.toString()),
-      saldoPendiente: parseFloat(cuenta.saldoPendiente.toString()),
-      fechaApertura: cuenta.fechaApertura,
-      fechaCierre: cuenta.fechaCierre,
-      observaciones: cuenta.observaciones,
-      paciente: cuenta.paciente,
-      hospitalizacion: cuenta.hospitalizacion
+    // Calcular totales en tiempo real para cada cuenta
+    const cuentasFormatted = await Promise.all(cuentas.map(async (cuenta) => {
+      const [servicios, productos] = await Promise.all([
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'servicio' },
+          _sum: { subtotal: true }
+        }),
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'producto' },
+          _sum: { subtotal: true }
+        })
+      ]);
+
+      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+      const totalProductos = parseFloat(productos._sum.subtotal || 0);
+      const totalCuenta = totalServicios + totalProductos;
+      const anticipo = parseFloat(cuenta.anticipo.toString());
+      const saldoPendiente = anticipo - totalCuenta;
+
+      return {
+        id: cuenta.id,
+        numeroExpediente: cuenta.numeroExpediente,
+        pacienteId: cuenta.pacienteId,
+        tipoAtencion: cuenta.tipoAtencion,
+        estado: cuenta.estado,
+        anticipo,
+        totalServicios,
+        totalProductos,
+        totalCuenta,
+        saldoPendiente,
+        fechaApertura: cuenta.fechaApertura,
+        fechaCierre: cuenta.fechaCierre,
+        observaciones: cuenta.observaciones,
+        paciente: cuenta.paciente,
+        hospitalizacion: cuenta.hospitalizacion
+      };
     }));
 
     res.json({
@@ -629,16 +651,36 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Formatear respuesta
+    // Calcular totales en tiempo real desde las transacciones
+    const [servicios, productos] = await Promise.all([
+      prisma.transaccionCuenta.aggregate({
+        where: { cuentaId: cuenta.id, tipo: 'servicio' },
+        _sum: { subtotal: true }
+      }),
+      prisma.transaccionCuenta.aggregate({
+        where: { cuentaId: cuenta.id, tipo: 'producto' },
+        _sum: { subtotal: true }
+      })
+    ]);
+
+    const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+    const totalProductos = parseFloat(productos._sum.subtotal || 0);
+    const totalCuenta = totalServicios + totalProductos;
+    const anticipo = parseFloat(cuenta.anticipo.toString());
+    const saldoPendiente = anticipo - totalCuenta;
+
+    // Formatear respuesta con totales calculados
     const cuentaFormatted = {
       id: cuenta.id,
       numeroExpediente: cuenta.numeroExpediente,
       pacienteId: cuenta.pacienteId,
       tipoAtencion: cuenta.tipoAtencion,
       estado: cuenta.estado,
-      anticipo: parseFloat(cuenta.anticipo.toString()),
-      totalCuenta: parseFloat(cuenta.totalCuenta.toString()),
-      saldoPendiente: parseFloat(cuenta.saldoPendiente.toString()),
+      anticipo,
+      totalServicios,
+      totalProductos,
+      totalCuenta,
+      saldoPendiente,
       fechaApertura: cuenta.fechaApertura,
       fechaCierre: cuenta.fechaCierre,
       observaciones: cuenta.observaciones,
