@@ -422,19 +422,10 @@ class HospitalizationService {
     if (!data.resumenEstancia || data.resumenEstancia.trim().length < 20) {
       errors.push('El resumen de estancia debe tener al menos 20 caracteres');
     }
-    
-    if (!data.recomendacionesGenerales || data.recomendacionesGenerales.trim().length < 10) {
-      errors.push('Las recomendaciones generales son requeridas');
-    }
-    
-    if (!data.cuidadosDomiciliarios || data.cuidadosDomiciliarios.length === 0) {
-      errors.push('Los cuidados domiciliarios son requeridos');
-    }
-    
-    if (!data.signosAlarma || data.signosAlarma.length === 0) {
-      errors.push('Los signos de alarma son requeridos');
-    }
-    
+
+    // recomendacionesGenerales, cuidadosDomiciliarios y signosAlarma son opcionales
+    // La validación de campos requeridos ya se hace en el schema de Yup del formulario
+
     // Validar medicamentos al alta
     if (data.medicamentosAlta && data.medicamentosAlta.length > 0) {
       data.medicamentosAlta.forEach((med, index) => {
