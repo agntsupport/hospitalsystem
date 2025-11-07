@@ -546,6 +546,23 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
       } : null
     }));
 
+    // Calcular totales actualizados de la cuenta
+    const [servicios, productos] = await Promise.all([
+      prisma.transaccionCuenta.aggregate({
+        where: { cuentaId: parseInt(id), tipo: 'servicio' },
+        _sum: { subtotal: true }
+      }),
+      prisma.transaccionCuenta.aggregate({
+        where: { cuentaId: parseInt(id), tipo: 'producto' },
+        _sum: { subtotal: true }
+      })
+    ]);
+
+    const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+    const totalProductos = parseFloat(productos._sum.subtotal || 0);
+    const totalCuenta = totalServicios + totalProductos;
+    const saldoPendiente = parseFloat(cuenta.anticipo) - totalCuenta;
+
     res.json({
       success: true,
       data: {
@@ -555,6 +572,14 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
           totalPages: Math.ceil(total / parseInt(limit)),
           currentPage: parseInt(page),
           pageSize: parseInt(limit)
+        },
+        // Totales actualizados de la cuenta
+        totales: {
+          anticipo: parseFloat(cuenta.anticipo),
+          totalServicios,
+          totalProductos,
+          totalCuenta,
+          saldoPendiente
         }
       },
       message: 'Transacciones obtenidas correctamente'

@@ -106,6 +106,14 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [filterTipo, setFilterTipo] = useState('');
+  // Totales actualizados desde el backend
+  const [totales, setTotales] = useState({
+    anticipo: account?.anticipo || 0,
+    totalServicios: account?.totalServicios || 0,
+    totalProductos: account?.totalProductos || 0,
+    totalCuenta: account?.totalCuenta || 0,
+    saldoPendiente: account?.saldoPendiente || 0
+  });
 
   useEffect(() => {
     if (open && account) {
@@ -127,6 +135,11 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
       if (response.success && response.data) {
         setTransactions(response.data.transacciones);
         setTotalTransactions(response.data.pagination.total);
+
+        // Actualizar totales con los valores actualizados del backend
+        if (response.data.totales) {
+          setTotales(response.data.totales);
+        }
       }
     } catch (error) {
       console.error('Error cargando transacciones:', error);
@@ -249,8 +262,8 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
           <Alert severity="info" sx={{ mb: 2 }}>
             <Typography variant="body2">
               <strong>Cálculo del saldo:</strong> Anticipo - Total de servicios y productos = Saldo{' '}
-              {account.saldoPendiente >= 0 
-                ? '(a favor del paciente)' 
+              {totales.saldoPendiente >= 0
+                ? '(a favor del paciente)'
                 : '(que debe el paciente)'
               }
             </Typography>
@@ -258,33 +271,33 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Chip
               icon={<AccountIcon />}
-              label={`Anticipo: ${formatCurrency(account.anticipo)}`}
+              label={`Anticipo: ${formatCurrency(totales.anticipo)}`}
               color="success"
               variant="outlined"
             />
             <Chip
               icon={<MedicalIcon />}
-              label={`Servicios: ${formatCurrency(account.totalServicios)}`}
+              label={`Servicios: ${formatCurrency(totales.totalServicios)}`}
               color="primary"
               variant="outlined"
             />
             <Chip
               icon={<PharmacyIcon />}
-              label={`Productos: ${formatCurrency(account.totalProductos)}`}
+              label={`Productos: ${formatCurrency(totales.totalProductos)}`}
               color="info"
               variant="outlined"
             />
             <Chip
-              label={`Total: ${formatCurrency(account.totalCuenta)}`}
+              label={`Total: ${formatCurrency(totales.totalCuenta)}`}
               color="default"
               variant="filled"
             />
             <Chip
-              label={account.saldoPendiente >= 0 
-                ? `Saldo a Favor: +${formatCurrency(Math.abs(account.saldoPendiente))}`
-                : `Debe: ${formatCurrency(account.saldoPendiente)}`
+              label={totales.saldoPendiente >= 0
+                ? `Saldo a Favor: +${formatCurrency(Math.abs(totales.saldoPendiente))}`
+                : `Debe: ${formatCurrency(totales.saldoPendiente)}`
               }
-              color={account.saldoPendiente >= 0 ? 'success' : 'error'}
+              color={totales.saldoPendiente >= 0 ? 'success' : 'error'}
               variant="filled"
             />
           </Box>
