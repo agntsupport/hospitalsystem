@@ -65,6 +65,44 @@ Valida cumplimiento de accesibilidad WCAG 2.1 AA con Skip Links.
    - Username: `admin`
    - Password: `admin123`
 
+### ⚠️ Limitación Importante: Rate Limiting
+
+**PROBLEMA CRÍTICO:** El backend tiene rate limiting activo que puede bloquear tests E2E:
+
+```javascript
+// backend/server-modular.js
+Rate Limiting Login: 5 intentos / 15 minutos
+Rate Limiting Global: 100 requests / 15 minutos
+```
+
+**Síntomas:**
+- Tests fallan con `429 Too Many Requests`
+- Login no redirige al dashboard
+- URL se queda en `/login`
+
+**Diagnóstico:**
+```bash
+# Ejecutar test de diagnóstico
+npx playwright test e2e/diagnose-login.spec.ts --project=chromium
+
+# Si ves: {"status":429} → Rate limiting activo
+```
+
+**Soluciones:**
+
+**A) TEMPORAL (Actual):** Esperar 15 minutos entre ejecuciones completas de E2E
+
+**B) RECOMENDADO (Futuro):** Desactivar rate limiting en testing
+```javascript
+// backend/server-modular.js
+const isTestEnv = process.env.NODE_ENV === 'test';
+if (!isTestEnv) {
+  app.use('/api/auth/login', loginLimiter);
+}
+```
+
+**C) ALTERNATIVA:** Usar diferentes credenciales por test suite
+
 ### Comandos Disponibles
 
 ```bash
