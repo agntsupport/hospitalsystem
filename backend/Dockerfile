@@ -29,5 +29,5 @@ EXPOSE 3001
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Comando de inicio con migraciones
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && node server-modular.js"]
+# Comando de inicio - usa db push para primer deploy
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx prisma db seed && node server-modular.js"]
