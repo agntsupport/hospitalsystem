@@ -9,19 +9,24 @@ const contactoEmergenciaSchema = yup.object({
   nombre: yup
     .string()
     .optional()
-    .min(2, 'Mínimo 2 caracteres')
+    .test('nombre-emergencia-valido', 'Mínimo 2 caracteres', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return value.length >= 2;
+    })
     .max(100, 'Máximo 100 caracteres'),
   
   relacion: yup
     .string()
     .optional()
-    .oneOf(['padre', 'madre', 'hijo', 'hija', 'conyuge', 'hermano', 'hermana', 'abuelo', 'abuela', 'tio', 'tia', 'primo', 'prima', 'amigo', 'otro'], 'Relación no válida'),
+    .oneOf(['padre', 'madre', 'hijo', 'hija', 'conyuge', 'hermano', 'hermana', 'abuelo', 'abuela', 'tio', 'tia', 'primo', 'prima', 'amigo', 'otro', ''], 'Relación no válida'),
   
   telefono: yup
     .string()
     .optional()
-    .matches(phoneRegex, 'Formato de teléfono no válido')
-    .min(8, 'Mínimo 8 caracteres')
+    .test('telefono-valido', 'Formato de teléfono no válido (mínimo 8 caracteres)', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return phoneRegex.test(value) && value.length >= 8;
+    })
 });
 
 // Schema para seguro médico
@@ -110,38 +115,54 @@ export const patientFormSchema = yup.object({
   telefono: yup
     .string()
     .optional()
-    .matches(phoneRegex, 'Formato de teléfono no válido')
-    .min(8, 'Mínimo 8 caracteres')
-    .max(20, 'Máximo 20 caracteres'),
+    .test('telefono-contacto-valido', 'Formato de teléfono no válido (8-20 caracteres)', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return phoneRegex.test(value) && value.length >= 8 && value.length <= 20;
+    }),
   
   email: yup
     .string()
     .optional()
-    .email('Email no válido')
+    .test('email-valido', 'Email no válido', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return emailRegex.test(value);
+    })
     .max(100, 'Máximo 100 caracteres'),
   
   direccion: yup
     .string()
     .optional()
-    .min(5, 'Mínimo 5 caracteres')
+    .test('direccion-valida', 'Mínimo 5 caracteres', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return value.length >= 5;
+    })
     .max(200, 'Máximo 200 caracteres'),
   
   ciudad: yup
     .string()
     .optional()
-    .min(2, 'Mínimo 2 caracteres')
+    .test('ciudad-valida', 'Mínimo 2 caracteres', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return value.length >= 2;
+    })
     .max(100, 'Máximo 100 caracteres'),
   
   estado: yup
     .string()
     .optional()
-    .min(2, 'Mínimo 2 caracteres')
+    .test('estado-valido', 'Mínimo 2 caracteres', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return value.length >= 2;
+    })
     .max(100, 'Máximo 100 caracteres'),
   
   codigoPostal: yup
     .string()
     .optional()
-    .matches(/^\d{5}$/, 'El código postal debe tener 5 dígitos'),
+    .test('codigo-postal-valido', 'El código postal debe tener 5 dígitos', (value) => {
+      if (!value || value === '') return true; // Acepta vacío
+      return /^\d{5}$/.test(value);
+    }),
   
   // Información Médica
   alergias: yup
