@@ -179,7 +179,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
 
       if (response.success) {
         toast.success('Cuenta cerrada exitosamente');
-        
+
         // Si hay cambio, mostrarlo
         if (changeAmount > 0) {
           toast.info(`Cambio a entregar: $${changeAmount.toFixed(2)}`, {
@@ -187,7 +187,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
             closeButton: true
           });
         }
-        
+
         // Si hay devolución (saldo negativo)
         if (finalBalance < 0) {
           toast.warning(`Devolver al paciente: $${Math.abs(finalBalance).toFixed(2)}`, {
@@ -201,9 +201,28 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
       } else {
         toast.error(response.message || 'Error al cerrar la cuenta');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al procesar el cierre de cuenta');
+    } catch (error: any) {
+      console.error('Error completo:', error);
+
+      // Intentar extraer el mensaje de error del backend
+      const errorMessage = error?.response?.data?.message
+        || error?.message
+        || 'Error al procesar el cierre de cuenta';
+
+      // Si hay una acción requerida, mostrarla también
+      const requiredAction = error?.response?.data?.requiredAction;
+
+      toast.error(errorMessage, {
+        autoClose: requiredAction ? false : 5000,
+        closeButton: true
+      });
+
+      if (requiredAction) {
+        toast.warning(requiredAction, {
+          autoClose: false,
+          closeButton: true
+        });
+      }
     } finally {
       setProcessingPayment(false);
     }
