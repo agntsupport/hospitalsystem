@@ -344,55 +344,76 @@ app.get('/api/patient-accounts', authenticateToken, async (req, res) => {
       take: parseInt(limit)
     });
 
-    const cuentasFormatted = cuentas.map(cuenta => ({
-      id: cuenta.id,
-      pacienteId: cuenta.pacienteId,
-      tipoAtencion: cuenta.tipoAtencion,
-      estado: cuenta.estado,
-      anticipo: parseFloat(cuenta.anticipo || 0),
-      totalServicios: parseFloat(cuenta.totalServicios || 0),
-      totalProductos: parseFloat(cuenta.totalProductos || 0),
-      totalCuenta: parseFloat(cuenta.totalCuenta || 0),
-      saldoPendiente: parseFloat(cuenta.saldoPendiente || 0),
-      habitacionId: cuenta.habitacionId,
-      medicoTratanteId: cuenta.medicoTratanteId,
-      cajeroAperturaId: cuenta.cajeroAperturaId,
-      fechaApertura: cuenta.fechaApertura,
-      fechaCierre: cuenta.fechaCierre,
-      observaciones: cuenta.observaciones,
-      // Datos enriquecidos
-      paciente: cuenta.paciente ? {
-        id: cuenta.paciente.id,
-        nombre: cuenta.paciente.nombre,
-        apellidoPaterno: cuenta.paciente.apellidoPaterno,
-        apellidoMaterno: cuenta.paciente.apellidoMaterno,
-        telefono: cuenta.paciente.telefono,
-        email: cuenta.paciente.email
-      } : null,
-      medicoTratante: cuenta.medicoTratante ? {
-        id: cuenta.medicoTratante.id,
-        nombre: cuenta.medicoTratante.nombre,
-        apellidoPaterno: cuenta.medicoTratante.apellidoPaterno,
-        apellidoMaterno: cuenta.medicoTratante.apellidoMaterno,
-        especialidad: cuenta.medicoTratante.especialidad
-      } : null,
-      habitacion: cuenta.habitacion ? {
-        id: cuenta.habitacion.id,
-        numero: cuenta.habitacion.numero,
-        tipo: cuenta.habitacion.tipo
-      } : null,
-      cajeroApertura: cuenta.cajeroApertura,
-      transacciones: cuenta.transacciones.map(t => ({
-        id: t.id,
-        tipo: t.tipo,
-        concepto: t.concepto,
-        cantidad: t.cantidad || 1,
-        precioUnitario: parseFloat(t.subtotal || 0),
-        subtotal: parseFloat(t.subtotal || 0),
-        servicioId: t.servicioId,
-        productoId: t.productoId,
-        fechaTransaccion: t.fechaTransaccion
-      }))
+    // Recalcular totales en tiempo real para cada cuenta
+    const cuentasFormatted = await Promise.all(cuentas.map(async (cuenta) => {
+      // Calcular totales actualizados desde transacciones reales
+      const [servicios, productos] = await Promise.all([
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'servicio' },
+          _sum: { subtotal: true }
+        }),
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'producto' },
+          _sum: { subtotal: true }
+        })
+      ]);
+
+      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+      const totalProductos = parseFloat(productos._sum.subtotal || 0);
+      const totalCuenta = totalServicios + totalProductos;
+      const anticipo = parseFloat(cuenta.anticipo || 0);
+      const saldoPendiente = anticipo - totalCuenta;
+
+      return {
+        id: cuenta.id,
+        pacienteId: cuenta.pacienteId,
+        tipoAtencion: cuenta.tipoAtencion,
+        estado: cuenta.estado,
+        anticipo,
+        totalServicios,
+        totalProductos,
+        totalCuenta,
+        saldoPendiente,
+        habitacionId: cuenta.habitacionId,
+        medicoTratanteId: cuenta.medicoTratanteId,
+        cajeroAperturaId: cuenta.cajeroAperturaId,
+        fechaApertura: cuenta.fechaApertura,
+        fechaCierre: cuenta.fechaCierre,
+        observaciones: cuenta.observaciones,
+        // Datos enriquecidos
+        paciente: cuenta.paciente ? {
+          id: cuenta.paciente.id,
+          nombre: cuenta.paciente.nombre,
+          apellidoPaterno: cuenta.paciente.apellidoPaterno,
+          apellidoMaterno: cuenta.paciente.apellidoMaterno,
+          telefono: cuenta.paciente.telefono,
+          email: cuenta.paciente.email
+        } : null,
+        medicoTratante: cuenta.medicoTratante ? {
+          id: cuenta.medicoTratante.id,
+          nombre: cuenta.medicoTratante.nombre,
+          apellidoPaterno: cuenta.medicoTratante.apellidoPaterno,
+          apellidoMaterno: cuenta.medicoTratante.apellidoMaterno,
+          especialidad: cuenta.medicoTratante.especialidad
+        } : null,
+        habitacion: cuenta.habitacion ? {
+          id: cuenta.habitacion.id,
+          numero: cuenta.habitacion.numero,
+          tipo: cuenta.habitacion.tipo
+        } : null,
+        cajeroApertura: cuenta.cajeroApertura,
+        transacciones: cuenta.transacciones.map(t => ({
+          id: t.id,
+          tipo: t.tipo,
+          concepto: t.concepto,
+          cantidad: t.cantidad || 1,
+          precioUnitario: parseFloat(t.subtotal || 0),
+          subtotal: parseFloat(t.subtotal || 0),
+          servicioId: t.servicioId,
+          productoId: t.productoId,
+          fechaTransaccion: t.fechaTransaccion
+        }))
+      };
     }));
 
     res.json({
