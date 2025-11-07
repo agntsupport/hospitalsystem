@@ -53,6 +53,7 @@ import { Patient, PatientFilters, GENDER_OPTIONS, CIVIL_STATUS_OPTIONS, BLOOD_TY
 import { toast } from 'react-toastify';
 import PatientFormDialog from './PatientFormDialog';
 import AuditTrail from '@/components/common/AuditTrail';
+import PatientHospitalizationHistory from '@/components/patients/PatientHospitalizationHistory';
 
 interface PatientsTabProps {
   onStatsChange: () => void;
@@ -641,6 +642,9 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                   </Grid>
                 )}
               </Grid>
+
+              {/* Historial de Hospitalizaciones */}
+              <PatientHospitalizationHistory pacienteId={selectedPatient.id} />
             </Box>
           )}
         </DialogContent>

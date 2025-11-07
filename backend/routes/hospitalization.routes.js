@@ -172,12 +172,22 @@ async function actualizarTotalesCuenta(cuentaId, tx = prisma) {
 router.get('/admissions', validatePagination, async (req, res) => {
   try {
     const { page, limit, offset } = req.pagination;
-    const { estado, especialidad, search } = req.query;
+    const { estado, especialidad, search, pacienteId, includeDischarges } = req.query;
 
-    const where = {
-      // Por defecto, solo mostrar pacientes NO dados de alta (aún hospitalizados)
-      fechaAlta: null
-    };
+    const where = {};
+
+    // Filtrar por paciente específico si se proporciona
+    if (pacienteId) {
+      where.cuentaPaciente = {
+        pacienteId: parseInt(pacienteId)
+      };
+    }
+
+    // Por defecto, solo mostrar pacientes NO dados de alta (aún hospitalizados)
+    // A menos que se especifique includeDischarges=true
+    if (includeDischarges !== 'true') {
+      where.fechaAlta = null;
+    }
 
     // Manejar filtros de estado (puede ser string o array)
     if (estado) {
@@ -279,7 +289,7 @@ router.get('/admissions', validatePagination, async (req, res) => {
     res.json(formatPaginationResponse(admisionesFormatted, total, page, limit));
 
   } catch (error) {
-    logger.logError('GET_ADMISSIONS', error, { filters: { estado, especialidad, search } });
+    logger.logError('GET_ADMISSIONS', error, { filters: { estado, especialidad, search, pacienteId, includeDischarges } });
     handlePrismaError(error, res);
   }
 });

@@ -88,7 +88,37 @@ class HospitalizationService {
       };
     }
   }
-  
+
+  /**
+   * Obtiene historial completo de hospitalizaciones de un paciente
+   * Incluye tanto hospitalizaciones activas como dadas de alta
+   */
+  async getPatientHospitalizations(pacienteId: number): Promise<HospitalizationListResponse<HospitalAdmission>> {
+    try {
+      const params = new URLSearchParams();
+      params.append('pacienteId', pacienteId.toString());
+      params.append('includeDischarges', 'true');
+      params.append('limite', '100'); // Mostrar hasta 100 hospitalizaciones
+
+      const response = await api.get(`/hospitalization/admissions?${params.toString()}`);
+
+      return {
+        success: true,
+        message: 'Historial de hospitalizaciones obtenido correctamente',
+        data: response.data,
+        generadoEn: new Date().toISOString(),
+        parametros: { pacienteId }
+      };
+    } catch (error: any) {
+      console.error('Error al obtener historial de hospitalizaciones:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener historial de hospitalizaciones',
+        error: error.error
+      };
+    }
+  }
+
   /**
    * Crea un nuevo ingreso hospitalario
    */
