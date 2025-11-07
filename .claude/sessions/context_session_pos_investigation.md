@@ -1,8 +1,9 @@
 # Contexto de Sesión: Investigación Sistema POS
 
 **Fecha de inicio:** 7 de noviembre de 2025
-**Investigador:** Backend Research Specialist
-**Estado:** Investigación Completa ✅
+**Investigador:** Backend Research Specialist + Claude Code
+**Estado:** Error Identificado y Parcialmente Resuelto ⚠️
+**Última actualización:** 7 de noviembre de 2025 - 17:35
 
 ## Objetivo de la Investigación
 
@@ -91,3 +92,102 @@ Aunque la corrección se implementó en el endpoint `/cuentas`, hay **3 endpoint
 - El sistema tiene **449 tests backend** (395 passing, 88% pass rate)
 - Tests POS: 26/26 passing (100% ✅) según commit reciente
 - La arquitectura es robusta con transacciones Prisma y timeouts configurados
+
+---
+
+## ACTUALIZACIÓN: Error Crítico Identificado (7 Nov 2025 - 17:00)
+
+### Problema Detectado en Producción
+
+**Cuenta #1** muestra datos corruptos en el modal de historial de transacciones:
+
+```
+Servicios:  $1,500.00
+Productos:     $36.50
+Total:     $15,036.50  ❌ ERROR (debería ser $1,536.50)
+
+Mensaje adicional: "No se encontraron transacciones para esta cuenta."
+```
+
+**Diferencia:** $13,500.00 inexplicables
+**Imagen de evidencia:** `14.png` (raíz del proyecto)
+
+### Causa Raíz Identificada
+
+1. **Datos corruptos en BD:** La columna `totalCuenta` de la tabla `cuentaPaciente` tiene un valor incorrecto guardado
+2. **Snapshot histórico corrupto:** La cuenta fue cerrada ANTES del fix del commit `b293475`, por lo que tiene datos incorrectos inmutables
+3. **Transacciones faltantes:** El endpoint retorna array vacío de transacciones (posibles causas: eliminadas, mal asociadas, problema de paginación)
+
+### Soluciones Implementadas (Commit 6ae1d9a)
+
+✅ **Fix 1:** Endpoint `GET /pos/cuenta/:id/transacciones` ahora respeta snapshot histórico
+- Cuentas abiertas: Cálculo en tiempo real ✅
+- Cuentas cerradas: Snapshot inmutable ✅ (aunque el snapshot puede estar corrupto)
+
+✅ **Fix 2:** Validaciones anti-corrupción
+- `hospitalization.routes.js:27-40` - Previene cargos en cuentas cerradas
+- `solicitudes.routes.js:560-573` - Previene entrega de productos en cuentas cerradas
+
+✅ **Fix 3:** Tests de snapshot histórico
+- 2 nuevos tests agregados (29/29 passing)
+- Validación de inmutabilidad para cuentas cerradas
+
+### Arquitectura: Problemas Descubiertos
+
+❌ **Endpoint de cierre NO EXISTE:** `PUT /api/pos/cuentas/:id/close` no está implementado
+❌ **Cierre incompleto:** El endpoint `PUT /admissions/:id/discharge` solo actualiza hospitalización, NO cierra la cuenta
+❌ **Transacciones no incluidas:** El endpoint `GET /cuentas` no incluye transacciones en la respuesta
+
+### Documentación Generada
+
+1. **ERROR_TOTALES_CUENTA_CERRADA.md** - Reporte completo del error
+   - Análisis de causa raíz
+   - Scripts SQL de diagnóstico y corrección
+   - Plan de acción recomendado
+   - Fases de implementación
+
+2. **README.md** - Índice de la investigación POS
+   - Resumen ejecutivo del problema
+   - Estado de documentación
+   - Próximos pasos
+
+3. **backend.md** - Análisis técnico exhaustivo (70KB)
+   - Arquitectura completa del módulo POS
+   - Diagramas de flujo y secuencia
+   - Recomendaciones de optimización
+
+### Tareas Pendientes
+
+⏳ **Fase 1 - Mitigación (1-2h):**
+1. Ejecutar script de diagnóstico
+2. Corregir cuenta #1 manualmente
+3. Verificar existencia de transacciones
+4. Generar reporte de cuentas corruptas
+
+⏳ **Fase 2 - Corrección Masiva (2-4h):**
+1. Backup completo de BD
+2. Script de corrección masiva
+3. Validación de resultados
+4. Actualización de auditoría
+
+⏳ **Fase 3 - Arquitectura (1-2 días):**
+1. Implementar endpoint `PUT /api/pos/cuentas/:id/close`
+2. Agregar validaciones en cierre
+3. Tests E2E de ciclo completo
+4. Integración con hospitalización
+
+⏳ **Fase 4 - Prevención (1 día):**
+1. Constraints de BD para validar totales
+2. Triggers de validación
+3. Monitoreo automático
+4. Alertas para discrepancias
+
+### Referencias
+
+- **Commits:** `b293475`, `6ae1d9a`
+- **Archivos clave:**
+  - `backend/routes/pos.routes.js:823-851`
+  - `backend/tests/pos/pos.test.js:687-780`
+  - `backend/routes/hospitalization.routes.js:27-40`
+  - `backend/routes/solicitudes.routes.js:560-573`
+- **Documentación:** `.claude/doc/pos_investigation/`
