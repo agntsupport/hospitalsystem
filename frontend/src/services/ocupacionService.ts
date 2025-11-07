@@ -2,8 +2,9 @@
 
 import axios from 'axios';
 import type { OcupacionResponse } from '../types/ocupacion.types';
+import { APP_CONFIG } from '../utils/constants';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = APP_CONFIG.API_BASE_URL;
 
 export const ocupacionService = {
   /**
@@ -18,7 +19,7 @@ export const ocupacionService = {
     }
 
     const response = await axios.get<OcupacionResponse>(
-      `${API_URL}/api/dashboard/ocupacion`,
+      `${API_URL}/dashboard/ocupacion`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

@@ -16,6 +16,16 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ==============================================
+// TRUST PROXY (IMPORTANTE PARA EASYPANEL/NGINX)
+// ==============================================
+// Confiar en el proxy para headers como X-Forwarded-Proto
+// Necesario cuando el servidor está detrás de un reverse proxy
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+  console.log('✅ Trust proxy enabled (behind reverse proxy)');
+}
+
+// ==============================================
 // SEGURIDAD: HELMET
 // ==============================================
 // Configurar headers de seguridad HTTP

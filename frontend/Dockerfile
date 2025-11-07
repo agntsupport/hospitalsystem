@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 
 # Argument para la URL del API (con valor por defecto para producción)
-ARG VITE_API_URL=https://hospital-management-system-app.1nse3e.easypanel.host
+ARG VITE_API_URL=https://hospital-management-system-app.1nse3e.easypanel.host/api
 ENV VITE_API_URL=$VITE_API_URL
 
 # Construir la aplicación
