@@ -465,6 +465,214 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// GET /cuentas - Obtener listado de cuentas de pacientes
+router.get('/cuentas', authenticateToken, async (req, res) => {
+  try {
+    const { estado, pacienteId, limit = 100, offset = 0 } = req.query;
+
+    const where = {};
+
+    // Filtrar por estado si se proporciona
+    if (estado) {
+      where.estado = estado;
+    }
+
+    // Filtrar por paciente específico si se proporciona
+    if (pacienteId) {
+      where.pacienteId = parseInt(pacienteId);
+    }
+
+    const [cuentas, total] = await Promise.all([
+      prisma.cuentaPaciente.findMany({
+        where,
+        include: {
+          paciente: {
+            select: {
+              id: true,
+              numeroExpediente: true,
+              nombre: true,
+              apellidoPaterno: true,
+              apellidoMaterno: true,
+              telefono: true
+            }
+          },
+          hospitalizacion: {
+            select: {
+              id: true,
+              fechaIngreso: true,
+              fechaAlta: true,
+              habitacion: {
+                select: {
+                  numero: true,
+                  tipo: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          fechaApertura: 'desc'
+        },
+        take: parseInt(limit),
+        skip: parseInt(offset)
+      }),
+      prisma.cuentaPaciente.count({ where })
+    ]);
+
+    const cuentasFormatted = cuentas.map(cuenta => ({
+      id: cuenta.id,
+      numeroExpediente: cuenta.numeroExpediente,
+      pacienteId: cuenta.pacienteId,
+      tipoAtencion: cuenta.tipoAtencion,
+      estado: cuenta.estado,
+      anticipo: parseFloat(cuenta.anticipo.toString()),
+      totalCuenta: parseFloat(cuenta.totalCuenta.toString()),
+      saldoPendiente: parseFloat(cuenta.saldoPendiente.toString()),
+      fechaApertura: cuenta.fechaApertura,
+      fechaCierre: cuenta.fechaCierre,
+      observaciones: cuenta.observaciones,
+      paciente: cuenta.paciente,
+      hospitalizacion: cuenta.hospitalizacion
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        accounts: cuentasFormatted,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset)
+        }
+      },
+      message: 'Cuentas obtenidas correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_PATIENT_ACCOUNTS', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener cuentas de pacientes',
+      error: error.message
+    });
+  }
+});
+
+// GET /cuenta/:id - Obtener detalles completos de una cuenta específica
+router.get('/cuenta/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const cuenta = await prisma.cuentaPaciente.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            numeroExpediente: true,
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            fechaNacimiento: true,
+            genero: true,
+            telefono: true,
+            email: true
+          }
+        },
+        transacciones: {
+          include: {
+            producto: {
+              select: {
+                codigo: true,
+                nombre: true,
+                unidadMedida: true
+              }
+            },
+            servicio: {
+              select: {
+                codigo: true,
+                nombre: true,
+                tipo: true
+              }
+            }
+          },
+          orderBy: { fechaTransaccion: 'desc' }
+        },
+        hospitalizacion: {
+          select: {
+            id: true,
+            fechaIngreso: true,
+            fechaAlta: true,
+            diagnosticoIngreso: true,
+            habitacion: {
+              select: {
+                numero: true,
+                tipo: true
+              }
+            },
+            medicoEspecialista: {
+              select: {
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!cuenta) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cuenta de paciente no encontrada'
+      });
+    }
+
+    // Formatear respuesta
+    const cuentaFormatted = {
+      id: cuenta.id,
+      numeroExpediente: cuenta.numeroExpediente,
+      pacienteId: cuenta.pacienteId,
+      tipoAtencion: cuenta.tipoAtencion,
+      estado: cuenta.estado,
+      anticipo: parseFloat(cuenta.anticipo.toString()),
+      totalCuenta: parseFloat(cuenta.totalCuenta.toString()),
+      saldoPendiente: parseFloat(cuenta.saldoPendiente.toString()),
+      fechaApertura: cuenta.fechaApertura,
+      fechaCierre: cuenta.fechaCierre,
+      observaciones: cuenta.observaciones,
+      paciente: cuenta.paciente,
+      transacciones: cuenta.transacciones.map(t => ({
+        id: t.id,
+        tipo: t.tipo,
+        concepto: t.concepto,
+        cantidad: t.cantidad,
+        precioUnitario: parseFloat(t.precioUnitario.toString()),
+        subtotal: parseFloat(t.subtotal.toString()),
+        fechaTransaccion: t.fechaTransaccion,
+        producto: t.producto,
+        servicio: t.servicio
+      })),
+      hospitalizacion: cuenta.hospitalizacion
+    };
+
+    res.json({
+      success: true,
+      data: { account: cuentaFormatted },
+      message: 'Cuenta obtenida correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_PATIENT_ACCOUNT', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener cuenta de paciente',
+      error: error.message
+    });
+  }
+});
+
 // GET /cuenta/:id/transacciones - Obtener transacciones de una cuenta específica
 router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
   try {

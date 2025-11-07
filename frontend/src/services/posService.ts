@@ -71,11 +71,11 @@ export const posService = {
     pacienteId?: number;
   } = {}): Promise<ApiResponse<{ accounts: PatientAccount[] }>> {
     const queryParams = new URLSearchParams();
-    
+
     if (params.estado) queryParams.append('estado', params.estado);
     if (params.pacienteId) queryParams.append('pacienteId', params.pacienteId.toString());
 
-    const url = `${API_ROUTES.PATIENT_ACCOUNTS.BASE}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const url = `/pos/cuentas${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return api.get(url);
   },
 
@@ -84,7 +84,7 @@ export const posService = {
   },
 
   async getPatientAccountById(id: number): Promise<ApiResponse<{ account: PatientAccount }>> {
-    return api.get(API_ROUTES.PATIENT_ACCOUNTS.BY_ID(id));
+    return api.get(`/pos/cuenta/${id}`);
   },
 
   async addTransaction(accountId: number, transactionData: AddTransactionData): Promise<ApiResponse<{ transaction: any, account: PatientAccount }>> {
