@@ -583,14 +583,14 @@ const HospitalizationPage: React.FC = () => {
                             </Tooltip>
                           ) : null}
                           
-                          {(admission.estado === 'en_observacion' || admission.estado === 'estable' || admission.estado === 'critico') && (
+                          {!admission.fechaAlta && (
                             <>
                               <Tooltip title="Editar">
                                 <IconButton size="small">
                                   <EditIcon />
                                 </IconButton>
                               </Tooltip>
-                              
+
                               {puedeDarAlta ? (
                                 <Tooltip title="Dar de Alta">
                                   <IconButton
