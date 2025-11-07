@@ -202,7 +202,13 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
         toast.error(response.message || 'Error al cerrar la cuenta');
       }
     } catch (error: any) {
+      // Log detallado del error
+      console.error('=== ERROR AL CERRAR CUENTA ===');
       console.error('Error completo:', error);
+      console.error('Error.response:', error?.response);
+      console.error('Error.response.data:', error?.response?.data);
+      console.error('Error.response.status:', error?.response?.status);
+      console.error('Error.message:', error?.message);
 
       // Intentar extraer el mensaje de error del backend
       const errorMessage = error?.response?.data?.message
@@ -211,6 +217,9 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
 
       // Si hay una acción requerida, mostrarla también
       const requiredAction = error?.response?.data?.requiredAction;
+
+      console.error('Mensaje extraído:', errorMessage);
+      console.error('Acción requerida:', requiredAction);
 
       toast.error(errorMessage, {
         autoClose: requiredAction ? false : 5000,
