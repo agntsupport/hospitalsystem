@@ -2,6 +2,12 @@
 // ABOUTME: Valida el flujo completo desde registro hasta cierre de cuenta con anticipo automático $10,000
 
 import { test, expect, Page } from '@playwright/test';
+import {
+  fillTextField,
+  fillPasswordField,
+  clickButton,
+  performLogin
+} from './helpers/selectors';
 
 /**
  * FLUJO 1: CAJERO - Gestión de Pacientes y Cuentas
@@ -37,28 +43,32 @@ test.describe('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
   test('1.1 - Login como Cajero', async () => {
     await page.goto('http://localhost:3000/login');
 
-    // Llenar credenciales de cajero
-    await page.fill('input[name="username"]', 'cajero1');
-    await page.fill('input[name="password"]', 'cajero123');
+    // ✅ FIX: Usar helpers que apuntan a inputs reales (no contenedores MUI)
+    await fillTextField(page, 'username-input', 'cajero1');
+    await fillPasswordField(page, 'password-input', 'cajero123');
 
     // Click en botón de login
-    await page.click('button[type="submit"]');
+    await clickButton(page, 'login-button');
 
-    // Verificar redirección al dashboard
-    await expect(page).toHaveURL(/.*dashboard/);
+    // Esperar a que el dashboard cargue (verificar elemento característico del dashboard)
+    // En lugar de solo esperar la URL, esperamos que elementos del dashboard sean visibles
+    await expect(page.locator('text=/buenos.*días|buenas.*tardes|buenas.*noches/i')).toBeVisible({ timeout: 15000 });
 
-    // Verificar que el usuario esté logueado
-    await expect(page.locator('text=/cajero1|Cajero/i')).toBeVisible();
+    // Verificar que la URL cambió a dashboard
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 5000 });
+
+    // Verificar que el nombre de usuario esté visible (usar first() porque aparece varias veces)
+    await expect(page.locator('text=/cajero1/i').first()).toBeVisible();
   });
 
   test('1.2 - Verificar Tabla de Ocupación en Dashboard', async () => {
     // Verificar que existe la tabla de ocupación en tiempo real
-    await expect(page.locator('text=/ocupación/i')).toBeVisible();
+    await expect(page.getByTestId('ocupacion-table')).toBeVisible({ timeout: 10000 });
 
-    // Verificar secciones de la tabla
-    await expect(page.locator('text=/consultorio.*general/i')).toBeVisible();
-    await expect(page.locator('text=/habitaciones/i')).toBeVisible();
-    await expect(page.locator('text=/quirófanos/i')).toBeVisible();
+    // Verificar secciones de la tabla con data-testid
+    await expect(page.getByTestId('consultorios-card')).toBeVisible();
+    await expect(page.getByTestId('habitaciones-card')).toBeVisible();
+    await expect(page.getByTestId('quirofanos-card')).toBeVisible();
   });
 
   test('1.3 - Navegar a Gestión de Pacientes', async () => {
