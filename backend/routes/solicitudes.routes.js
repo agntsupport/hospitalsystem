@@ -551,10 +551,25 @@ router.put('/:id/entregar',
       // Verificar stock disponible
       for (const detalle of solicitud.detalles) {
         if (detalle.producto.stockActual < detalle.cantidadSolicitada) {
-          return res.status(400).json({ 
-            error: `Stock insuficiente para el producto ${detalle.producto.nombre}. Stock actual: ${detalle.producto.stockActual}, solicitado: ${detalle.cantidadSolicitada}` 
+          return res.status(400).json({
+            error: `Stock insuficiente para el producto ${detalle.producto.nombre}. Stock actual: ${detalle.producto.stockActual}, solicitado: ${detalle.cantidadSolicitada}`
           });
         }
+      }
+
+      // Verificar que la cuenta del paciente esté abierta
+      const cuenta = await prisma.cuentaPaciente.findUnique({
+        where: { id: solicitud.cuentaPacienteId }
+      });
+
+      if (!cuenta) {
+        return res.status(404).json({ error: 'Cuenta de paciente no encontrada' });
+      }
+
+      if (cuenta.estado === 'cerrada') {
+        return res.status(400).json({
+          error: 'No se pueden agregar cargos a una cuenta cerrada. La cuenta debe estar abierta.'
+        });
       }
 
       // Actualizar solicitud y registrar movimientos de inventario

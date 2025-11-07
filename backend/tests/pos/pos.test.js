@@ -683,6 +683,102 @@ describe('POS Routes Tests', () => {
       expect([200, 400]).toContain(response.status);
     });
   });
+
+  // Tests de snapshot histórico para cuentas cerradas
+  describe('Historical Snapshot for Closed Accounts', () => {
+    it('should respect historical snapshot totals for closed accounts', async () => {
+      // Crear cuenta de paciente y cerrarla con totales específicos
+      const paciente = await createTestPatient();
+      const cuenta = await prisma.cuentaPaciente.create({
+        data: {
+          pacienteId: paciente.id,
+          tipoAtencion: 'hospitalizacion',
+          cajeroAperturaId: testUser.id,
+          cajeroCierreId: testUser.id,
+          estado: 'cerrada',
+          anticipo: 10000.00,
+          totalServicios: 3000.00,
+          totalProductos: 2000.00,
+          totalCuenta: 5000.00,
+          saldoPendiente: 5000.00,
+          fechaApertura: new Date(),
+          fechaCierre: new Date()
+        }
+      });
+
+      // Agregar una transacción (esto simula un error humano)
+      await prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta.id,
+          tipo: 'producto',
+          concepto: 'Producto agregado después del cierre (ERROR)',
+          cantidad: 1,
+          precioUnitario: 500.00,
+          subtotal: 500.00
+        }
+      });
+
+      // Obtener transacciones - debe retornar totales del snapshot histórico, NO recalculados
+      const response = await request(app)
+        .get(`/api/pos/cuenta/${cuenta.id}/transacciones`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.totales).toBeDefined();
+
+      // Los totales deben ser del snapshot histórico (NO deben incluir la transacción agregada después)
+      expect(response.body.data.totales.totalServicios).toBe(3000.00);
+      expect(response.body.data.totales.totalProductos).toBe(2000.00);
+      expect(response.body.data.totales.totalCuenta).toBe(5000.00);
+      expect(response.body.data.totales.saldoPendiente).toBe(5000.00);
+    });
+
+    it('should calculate totals in real-time for open accounts', async () => {
+      // Crear cuenta ABIERTA
+      const paciente = await createTestPatient();
+      const cuenta = await prisma.cuentaPaciente.create({
+        data: {
+          pacienteId: paciente.id,
+          tipoAtencion: 'hospitalizacion',
+          cajeroAperturaId: testUser.id,
+          estado: 'abierta',
+          anticipo: 10000.00,
+          totalServicios: 0.00,
+          totalProductos: 0.00,
+          totalCuenta: 0.00,
+          saldoPendiente: 10000.00,
+          fechaApertura: new Date()
+        }
+      });
+
+      // Agregar transacción
+      await prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta.id,
+          tipo: 'producto',
+          concepto: 'Producto 1',
+          cantidad: 2,
+          precioUnitario: 500.00,
+          subtotal: 1000.00
+        }
+      });
+
+      // Obtener transacciones - debe recalcular en tiempo real
+      const response = await request(app)
+        .get(`/api/pos/cuenta/${cuenta.id}/transacciones`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.totales).toBeDefined();
+
+      // Los totales deben ser recalculados en tiempo real
+      expect(response.body.data.totales.totalProductos).toBe(1000.00);
+      expect(response.body.data.totales.totalCuenta).toBe(1000.00);
+      expect(response.body.data.totales.saldoPendiente).toBe(9000.00); // 10000 - 1000
+    });
+  });
 });
 
 console.log(`
@@ -697,9 +793,10 @@ console.log(`
 ║  ✓ GET /api/pos/cuenta/:id/transacciones (3 tests)          ║
 ║  ✓ POST /api/pos/recalcular-cuentas (2 tests)               ║
 ║  ✓ Edge Cases (3 tests)                                      ║
+║  ✓ Historical Snapshot for Closed Accounts (2 tests)        ║
 ║                                                               ║
-║  Total: 27 tests comprehensivos                              ║
-║  Coverage objetivo: 70%+                                      ║
+║  Total: 29 tests comprehensivos                              ║
+║  Coverage objetivo: 75%+                                      ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 `);

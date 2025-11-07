@@ -26,6 +26,19 @@ function calcularDiasEstancia(fechaIngreso) {
  */
 async function generarCargosHabitacion(cuentaId, habitacionId, fechaIngreso, empleadoId, tx = prisma) {
   try {
+    // Validar que la cuenta esté abierta antes de agregar transacciones
+    const cuenta = await tx.cuentaPaciente.findUnique({
+      where: { id: parseInt(cuentaId) }
+    });
+
+    if (!cuenta) {
+      throw new Error('Cuenta de paciente no encontrada');
+    }
+
+    if (cuenta.estado === 'cerrada') {
+      throw new Error('No se pueden agregar cargos a una cuenta cerrada. La cuenta debe estar abierta.');
+    }
+
     // Obtener datos de la habitación
     const habitacion = await tx.habitacion.findUnique({
       where: { id: parseInt(habitacionId) }

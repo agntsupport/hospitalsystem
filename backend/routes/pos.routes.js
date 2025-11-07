@@ -820,22 +820,35 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
       } : null
     }));
 
-    // Calcular totales actualizados de la cuenta
-    const [servicios, productos] = await Promise.all([
-      prisma.transaccionCuenta.aggregate({
-        where: { cuentaId: parseInt(id), tipo: 'servicio' },
-        _sum: { subtotal: true }
-      }),
-      prisma.transaccionCuenta.aggregate({
-        where: { cuentaId: parseInt(id), tipo: 'producto' },
-        _sum: { subtotal: true }
-      })
-    ]);
+    // Calcular totales: en tiempo real si ABIERTA, valores almacenados si CERRADA
+    let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
 
-    const totalServicios = parseFloat(servicios._sum.subtotal || 0);
-    const totalProductos = parseFloat(productos._sum.subtotal || 0);
-    const totalCuenta = totalServicios + totalProductos;
-    const saldoPendiente = parseFloat(cuenta.anticipo) - totalCuenta;
+    if (cuenta.estado === 'abierta') {
+      // Cuenta ABIERTA: calcular en tiempo real desde transacciones
+      const [servicios, productos] = await Promise.all([
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: parseInt(id), tipo: 'servicio' },
+          _sum: { subtotal: true }
+        }),
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: parseInt(id), tipo: 'producto' },
+          _sum: { subtotal: true }
+        })
+      ]);
+
+      totalServicios = parseFloat(servicios._sum.subtotal || 0);
+      totalProductos = parseFloat(productos._sum.subtotal || 0);
+      totalCuenta = totalServicios + totalProductos;
+      anticipo = parseFloat(cuenta.anticipo);
+      saldoPendiente = anticipo - totalCuenta;
+    } else {
+      // Cuenta CERRADA: usar valores almacenados (snapshot histórico al momento del cierre)
+      anticipo = parseFloat(cuenta.anticipo.toString());
+      totalServicios = parseFloat(cuenta.totalServicios.toString());
+      totalProductos = parseFloat(cuenta.totalProductos.toString());
+      totalCuenta = parseFloat(cuenta.totalCuenta.toString());
+      saldoPendiente = parseFloat(cuenta.saldoPendiente.toString());
+    }
 
     res.json({
       success: true,
@@ -847,9 +860,9 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
           currentPage: parseInt(page),
           pageSize: parseInt(limit)
         },
-        // Totales actualizados de la cuenta
+        // Totales de la cuenta (snapshot histórico si cerrada, tiempo real si abierta)
         totales: {
-          anticipo: parseFloat(cuenta.anticipo),
+          anticipo,
           totalServicios,
           totalProductos,
           totalCuenta,
