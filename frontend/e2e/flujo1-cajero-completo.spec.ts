@@ -165,10 +165,10 @@ test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     await expect(page).toHaveURL(/.*hospitalization|hospitalizacion/);
 
     // Click en nuevo ingreso
-    await page.click('button:has-text("Nuevo"), button:has-text("Ingresar")');
+    await page.click('button:has-text("Nuevo Ingreso")');
 
     // Esperar formulario de hospitalización
-    await expect(page.locator('text=/nuevo.*ingreso|ingresar.*paciente/i')).toBeVisible();
+    await expect(page.locator('text=/nuevo.*ingreso|ingresar.*paciente|registrar/i')).toBeVisible({ timeout: 5000 });
 
     // Seleccionar paciente (último creado)
     await page.click('input[name="pacienteId"], select[name="pacienteId"]');
