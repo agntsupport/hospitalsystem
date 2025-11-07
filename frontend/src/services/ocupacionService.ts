@@ -12,7 +12,7 @@ export const ocupacionService = {
    * @returns {Promise<OcupacionResponse>} Datos de ocupación de consultorios, habitaciones y quirófanos
    */
   async getOcupacion(): Promise<OcupacionResponse> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(APP_CONFIG.TOKEN_KEY);
 
     if (!token) {
       throw new Error('No hay token de autenticación');
