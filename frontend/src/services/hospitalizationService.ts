@@ -265,7 +265,7 @@ class HospitalizationService {
         };
       }
       
-      const response = await api.post(`/hospitalization/admissions/${admissionId}/discharge`, dischargeData);
+      const response = await api.put(`/hospitalization/admissions/${admissionId}/discharge`, dischargeData);
       
       return {
         success: true,
