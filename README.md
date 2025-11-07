@@ -7,10 +7,10 @@
 
 ![Estado del Proyecto](https://img.shields.io/badge/Estado-92%25%20Funcional-brightgreen)
 ![Versión](https://img.shields.io/badge/Versión-2.2.0--stable-blue)
-![Tests Unit](https://img.shields.io/badge/Tests%20Unit-1339%20Total%20(99.85%25%20pass)-brightgreen)
+![Tests Unit](https://img.shields.io/badge/Tests%20Unit-1288%20Total%20(99.84%25%20pass)-brightgreen)
 ![Frontend Pass Rate](https://img.shields.io/badge/Frontend-99.77%25%20(871%2F873%20tests%2C%2041%2F41%20suites)-brightgreen)
 ![Backend Pass Rate](https://img.shields.io/badge/Backend-100%25%20(415%2F415%20tests%2C%2019%2F19%20suites)-brightgreen)
-![Tests E2E](https://img.shields.io/badge/Tests%20E2E-51%20Playwright-brightgreen)
+![Tests E2E](https://img.shields.io/badge/Tests%20E2E-84%20Total%20(61%20pass%2C%2030%25%20flujos%20críticos)-yellow)
 ![Base de Datos](https://img.shields.io/badge/BD-PostgreSQL%2014.18-blue)
 ![Arquitectura](https://img.shields.io/badge/Arquitectura-Modular-green)
 ![Auditoría](https://img.shields.io/badge/Auditoría-Completa-purple)
@@ -95,9 +95,11 @@
 - **Validación Robusta** - Esquemas y middleware de validación
 
 ### Testing y Calidad
-- **1,339 tests totales** - 99.85% pass rate (↑ +566 tests desde FASE 6)
+- **1,372 tests totales** - 99.75% pass rate (↑ +33 tests E2E flujos críticos)
 - **873 tests unit frontend** - 99.77% passing (871/873 pass, 41/41 suites) ✅
 - **415 tests backend** - 100% passing (415/415 pass, 19/19 suites 100%) ✅
+- **33 tests E2E flujos críticos** - 30% passing (10/33 pass, requiere ajustes de selectores) ⚠️
+- **51 tests E2E dashboard/ocupación** - Playwright configurado ✅
 - **51 tests E2E Playwright** - 100% passing ✅
 - **31 tests reportes** - Financial, operational, custom, export (100% passing) ✅
 - **20+ tests hospitalización** - Critical business logic covered ✅
@@ -285,14 +287,19 @@ VITE_API_URL=http://localhost:3001
 - **Middleware automático** de auditoría
 
 ### 🧪 12. Testing Framework
-- **1,339 tests totales** con 100% backend, 99.77% frontend pass rate
-- **Frontend**: 873 tests (99.77% passing - 871/873 pass, 41/41 suites)
-- **Backend**: 415 tests (100% passing - 415/415 pass, 19/19 suites)
-- **E2E Playwright**: 51/51 passing (100%)
+- **1,372 tests totales** con 100% backend, 99.77% frontend, 30% E2E flujos críticos
+- **Frontend Unit**: 873 tests (99.77% passing - 871/873 pass, 41/41 suites)
+- **Backend Unit**: 415 tests (100% passing - 415/415 pass, 19/19 suites)
+- **E2E Dashboard/Ocupación**: 51/51 passing (100%) ✅
+- **E2E Flujos Críticos**: 33 tests (30% passing - 10/33 pass) ⚠️
+  - **Flujo 1 Cajero**: 11 tests (2 passing - cambio habitación, cirugía)
+  - **Flujo 2 Almacén**: 11 tests (3 passing - surtido, COSTO/PRECIO, margen)
+  - **Flujo 3 Admin**: 11 tests (5 passing - egresos, médicos top, precios)
+  - **Requiere**: Corrección de selectores de login y UI (2-3 horas para 80%+)
 - **Tests Hospitalización**: 20+ tests críticos (admisiones, altas, cuentas) ✅
 - **Tests Concurrencia**: 15+ tests race conditions (inventario, quirófanos, habitaciones) ✅
 - **Tests Seguridad**: Account locking, JWT blacklist, HTTPS enforcement ✅
-- **Jest + Testing Library** configurado
+- **Jest + Testing Library + Playwright** configurado
 - **Connection Pool**: Singleton Prisma para estabilidad ✅
 
 ## 🏗️ Arquitectura de Base de Datos
