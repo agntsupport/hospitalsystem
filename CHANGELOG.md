@@ -5,6 +5,190 @@ Todos los cambios importantes del proyecto están documentados en este archivo.
 
 ---
 
+## [2.1.0] - 2025-11-07
+
+### Módulo de Pacientes - Historial de Hospitalizaciones ✅
+
+**Fecha:** 7 de Noviembre de 2025
+**Commits:** 2afee54, 11d56a5
+
+#### Agregado
+- **Historial Completo de Hospitalizaciones en Módulo Pacientes**:
+  - Nuevo componente `PatientHospitalizationHistory.tsx` (223 líneas)
+  - Ver todas las admisiones de un paciente (activas + dadas de alta)
+  - Integrado en diálogo "Ver Detalles" del módulo Pacientes
+  - Límite de 100 hospitalizaciones por paciente
+
+- **Endpoint Backend GET /api/hospitalization/admissions**:
+  - Nuevo parámetro `pacienteId` para filtrar por paciente específico
+  - Nuevo parámetro `includeDischarges=true` para incluir pacientes dados de alta
+  - Por defecto solo muestra pacientes activos (no dados de alta)
+
+- **Servicio Frontend hospitalizationService**:
+  - Nuevo método `getPatientHospitalizations(pacienteId)`
+  - Retorna tanto hospitalizaciones activas como altas médicas
+  - Integración con API usando URLSearchParams
+
+#### Interfaz de Usuario
+- **Tarjetas de Hospitalización**:
+  - Estado visual: borde verde (alta) / azul (activo)
+  - Información mostrada:
+    - Fechas de ingreso y alta
+    - Habitación asignada (número + tipo)
+    - Médico tratante (nombre completo)
+    - Diagnóstico principal
+    - Duración de estancia
+    - Estado (Alta Médica / En Hospitalización)
+
+- **Indicadores de Estado**:
+  - ✅ Chip verde "Alta Médica" para hospitalizaciones cerradas
+  - ⏱️ Chip azul "En Hospitalización" para casos activos
+  - ⚠️ Mensaje cuando no hay hospitalizaciones registradas
+
+#### Casos de Uso
+- **Cajeros**: Consultar historial de hospitalizaciones previas antes de crear nueva cuenta
+- **Médicos/Enfermeros**: Revisar admisiones anteriores y notas médicas históricas
+- **Administradores**: Auditoría de admisiones y altas médicas del paciente
+
+---
+
+## [2.0.1] - 2025-11-07
+
+### Sistema POS - Corrección de Totales en Tiempo Real ✅
+
+**Fecha:** 7 de Noviembre de 2025
+**Commits:** b293475, 114f752
+
+#### Corregido
+- **Cálculo de Totales de Cuenta en Tiempo Real** (commit b293475):
+  - **Bug**: Total mostraba anticipo sumado incorrectamente ($15,036.50 en lugar de $1,536.50)
+  - **Bug**: Saldo mostraba $0.00 en lugar del saldo real ($8,463.50)
+  - **Causa raíz**: Frontend usaba valores cacheados del objeto `account` en lugar de recalcular
+  - **Solución**: Backend recalcula totales en tiempo real usando Prisma aggregate
+
+- **Inconsistencia entre Lista y Detalle de Cuentas** (commit 114f752):
+  - **Bug**: "Cuentas Abiertas" (lista) mostraba totales distintos a "Estado de Cuenta" (detalle)
+  - **Ejemplo**: Lista mostraba $15,036.50 pero detalle mostraba $1,536.50
+  - **Causa raíz**: GET /api/patient-accounts retornaba valores cacheados de BD sin recalcular
+  - **Solución**: Ambos endpoints ahora calculan en tiempo real con misma lógica
+
+#### Cambios Técnicos
+
+**Backend - hospitalization.routes.js (Líneas 549-586)**:
+```javascript
+// Calcular totales actualizados desde transacciones reales
+const [servicios, productos] = await Promise.all([
+  prisma.transaccionCuenta.aggregate({
+    where: { cuentaId: parseInt(id), tipo: 'servicio' },
+    _sum: { subtotal: true }
+  }),
+  prisma.transaccionCuenta.aggregate({
+    where: { cuentaId: parseInt(id), tipo: 'producto' },
+    _sum: { subtotal: true }
+  })
+]);
+
+const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+const totalProductos = parseFloat(productos._sum.subtotal || 0);
+const totalCuenta = totalServicios + totalProductos;
+const saldoPendiente = parseFloat(cuenta.anticipo) - totalCuenta;
+
+// Retornar totales actualizados
+res.json({
+  success: true,
+  data: {
+    transacciones: transaccionesFormatted,
+    pagination: { ... },
+    totales: {
+      anticipo: parseFloat(cuenta.anticipo),
+      totalServicios,
+      totalProductos,
+      totalCuenta,
+      saldoPendiente
+    }
+  }
+});
+```
+
+**Backend - server-modular.js (Líneas 347-417)**:
+```javascript
+// Recalcular totales en tiempo real para cada cuenta
+const cuentasFormatted = await Promise.all(cuentas.map(async (cuenta) => {
+  const [servicios, productos] = await Promise.all([
+    prisma.transaccionCuenta.aggregate({
+      where: { cuentaId: cuenta.id, tipo: 'servicio' },
+      _sum: { subtotal: true }
+    }),
+    prisma.transaccionCuenta.aggregate({
+      where: { cuentaId: cuenta.id, tipo: 'producto' },
+      _sum: { subtotal: true }
+    })
+  ]);
+
+  const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+  const totalProductos = parseFloat(productos._sum.subtotal || 0);
+  const totalCuenta = totalServicios + totalProductos;
+  const anticipo = parseFloat(cuenta.anticipo || 0);
+  const saldoPendiente = anticipo - totalCuenta;
+
+  return {
+    id: cuenta.id,
+    anticipo,
+    totalServicios,
+    totalProductos,
+    totalCuenta,
+    saldoPendiente,
+    // ... otros campos
+  };
+}));
+```
+
+**Frontend - AccountDetailDialog.tsx (Líneas 110-149, 262-303)**:
+```typescript
+// Estado para totales actualizados
+const [totales, setTotales] = useState({
+  anticipo: account?.anticipo || 0,
+  totalServicios: account?.totalServicios || 0,
+  totalProductos: account?.totalProductos || 0,
+  totalCuenta: account?.totalCuenta || 0,
+  saldoPendiente: account?.saldoPendiente || 0
+});
+
+// Actualizar totales desde backend
+const loadTransactions = async () => {
+  const response = await posService.getAccountTransactions(account.id, { ... });
+
+  if (response.data.totales) {
+    setTotales(response.data.totales); // ✅ Usar valores recalculados
+  }
+};
+
+// UI muestra totales actualizados
+<Chip label={`Total: ${formatCurrency(totales.totalCuenta)}`} />
+<Chip label={`Saldo: ${formatCurrency(totales.saldoPendiente)}`} />
+```
+
+#### Fórmula Correcta
+```
+Total de Cuenta = Servicios + Productos
+Saldo Pendiente = Anticipo - Total de Cuenta
+
+Ejemplo:
+- Anticipo: $10,000.00
+- Servicios: $1,500.00
+- Productos: $36.50
+- Total: $1,536.50 ✅ (no $15,036.50 ❌)
+- Saldo: $8,463.50 ✅ (no $0.00 ❌)
+```
+
+#### Impacto
+- ✅ Reportes financieros ahora son precisos
+- ✅ Cajeros ven totales correctos en tiempo real
+- ✅ Consistencia entre todas las vistas del sistema
+- ✅ Single source of truth: transacciones de BD
+
+---
+
 ## [2.0.0-stable] - 2025-11-02
 
 ### FASE 5 - Advanced Security & Stability ✅

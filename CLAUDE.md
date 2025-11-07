@@ -144,7 +144,7 @@ El administrador gestiona ingresos/egresos/cuentas por cobrar → analiza médic
 1. ✅ **Autenticación** - JWT, roles, permisos
 2. ✅ **Empleados** - CRUD completo con roles
 3. ✅ **Habitaciones** - Gestión y ocupación
-4. ✅ **Pacientes** - Registro, búsqueda avanzada, edición
+4. ✅ **Pacientes** - Registro, búsqueda avanzada, edición, historial de hospitalizaciones
 5. ✅ **POS** - Punto de venta integrado con inventario
 6. ✅ **Inventario** - Productos, proveedores, movimientos
 7. ✅ **Facturación** - Facturas, pagos, cuentas por cobrar
@@ -246,7 +246,7 @@ npm run dev
 
 ## 📊 Estado del Sistema (Noviembre 2025 - Post FASE 1)
 
-### Métricas Actuales (Actualizadas: 6 Nov 2025)
+### Métricas Actuales (Actualizadas: 7 Nov 2025)
 | Categoría | Estado Actual | Calificación |
 |-----------|---------------|--------------|
 | **Seguridad** | JWT + bcrypt + Blacklist + HTTPS + Bloqueo cuenta | 10/10 ⭐⭐ |
@@ -333,6 +333,23 @@ npm run dev
 - **⚠️ NOTA**: 46 tests backend + 46 tests E2E requieren corrección (cleanup + selectores)
 - **🎯 Plan corrección**: 3 días (25h) para alcanzar 100% pass rate
 
+**✅ FASE 8 - Mejoras UX y Corrección Financiera (7 Nov 2025):**
+- **Historial de Hospitalizaciones** (commits: 2afee54, 11d56a5):
+  - Nuevo componente `PatientHospitalizationHistory.tsx` integrado en módulo Pacientes
+  - Ver todas las admisiones del paciente (activas + dadas de alta)
+  - Endpoint GET /admissions con parámetros `pacienteId` e `includeDischarges`
+  - Límite de 100 hospitalizaciones por paciente
+  - UI: Tarjetas con estado visual (verde=alta, azul=activo)
+  - Información: fechas, habitación, médico, diagnóstico, duración
+
+- **Corrección Totales POS** (commits: b293475, 114f752):
+  - **Fix crítico**: Total mostraba anticipo sumado ($15,036.50 → $1,536.50)
+  - **Fix crítico**: Saldo mostraba $0.00 → $8,463.50 correcto
+  - Implementado recálculo en tiempo real con Prisma aggregate
+  - Eliminada inconsistencia entre lista y detalle de cuentas
+  - Single source of truth: transacciones de BD
+  - Fórmula correcta: `saldoPendiente = anticipo - (servicios + productos)`
+
 **📋 Ver detalles completos:** [HISTORIAL_FASES_2025.md](./.claude/doc/HISTORIAL_FASES_2025.md)
 
 ## 🔧 Mejoras Implementadas (Resumen)
@@ -353,11 +370,12 @@ npm run dev
 - ✅ Accesibilidad mejorada (WCAG 2.1 AA)
 
 ### Testing
-- ✅ 1,339 tests implementados (873 frontend + 415 backend + 51 E2E)
-- ✅ Backend suite: 19/19 suites passing (100% ✅)
-- ✅ Frontend suite: 41/41 suites passing (100% ✅)
+- ✅ 1,377 tests implementados (873 frontend + 449 backend + 55 E2E)
+- ✅ Frontend suite: 41/41 suites passing (100% ✅) - 873/873 tests
+- ⚠️ Backend suite: 16/19 suites passing (88% ⚠️) - 395/449 tests
+- ❌ E2E suite: 9/55 tests passing (16% ❌) - Requiere corrección de selectores
 - ✅ POS module: 26/26 tests passing (100% ✅)
-- ✅ Pass rate global: 100% (1,339/1,339 tests passing, 0 failing)
+- ⚠️ Pass rate global: 88% backend, 100% frontend, 16% E2E
 - ✅ TypeScript: 0 errores en producción
 - ✅ Playwright configurado y funcionando
 - ✅ CI/CD GitHub Actions (4 jobs completos)
@@ -421,7 +439,7 @@ psql -d hospital_management -c "SELECT 1;"
 - **Arquitectura Modular**: Sistema usa `server-modular.js` con rutas separadas por módulo
 - **Base de Datos**: PostgreSQL 14.18 con 37 tablas relacionales via Prisma ORM
 - **Comando Unificado**: `npm run dev` inicia backend (3001) y frontend (3000) automáticamente
-- **Testing**: 1,339 tests reales (100% pass rate backend y frontend), cobertura ~75% backend + ~8.5% frontend
+- **Testing**: 1,377 tests implementados (100% frontend, 88% backend, 16% E2E), cobertura ~75% backend + ~8.5% frontend
 - **Auditoría Total**: Sistema completo de trazabilidad con middleware automático
 - **Validación Robusta**: Números únicos con sugerencias automáticas
 - **UI Profesional**: Material-UI v5.14.5 con overflow protection, tooltips, responsive design
@@ -575,7 +593,7 @@ Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
 **🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
 **📞 Teléfono:** 443 104 7479
-**📅 Última actualización:** 6 de noviembre de 2025
+**📅 Última actualización:** 7 de noviembre de 2025
 **✅ Estado:** Sistema Funcional (8.4/10) | Tests 1,377 (88% passing) | TypeScript 0 errores ✅
 
 **📊 Estado Real de Tests:**
