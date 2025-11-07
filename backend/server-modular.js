@@ -481,24 +481,31 @@ app.put('/api/patient-accounts/:id/close', authenticateToken, auditMiddleware('c
       where: { cuentaPacienteId: parseInt(id) }
     });
 
-    // Validar nota SOAP de alta médica para hospitalizaciones
+    // Validar nota SOAP de alta médica para hospitalizaciones SOLO si aún no fue dado de alta
     if (hospitalizacion && cuenta.tipoAtencion === 'hospitalizacion') {
-      const notaAlta = await prisma.notaHospitalizacion.findFirst({
-        where: {
-          hospitalizacionId: hospitalizacion.id,
-          tipoNota: 'alta'
-        },
-        include: {
-          empleado: true
-        }
-      });
+      // Si la hospitalización ya tiene alta médica/voluntaria, no validar nota
+      const yaFueDadoDeAlta = hospitalizacion.fechaAlta &&
+        ['alta_medica', 'alta_voluntaria'].includes(hospitalizacion.estado);
 
-      if (!notaAlta) {
-        return res.status(400).json({
-          success: false,
-          message: 'No se puede cerrar la cuenta. Falta "Nota de Alta" por parte de un médico.',
-          requiredAction: 'Un médico debe agregar una "Nota de Alta" antes de cerrar la cuenta del paciente.'
+      if (!yaFueDadoDeAlta) {
+        // Solo validar nota de alta si aún NO fue dado de alta
+        const notaAlta = await prisma.notaHospitalizacion.findFirst({
+          where: {
+            hospitalizacionId: hospitalizacion.id,
+            tipoNota: 'alta'
+          },
+          include: {
+            empleado: true
+          }
         });
+
+        if (!notaAlta) {
+          return res.status(400).json({
+            success: false,
+            message: 'No se puede cerrar la cuenta. Falta "Nota de Alta" por parte de un médico.',
+            requiredAction: 'Un médico debe agregar una "Nota de Alta" antes de cerrar la cuenta del paciente.'
+          });
+        }
       }
     }
 
