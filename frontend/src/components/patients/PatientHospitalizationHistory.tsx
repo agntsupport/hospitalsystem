@@ -22,7 +22,7 @@ import {
   Warning as WarningIcon,
   AccessTime as ClockIcon,
 } from '@mui/icons-material';
-import { hospitalizationService } from '@/services/hospitalizationService';
+import hospitalizationService from '@/services/hospitalizationService';
 import { HospitalAdmission } from '@/types/hospitalization.types';
 
 interface PatientHospitalizationHistoryProps {
