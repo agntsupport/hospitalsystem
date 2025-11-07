@@ -66,8 +66,24 @@ app.use(compression());
 // CORS
 // ==============================================
 // Middleware global de CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:5173',
+  'https://hospital-management-system-frontend.1nse3e.easypanel.host' // Producción EasyPanel
+];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173'],
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como curl, Postman, apps móviles)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true
 }));
 
