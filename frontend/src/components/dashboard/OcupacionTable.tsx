@@ -128,9 +128,9 @@ export const OcupacionTable = () => {
   }
 
   return (
-    <Box>
+    <Box data-testid="ocupacion-table">
       {/* Header con resumen general */}
-      <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <Card sx={{ mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }} data-testid="ocupacion-header">
         <CardContent>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={8}>
@@ -161,7 +161,7 @@ export const OcupacionTable = () => {
       {/* Resumen de capacidades */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card data-testid="consultorios-card">
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
@@ -182,7 +182,7 @@ export const OcupacionTable = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card data-testid="habitaciones-card">
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
@@ -203,7 +203,7 @@ export const OcupacionTable = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card data-testid="quirofanos-card">
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>

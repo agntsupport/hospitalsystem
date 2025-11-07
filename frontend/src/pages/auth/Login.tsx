@@ -166,6 +166,9 @@ const Login: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
+                  inputProps={{
+                    'data-testid': 'username-input'
+                  }}
                 />
               )}
             />
@@ -203,6 +206,9 @@ const Login: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
+                  inputProps={{
+                    'data-testid': 'password-input'
+                  }}
                 />
               )}
             />
@@ -213,6 +219,7 @@ const Login: React.FC = () => {
               variant="contained"
               size="large"
               disabled={loading}
+              data-testid="login-button"
               sx={{
                 mt: 3,
                 mb: 2,

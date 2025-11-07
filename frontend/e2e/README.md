@@ -320,6 +320,79 @@ Antes de hacer commit con nuevos tests:
 
 ---
 
+## 🔄 FASE 2: Tests Refactorizados (Noviembre 2025)
+
+### Nueva Arquitectura de Tests
+
+La **FASE 2** introduce una arquitectura mejorada de tests E2E:
+
+**Archivos Nuevos:**
+```
+e2e/
+├── fixtures/
+│   └── auth-fixtures.ts              # Fixtures de autenticación por rol ✨ NUEVO
+├── helpers/
+│   └── test-data-helpers.ts          # Helpers para crear datos de prueba ✨ NUEVO
+├── flujo1-cajero-refactored.spec.ts  # Flujo cajero independiente ✨ NUEVO
+├── flujo2-almacen-refactored.spec.ts # Flujo almacén independiente ✨ NUEVO
+└── flujo3-admin-refactored.spec.ts   # Flujo admin independiente ✨ NUEVO
+```
+
+### Fixtures de Autenticación
+
+Las fixtures proporcionan páginas pre-autenticadas:
+
+```typescript
+import { test, expect } from './fixtures/auth-fixtures';
+
+test('Mi test con cajero', async ({ cajeroPage }) => {
+  // La página ya está autenticada como cajero
+  await cajeroPage.goto('http://localhost:3000/patients');
+});
+```
+
+**Fixtures Disponibles:**
+- `cajeroPage` - Usuario: `cajero1` / `cajero123`
+- `almacenistaPage` - Usuario: `almacen1` / `almacen123`
+- `adminPage` - Usuario: `admin` / `admin123`
+- `enfermerPage` - Usuario: `enfermero1` / `enfermero123`
+- `medicoPage` - Usuario: `especialista1` / `medico123`
+
+### Helpers de Datos de Prueba
+
+**`createTestPatient(page)`** - Crea un paciente de prueba con datos únicos
+
+**`createTestProduct(page)`** - Crea un producto de prueba con COSTO y PRECIO DE VENTA
+
+**`navigateToModule(page, moduleName)`** - Navega a un módulo específico
+
+**`generateUniqueData()`** - Genera datos únicos para evitar colisiones
+
+### Mejoras vs Tests Originales
+
+| Aspecto | Original | Refactorizado |
+|---------|----------|---------------|
+| **Independencia** | ❌ Dependen unos de otros | ✅ Totalmente independientes |
+| **Autenticación** | Login manual cada vez | ✅ Fixture pre-autenticada |
+| **Datos de prueba** | Compartidos | ✅ Cada test crea los suyos |
+| **Ejecución paralela** | ❌ No funciona bien | ✅ Funciona perfectamente |
+| **Mantenibilidad** | Baja | ✅ Alta (tests aislados) |
+
+### Ejecutar Tests Refactorizados
+
+```bash
+# Todos los tests refactorizados
+npx playwright test e2e/*-refactored.spec.ts
+
+# Solo Flujo 1 (Cajero)
+npx playwright test e2e/flujo1-cajero-refactored.spec.ts
+
+# Con UI mode
+npx playwright test e2e/flujo1-cajero-refactored.spec.ts --ui
+```
+
+---
+
 **Desarrollado por:** Alfredo Manuel Reyes
-**Empresa:** agnt_ - Software Development Company
-**Última actualización:** 29 de octubre de 2025
+**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**Última actualización:** 6 de noviembre de 2025

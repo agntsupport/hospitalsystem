@@ -34,28 +34,28 @@ test.describe('FLUJO 2: Almacén - Gestión Completa de Inventario', () => {
   test('2.1 - Login como Almacenista', async () => {
     await page.goto('http://localhost:3000/login');
 
-    // Llenar credenciales de almacenista
-    await page.fill('input[name="username"]', 'almacen1');
-    await page.fill('input[name="password"]', 'almacen123');
+    // Llenar credenciales de almacenista usando data-testid
+    await page.getByTestId('username-input').fill('almacen1');
+    await page.getByTestId('password-input').fill('almacen123');
 
     // Click en botón de login
-    await page.click('button[type="submit"]');
+    await page.getByTestId('login-button').click();
 
     // Verificar redirección al dashboard
-    await expect(page).toHaveURL(/.*dashboard/);
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 10000 });
 
-    // Verificar que el usuario esté logueado
-    await expect(page.locator('text=/almacen1|Almacenista/i')).toBeVisible();
+    // Verificar que el usuario esté logueado (usar mensaje de bienvenida único)
+    await expect(page.locator('text=/buenos.*días|buenas.*tardes|buenas.*noches.*almacen1/i')).toBeVisible();
   });
 
   test('2.2 - Verificar Tabla de Ocupación en Dashboard', async () => {
     // Verificar que existe la tabla de ocupación en tiempo real
-    await expect(page.locator('text=/ocupación/i')).toBeVisible();
+    await expect(page.getByTestId('ocupacion-table')).toBeVisible({ timeout: 10000 });
 
-    // Verificar secciones de la tabla
-    await expect(page.locator('text=/consultorio.*general/i')).toBeVisible();
-    await expect(page.locator('text=/habitaciones/i')).toBeVisible();
-    await expect(page.locator('text=/quirófanos/i')).toBeVisible();
+    // Verificar secciones de la tabla con data-testid
+    await expect(page.getByTestId('consultorios-card')).toBeVisible();
+    await expect(page.getByTestId('habitaciones-card')).toBeVisible();
+    await expect(page.getByTestId('quirofanos-card')).toBeVisible();
   });
 
   test('2.3 - Navegar a Gestión de Inventario', async () => {
@@ -278,8 +278,8 @@ test.describe('FLUJO 2: Almacén - Gestión Completa de Inventario', () => {
     // Navegar a reportes
     await page.goto('http://localhost:3000/reports');
 
-    // Buscar sección de inventario o rotación
-    const reporteInventario = page.locator('text=/inventario|rotación|rotation/i, a[href*="inventory"]');
+    // Buscar sección de inventario o rotación - usar solo selector de texto
+    const reporteInventario = page.locator('text=/inventario|rotación|rotation/i');
 
     if (await reporteInventario.count() > 0) {
       await reporteInventario.first().click();

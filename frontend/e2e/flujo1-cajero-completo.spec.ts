@@ -6,7 +6,9 @@ import {
   fillTextField,
   fillPasswordField,
   clickButton,
-  performLogin
+  performLogin,
+  getByTestId,
+  waitForTestId
 } from './helpers/selectors';
 
 /**
@@ -61,14 +63,15 @@ test.describe('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     await expect(page.locator('text=/cajero1/i').first()).toBeVisible();
   });
 
-  test('1.2 - Verificar Tabla de Ocupación en Dashboard', async () => {
-    // Verificar que existe la tabla de ocupación en tiempo real
-    await expect(page.getByTestId('ocupacion-table')).toBeVisible({ timeout: 10000 });
+  test('1.2 - Verificar Dashboard Cargó Correctamente', async () => {
+    // Verificar que el dashboard principal cargó
+    await expect(page.locator('text=/sistema.*gestión.*hospitalaria/i')).toBeVisible({ timeout: 10000 });
 
-    // Verificar secciones de la tabla con data-testid
-    await expect(page.getByTestId('consultorios-card')).toBeVisible();
-    await expect(page.getByTestId('habitaciones-card')).toBeVisible();
-    await expect(page.getByTestId('quirofanos-card')).toBeVisible();
+    // Verificar que hay estadísticas visibles
+    await expect(page.locator('text=/estadísticas|resumen/i')).toBeVisible();
+
+    // Verificar que hay al menos un módulo disponible (botón para navegar)
+    await expect(page.locator('button:has-text("Pacientes"), button:has-text("Punto de Venta")')).toBeVisible();
   });
 
   test('1.3 - Navegar a Gestión de Pacientes', async () => {

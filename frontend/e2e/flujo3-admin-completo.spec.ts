@@ -31,28 +31,28 @@ test.describe('FLUJO 3: Administrador - Gestión Financiera', () => {
   test('3.1 - Login como Administrador', async () => {
     await page.goto('http://localhost:3000/login');
 
-    // Llenar credenciales de administrador
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
+    // Llenar credenciales de administrador usando data-testid
+    await page.getByTestId('username-input').fill('admin');
+    await page.getByTestId('password-input').fill('admin123');
 
     // Click en botón de login
-    await page.click('button[type="submit"]');
+    await page.getByTestId('login-button').click();
 
     // Verificar redirección al dashboard
-    await expect(page).toHaveURL(/.*dashboard/);
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 10000 });
 
-    // Verificar que el usuario esté logueado
-    await expect(page.locator('text=/admin|administrador/i')).toBeVisible();
+    // Verificar que el usuario esté logueado (usar mensaje de bienvenida único)
+    await expect(page.locator('text=/buenos.*días|buenas.*tardes|buenas.*noches.*admin/i')).toBeVisible();
   });
 
   test('3.2 - Verificar Tabla de Ocupación en Dashboard', async () => {
     // Verificar que existe la tabla de ocupación en tiempo real
-    await expect(page.locator('text=/ocupación/i')).toBeVisible();
+    await expect(page.getByTestId('ocupacion-table')).toBeVisible({ timeout: 10000 });
 
-    // Verificar secciones de la tabla
-    await expect(page.locator('text=/consultorio.*general/i')).toBeVisible();
-    await expect(page.locator('text=/habitaciones/i')).toBeVisible();
-    await expect(page.locator('text=/quirófanos/i')).toBeVisible();
+    // Verificar secciones de la tabla con data-testid
+    await expect(page.getByTestId('consultorios-card')).toBeVisible();
+    await expect(page.getByTestId('habitaciones-card')).toBeVisible();
+    await expect(page.getByTestId('quirofanos-card')).toBeVisible();
 
     // Como administrador, debe ver porcentaje de ocupación
     const ocupacionMetrica = page.locator('text=/%|porcentaje/i');
@@ -274,8 +274,8 @@ test.describe('FLUJO 3: Administrador - Gestión Financiera', () => {
   });
 
   test('3.10 - Gestión de Precios de Servicios', async () => {
-    // Buscar sección de servicios en inventario
-    const serviciosTab = page.locator('text=/servicio/i, button:has-text("Servicios")');
+    // Buscar sección de servicios en inventario - usar solo selector de texto
+    const serviciosTab = page.locator('text=/servicio/i');
 
     if (await serviciosTab.count() > 0) {
       await serviciosTab.first().click();

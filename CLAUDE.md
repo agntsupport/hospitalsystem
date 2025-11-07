@@ -26,12 +26,17 @@ cd backend && npx prisma db seed  # Resetear datos
 
 # Testing
 cd frontend && npm test           # 873 tests frontend (100% passing, 41/41 suites)
-cd backend && npm test            # 415 tests backend (100% passing, 19/19 suites)
+cd backend && npm test            # 449 tests backend (395 passing, 46 failing, 16/19 suites)
 
 # Testing E2E (Playwright)
-cd frontend && npm run test:e2e        # 51 tests E2E completos (requiere backend)
+cd frontend && npm run test:e2e        # 55 tests E2E (9 passing, 46 failing - requiere fixes)
 cd frontend && npm run test:e2e:ui     # Tests con interfaz visual
 ./test-e2e-full.sh                     # Script todo-en-uno (backend + tests)
+
+# NOTA: Tests requieren correcciones (ver .claude/doc/ESTADO_REAL_TESTS_2025.md)
+# - Backend: 46 tests failing (cleanup de datos)
+# - E2E: 46 tests failing (selectores Material-UI)
+# - Tiempo estimado de corrección: 3 días (25h)
 ```
 
 ## 📁 Arquitectura del Sistema
@@ -241,19 +246,31 @@ npm run dev
 
 ## 📊 Estado del Sistema (Noviembre 2025 - Post FASE 1)
 
-### Métricas Actuales
+### Métricas Actuales (Actualizadas: 6 Nov 2025)
 | Categoría | Estado Actual | Calificación |
 |-----------|---------------|--------------|
 | **Seguridad** | JWT + bcrypt + Blacklist + HTTPS + Bloqueo cuenta | 10/10 ⭐⭐ |
 | **Performance Frontend** | Code splitting, 78 useCallback, 3 useMemo | 9.0/10 ⭐ |
 | **Mantenibilidad** | God Components refactorizados (-72%) | 9.5/10 ⭐ |
-| **Testing** | 1,339 tests (100% pass rate, backend 19/19 suites, frontend 41/41 suites) | 10/10 ⭐⭐ |
+| **Testing** | 1,377 tests implementados (88% pass rate backend, 16% E2E) | 7.2/10 ⚠️ |
 | **TypeScript** | 0 errores en producción | 10/10 ⭐ |
 | **Cobertura Tests** | ~75% backend + ~8.5% frontend + E2E críticos | 7.5/10 |
 | **CI/CD** | GitHub Actions (4 jobs completos) | 9.0/10 ⭐ |
 | **Estabilidad BD** | Singleton Prisma + Connection pool optimizado | 10/10 ⭐⭐ |
 
-**Calificación General del Sistema: 8.8/10** (↑ desde 7.8/10 pre-FASE 1)
+**Calificación General del Sistema: 8.4/10** (↓ desde 8.8 por tests failing)
+
+### Estado Real de Tests (Verificado 6 Nov 2025)
+- ✅ Frontend: 873/873 tests passing (100%, 41/41 suites)
+- ⚠️ Backend: 395/449 tests passing (88.0%, 16/19 suites) - 46 tests requieren corrección
+- ❌ E2E: 9/55 tests passing (16.4%) - 46 tests requieren corrección
+- 🎯 **Objetivo:** 100% pass rate en 3 días (25h de correcciones)
+
+**Problemas Identificados:**
+1. Backend: Cleanup de datos mal implementado (6 suites afectadas)
+2. E2E: Selectores Material-UI incorrectos (login bloqueado)
+
+**Ver análisis completo:** [ESTADO_REAL_TESTS_2025.md](./.claude/doc/ESTADO_REAL_TESTS_2025.md)
 
 ### Logros Principales (FASES 0-5)
 
@@ -305,14 +322,16 @@ npm run dev
 - **Total fixes**: 11 correcciones (5 schema + 6 business logic)
 
 **✅ FASE 7 - Opción A Deuda Técnica (Noviembre 2025):**
-- **Backend solicitudes**: 5 tests descumentados (cancelar, validación stock, múltiples items)
+- **Backend solicitudes**: 5 tests documentados (cancelar, validación stock, múltiples items)
 - **Endpoint cancelación**: PUT /api/solicitudes/:id/cancelar implementado
 - **Validación stock**: Advertencias sin bloquear solicitud
 - **Tests frontend**: 2 tests auditService corregidos
 - **Memory fix**: Heap size aumentado a 8GB para Jest
-- **Tests backend**: 410 → 415 tests (100% passing, 19/19 suites)
-- **Tests frontend**: 312 → 873 tests (100% passing, 41/41 suites)
-- **Total tests**: 773 → 1,339 (+566 tests, +73% expansión)
+- **Tests backend**: 410 → 449 tests (395 passing, 16/19 suites) ⚠️
+- **Tests frontend**: 312 → 873 tests (100% passing, 41/41 suites) ✅
+- **Total tests**: 773 → 1,377 (+604 tests, +78% expansión)
+- **⚠️ NOTA**: 46 tests backend + 46 tests E2E requieren corrección (cleanup + selectores)
+- **🎯 Plan corrección**: 3 días (25h) para alcanzar 100% pass rate
 
 **📋 Ver detalles completos:** [HISTORIAL_FASES_2025.md](./.claude/doc/HISTORIAL_FASES_2025.md)
 
@@ -557,7 +576,15 @@ Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
 **🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
 **📞 Teléfono:** 443 104 7479
 **📅 Última actualización:** 6 de noviembre de 2025
-**✅ Estado:** Sistema Funcional (8.8/10) | Tests 1,339 (100% passing) | TypeScript 0 errores ✅
+**✅ Estado:** Sistema Funcional (8.4/10) | Tests 1,377 (88% passing) | TypeScript 0 errores ✅
+
+**📊 Estado Real de Tests:**
+- Frontend: 873/873 passing (100%) ✅
+- Backend: 395/449 passing (88%) ⚠️
+- E2E: 9/55 passing (16%) ❌
+- 🎯 Plan corrección: 3 días para 100% pass rate
+
+**📁 Ver análisis completo:** [ANALISIS_SISTEMA_COMPLETO_2025.md](./.claude/doc/ANALISIS_SISTEMA_COMPLETO_2025.md)
 
 ---
 *© 2025 AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial. Todos los derechos reservados.*
