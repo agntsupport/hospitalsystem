@@ -255,6 +255,29 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
         </Box>
       </Box>
 
+      {/* Quick Search - Always Visible */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          type="search"
+          placeholder="Buscar paciente por nombre, apellido o expediente..."
+          value={filters.search || ''}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'background.paper',
+            },
+          }}
+        />
+      </Box>
+
       {/* Filters */}
       {showFilters && (
         <Card sx={{ mb: 3 }}>

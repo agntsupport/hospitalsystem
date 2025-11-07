@@ -139,9 +139,8 @@ test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     // Ahora en Paso 3 - Información Médica (todos los campos opcionales)
     // No hay campos requeridos en este paso, ir directo a guardar
 
-    // WORKAROUND: El botón "Guardar Paciente" no submitea correctamente el formulario
-    // Usar keyboard.press Enter para forzar submit
-    await page.keyboard.press('Enter');
+    // Guardar paciente (botón submit del wizard)
+    await page.getByRole('button', { name: 'Guardar Paciente' }).click();
 
     // Esperar a que el diálogo se cierre (confirmación de guardado exitoso)
     await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 15000 });
@@ -149,12 +148,15 @@ test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     // Esperar un momento para que la lista se actualice
     await page.waitForTimeout(2000);
 
-    // Buscar el paciente recién creado por apellido
-    await page.fill('input[type="search"], input[placeholder*="Buscar"]', 'TestPlaywright');
-    await page.waitForTimeout(1000);
+    // Buscar el paciente recién creado por apellido usando el campo de búsqueda siempre visible
+    const searchInput = page.locator('input[type="search"], input[placeholder*="Buscar"]');
+    await expect(searchInput).toBeVisible({ timeout: 5000 });
+
+    await searchInput.fill('TestPlaywright');
+    await page.waitForTimeout(1500);
 
     // Verificar que aparece en la lista
-    await expect(page.locator('text=/TestPlaywright/i').first()).toBeVisible();
+    await expect(page.locator('text=/TestPlaywright/i').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('1.5 - Crear Hospitalización con Anticipo Automático', async () => {
