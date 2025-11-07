@@ -174,8 +174,11 @@ router.get('/admissions', validatePagination, async (req, res) => {
     const { page, limit, offset } = req.pagination;
     const { estado, especialidad, search } = req.query;
 
-    const where = {};
-    
+    const where = {
+      // Por defecto, solo mostrar pacientes NO dados de alta (aún hospitalizados)
+      fechaAlta: null
+    };
+
     // Manejar filtros de estado (puede ser string o array)
     if (estado) {
       if (Array.isArray(estado)) {
@@ -184,7 +187,7 @@ router.get('/admissions', validatePagination, async (req, res) => {
         where.estado = estado;
       }
     }
-    
+
     if (especialidad) where.especialidad = especialidad;
     
     if (search) {
