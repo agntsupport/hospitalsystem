@@ -217,7 +217,19 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
 
 
   const handleNext = async () => {
-    const isValid = await trigger(); // Validate current step
+    // Validar solo los campos del paso actual
+    let fieldsToValidate: (keyof DischargeFormValues)[] = [];
+
+    if (activeStep === 0) {
+      // Paso 1: Información Básica
+      fieldsToValidate = ['tipoAlta', 'condicionAlta'];
+    } else if (activeStep === 1) {
+      // Paso 2: Diagnósticos y Resumen
+      fieldsToValidate = ['diagnosticoFinal', 'resumenEstancia'];
+    }
+    // Paso 3 no necesita validación parcial (submit final valida todo)
+
+    const isValid = await trigger(fieldsToValidate);
     if (isValid) {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
     }
