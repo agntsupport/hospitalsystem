@@ -28,7 +28,7 @@ import {
  * 11. Cierre de cuenta y cobro final
  */
 
-test.describe('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
+test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
   let page: Page;
   let pacienteId: string;
   let cuentaId: string;
@@ -61,6 +61,10 @@ test.describe('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
 
     // Verificar que el nombre de usuario esté visible (usar first() porque aparece varias veces)
     await expect(page.locator('text=/cajero1/i').first()).toBeVisible();
+
+    // IMPORTANTE: Esperar un poco más para que el dashboard termine de cargar completamente
+    // Esto asegura que Redux persista el token y que los API calls se completen
+    await page.waitForTimeout(2000);
   });
 
   test('1.2 - Verificar Dashboard Cargó Correctamente', async () => {
@@ -71,7 +75,7 @@ test.describe('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     await expect(page.locator('text=/estadísticas|resumen/i')).toBeVisible();
 
     // Verificar que hay al menos un módulo disponible (botón para navegar)
-    await expect(page.locator('button:has-text("Pacientes"), button:has-text("Punto de Venta")')).toBeVisible();
+    await expect(page.locator('button:has-text("Pacientes"), button:has-text("Punto de Venta")').first()).toBeVisible();
   });
 
   test('1.3 - Navegar a Gestión de Pacientes', async () => {
