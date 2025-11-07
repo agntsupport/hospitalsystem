@@ -519,24 +519,36 @@ router.get('/cuentas', authenticateToken, async (req, res) => {
       prisma.cuentaPaciente.count({ where })
     ]);
 
-    // Calcular totales en tiempo real para cada cuenta
+    // Formatear cuentas: calcular en tiempo real SOLO si está abierta, usar valores almacenados si está cerrada
     const cuentasFormatted = await Promise.all(cuentas.map(async (cuenta) => {
-      const [servicios, productos] = await Promise.all([
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: cuenta.id, tipo: 'servicio' },
-          _sum: { subtotal: true }
-        }),
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: cuenta.id, tipo: 'producto' },
-          _sum: { subtotal: true }
-        })
-      ]);
+      let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
 
-      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
-      const totalProductos = parseFloat(productos._sum.subtotal || 0);
-      const totalCuenta = totalServicios + totalProductos;
-      const anticipo = parseFloat(cuenta.anticipo.toString());
-      const saldoPendiente = anticipo - totalCuenta;
+      if (cuenta.estado === 'abierta') {
+        // Cuenta ABIERTA: calcular en tiempo real desde transacciones
+        const [servicios, productos] = await Promise.all([
+          prisma.transaccionCuenta.aggregate({
+            where: { cuentaId: cuenta.id, tipo: 'servicio' },
+            _sum: { subtotal: true }
+          }),
+          prisma.transaccionCuenta.aggregate({
+            where: { cuentaId: cuenta.id, tipo: 'producto' },
+            _sum: { subtotal: true }
+          })
+        ]);
+
+        totalServicios = parseFloat(servicios._sum.subtotal || 0);
+        totalProductos = parseFloat(productos._sum.subtotal || 0);
+        totalCuenta = totalServicios + totalProductos;
+        anticipo = parseFloat(cuenta.anticipo.toString());
+        saldoPendiente = anticipo - totalCuenta;
+      } else {
+        // Cuenta CERRADA: usar valores almacenados (snapshot histórico)
+        anticipo = parseFloat(cuenta.anticipo.toString());
+        totalServicios = parseFloat(cuenta.totalServicios.toString());
+        totalProductos = parseFloat(cuenta.totalProductos.toString());
+        totalCuenta = parseFloat(cuenta.totalCuenta.toString());
+        saldoPendiente = parseFloat(cuenta.saldoPendiente.toString());
+      }
 
       return {
         id: cuenta.id,
@@ -651,25 +663,37 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Calcular totales en tiempo real desde las transacciones
-    const [servicios, productos] = await Promise.all([
-      prisma.transaccionCuenta.aggregate({
-        where: { cuentaId: cuenta.id, tipo: 'servicio' },
-        _sum: { subtotal: true }
-      }),
-      prisma.transaccionCuenta.aggregate({
-        where: { cuentaId: cuenta.id, tipo: 'producto' },
-        _sum: { subtotal: true }
-      })
-    ]);
+    // Calcular totales: en tiempo real si ABIERTA, valores almacenados si CERRADA
+    let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
 
-    const totalServicios = parseFloat(servicios._sum.subtotal || 0);
-    const totalProductos = parseFloat(productos._sum.subtotal || 0);
-    const totalCuenta = totalServicios + totalProductos;
-    const anticipo = parseFloat(cuenta.anticipo.toString());
-    const saldoPendiente = anticipo - totalCuenta;
+    if (cuenta.estado === 'abierta') {
+      // Cuenta ABIERTA: calcular en tiempo real desde transacciones
+      const [servicios, productos] = await Promise.all([
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'servicio' },
+          _sum: { subtotal: true }
+        }),
+        prisma.transaccionCuenta.aggregate({
+          where: { cuentaId: cuenta.id, tipo: 'producto' },
+          _sum: { subtotal: true }
+        })
+      ]);
 
-    // Formatear respuesta con totales calculados
+      totalServicios = parseFloat(servicios._sum.subtotal || 0);
+      totalProductos = parseFloat(productos._sum.subtotal || 0);
+      totalCuenta = totalServicios + totalProductos;
+      anticipo = parseFloat(cuenta.anticipo.toString());
+      saldoPendiente = anticipo - totalCuenta;
+    } else {
+      // Cuenta CERRADA: usar valores almacenados (snapshot histórico al momento del cierre)
+      anticipo = parseFloat(cuenta.anticipo.toString());
+      totalServicios = parseFloat(cuenta.totalServicios.toString());
+      totalProductos = parseFloat(cuenta.totalProductos.toString());
+      totalCuenta = parseFloat(cuenta.totalCuenta.toString());
+      saldoPendiente = parseFloat(cuenta.saldoPendiente.toString());
+    }
+
+    // Formatear respuesta
     const cuentaFormatted = {
       id: cuenta.id,
       numeroExpediente: cuenta.numeroExpediente,
