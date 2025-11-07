@@ -20,6 +20,7 @@ const PORT = process.env.PORT || 3001;
 // ==============================================
 // Configurar headers de seguridad HTTP
 const isProduction = process.env.NODE_ENV === 'production';
+const isTestEnv = process.env.NODE_ENV === 'test';
 
 app.use(helmet({
   contentSecurityPolicy: isProduction, // Habilitado en producción
@@ -80,6 +81,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // RATE LIMITING GLOBAL
 // ==============================================
 // Limitar requests generales a 100 por 15 minutos por IP
+// NOTA: Desactivado en ambiente de testing para permitir E2E tests
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100, // 100 requests por ventana
@@ -88,7 +90,12 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.use('/api/', generalLimiter);
+if (!isTestEnv) {
+  app.use('/api/', generalLimiter);
+  console.log('✅ Rate limiting global enabled (100 requests / 15 min)');
+} else {
+  console.log('⚠️  Rate limiting global DISABLED (test environment)');
+}
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -183,6 +190,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 // RATE LIMITING ESPECÍFICO PARA LOGIN
 // ==============================================
 // Limitar intentos de login a 5 por 15 minutos para prevenir brute force
+// NOTA: Desactivado en ambiente de testing para permitir E2E tests
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // 5 intentos de login por ventana
@@ -192,8 +200,13 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Aplicar rate limiter específico al endpoint de login
-app.use('/api/auth/login', loginLimiter);
+// Aplicar rate limiter específico al endpoint de login (excepto en testing)
+if (!isTestEnv) {
+  app.use('/api/auth/login', loginLimiter);
+  console.log('✅ Rate limiting login enabled (5 attempts / 15 min)');
+} else {
+  console.log('⚠️  Rate limiting login DISABLED (test environment)');
+}
 
 // ==============================================
 // CONFIGURACIÓN DE RUTAS
