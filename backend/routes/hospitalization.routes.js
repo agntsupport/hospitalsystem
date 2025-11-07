@@ -258,6 +258,8 @@ router.get('/admissions', validatePagination, async (req, res) => {
         estado: admision.cuentaPaciente.estado,
         fechaApertura: admision.cuentaPaciente.fechaApertura
       } : null,
+      // INCLUIR ANTICIPO EN LA RESPUESTA (VALIDACIÓN FLUJO CRÍTICO #1)
+      anticipo: admision.cuentaPaciente ? parseFloat(admision.cuentaPaciente.anticipo.toString()) : 0.00,
       fechaIngreso: admision.fechaIngreso,
       fechaAlta: admision.fechaAlta,
       diagnosticoIngreso: admision.diagnosticoIngreso,

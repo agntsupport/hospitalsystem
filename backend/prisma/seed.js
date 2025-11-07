@@ -223,11 +223,25 @@ async function main() {
     console.log('🏢 Creando consultorios...');
 
     const consultorios = [];
-    const especialidades = ['Medicina General', 'Cardiología', 'Pediatría', 'Ginecología', 'Traumatología'];
-    
-    // Mapeo de especialidades a tipos
-    const tiposConsultorio = ['consulta_general', 'especialidad', 'especialidad', 'especialidad', 'urgencias'];
-    
+
+    // CONSULTORIO GENERAL - SIN CARGO (FLUJO CRÍTICO #1)
+    // Este consultorio se usa para primera atención médica sin costo
+    const consultorioGeneral = await prisma.consultorio.create({
+      data: {
+        numero: 'CONS-GEN-001',
+        tipo: 'consulta_general',
+        especialidad: 'Medicina General',
+        estado: 'disponible',
+        descripcion: 'Consultorio General - Primera atención sin cargo'
+      }
+    });
+    consultorios.push(consultorioGeneral);
+    console.log('✅ Consultorio General creado (sin cargo por atención)');
+
+    // Otros consultorios de especialidad
+    const especialidades = ['Cardiología', 'Pediatría', 'Ginecología', 'Traumatología', 'Urgencias'];
+    const tiposConsultorio = ['especialidad', 'especialidad', 'especialidad', 'especialidad', 'urgencias'];
+
     for (let i = 1; i <= 5; i++) {
       const consultorio = await prisma.consultorio.create({
         data: {
