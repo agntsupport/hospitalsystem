@@ -181,8 +181,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchPatientsStats() as any);
-    loadExecutiveData();
-  }, [dispatch]);
+    // Solo cargar datos ejecutivos si el usuario es administrador
+    if (user?.rol === 'administrador') {
+      loadExecutiveData();
+    }
+  }, [dispatch, user?.rol]);
 
   const loadExecutiveData = async () => {
     try {
@@ -204,7 +207,10 @@ const Dashboard: React.FC = () => {
 
   const refreshStats = () => {
     dispatch(fetchPatientsStats() as any);
-    loadExecutiveData();
+    // Solo refrescar datos ejecutivos si el usuario es administrador
+    if (user?.rol === 'administrador') {
+      loadExecutiveData();
+    }
   };
 
 
