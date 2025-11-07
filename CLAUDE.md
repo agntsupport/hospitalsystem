@@ -91,6 +91,49 @@ VITE_API_URL=http://localhost:3001
 - PostgreSQL: localhost:5432
 - Prisma Studio: http://localhost:5555
 
+## 🎯 FLUJOS DE TRABAJO CRÍTICOS
+
+**⚠️ IMPORTANTE:** El sistema tiene 3 flujos de trabajo imprescindibles que DEBEN estar implementados y funcionales.
+
+### Flujo 1: CAJERO - Gestión de Pacientes y Cuentas
+El cajero registra/busca paciente → abre cuenta POS → asigna médico → hospitaliza en Consultorio General (sin cargo) → enfermeros/médicos agregan productos/servicios → cambios de habitación/quirófano generan cargos automáticos → cajero cobra y cierra cuenta o deja en cuentas por cobrar (con autorización admin).
+
+**Clave:**
+- ✅ Anticipo automático: **$10,000 MXN** al crear hospitalización
+- ✅ Consultorio General: **NO genera cargo** por habitación
+- ✅ Habitaciones estándar/premium: **Cargo automático diario**
+- ✅ Quirófanos: **Cargo automático** al completar cirugía
+
+### Flujo 2: ALMACÉN - Gestión de Inventario
+El almacenista recibe productos → carga al sistema con **COSTO** (lo que paga el hospital) y **PRECIO DE VENTA** (lo que cobra el hospital) → revisa solicitudes de productos → surte solicitudes → mantiene existencias y rotación óptima.
+
+**Clave:**
+- ✅ COSTO: Precio de compra al proveedor (privado)
+- ✅ PRECIO DE VENTA: Precio cobrado al paciente (público)
+- ✅ Solicitudes de enfermería/médicos se surten automáticamente
+- ✅ Productos surtidos se cargan automáticamente a cuenta del paciente
+
+### Flujo 3: ADMINISTRADOR - Gestión Financiera
+El administrador gestiona ingresos/egresos/cuentas por cobrar → analiza médicos con mayor participación en ingresos → gestiona costos y precios de productos/servicios del hospital.
+
+**Clave:**
+- ✅ Reportes financieros completos (ingresos, egresos, utilidad)
+- ✅ Análisis de médicos top por facturación
+- ✅ Gestión de márgenes de productos y precios de servicios
+- ✅ Autorización de cuentas por cobrar
+
+### 📊 Tabla de Ocupación en Tiempo Real (TODOS LOS ROLES)
+**TODOS los roles** deben tener en su página principal (dashboard) una tabla mostrando:
+- 🏥 Consultorio General (ocupado/disponible)
+- 🛏️ Habitaciones (ocupadas/disponibles/mantenimiento)
+- 🏥 Quirófanos (ocupados/disponibles/programados)
+
+**Actualización:** Cada 30 segundos (polling) o tiempo real (WebSockets en futuro)
+
+📖 **Ver detalles completos:** [FLUJOS_TRABAJO_CRITICOS.md](./.claude/doc/FLUJOS_TRABAJO_CRITICOS.md)
+
+---
+
 ## 📊 Módulos Completados (14/14)
 
 1. ✅ **Autenticación** - JWT, roles, permisos

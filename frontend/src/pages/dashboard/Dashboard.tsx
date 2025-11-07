@@ -38,6 +38,7 @@ import { RootState } from '@/store/store';
 import { fetchPatientsStats } from '@/store/slices/patientsSlice';
 import { ROLE_LABELS } from '@/utils/constants';
 import reportsService from '@/services/reportsService';
+import { OcupacionTable } from '@/components/dashboard';
 
 interface StatCardProps {
   title: string;
@@ -367,6 +368,8 @@ const Dashboard: React.FC = () => {
         </Grid>
       </Paper>
 
+      {/* Tabla de Ocupación en Tiempo Real */}
+      <OcupacionTable />
 
       {/* Estadísticas Operativas */}
       {stats && (

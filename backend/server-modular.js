@@ -177,6 +177,7 @@ const auditRoutes = require('./routes/audit.routes');
 const usersRoutes = require('./routes/users.routes');
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 const notificacionesRoutes = require('./routes/notificaciones.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 // ==============================================
 // RATE LIMITING ESPECÍFICO PARA LOGIN
@@ -199,6 +200,7 @@ app.use('/api/auth/login', loginLimiter);
 // ==============================================
 // Configurar rutas con prefijos y auditoría
 app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes); // Tabla de ocupación en tiempo real
 app.use('/api/patients', patientsRoutes);
 app.use('/api/employees', employeesRoutes);
 
