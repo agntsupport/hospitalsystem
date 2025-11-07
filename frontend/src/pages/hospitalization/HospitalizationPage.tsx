@@ -119,8 +119,8 @@ const HospitalizationPage: React.FC = () => {
 
       if (admissionsResponse.success && admissionsResponse.data) {
         setAdmissions(admissionsResponse.data?.items || []);
-        setTotalItems(admissionsResponse.data?.total || 0);
-        setTotalPages(admissionsResponse.data?.totalPaginas || 1);
+        setTotalItems(admissionsResponse.data?.pagination?.total || 0);
+        setTotalPages(admissionsResponse.data?.pagination?.totalPages || 1);
       } else {
         setError(admissionsResponse.message || 'Error al cargar hospitalizaciones');
       }
