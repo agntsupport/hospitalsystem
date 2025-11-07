@@ -49,8 +49,11 @@ test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     await fillTextField(page, 'username-input', 'cajero1');
     await fillPasswordField(page, 'password-input', 'cajero123');
 
-    // Click en botón de login
+    // Click en botón de login y esperar navegación
     await clickButton(page, 'login-button');
+
+    // IMPORTANTE: Esperar a que la navegación al dashboard se complete
+    await page.waitForURL(/.*dashboard/, { timeout: 10000 });
 
     // Esperar a que el dashboard cargue (verificar elemento característico del dashboard)
     // En lugar de solo esperar la URL, esperamos que elementos del dashboard sean visibles
