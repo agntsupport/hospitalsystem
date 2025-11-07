@@ -1,0 +1,43 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build
+dist
+.vite
+
+# Tests
+coverage
+**/*.test.tsx
+**/*.test.ts
+**/__tests__
+**/__mocks__
+e2e/
+playwright-report/
+test-results/
+
+# Development
+.env.local
+.env.development
+.env.test
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
