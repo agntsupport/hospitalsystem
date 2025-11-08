@@ -652,6 +652,19 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
               }
             }
           }
+        },
+        pagos: {
+          include: {
+            empleado: {
+              select: {
+                id: true,
+                nombre: true,
+                apellidos: true,
+                username: true
+              }
+            }
+          },
+          orderBy: { fechaPago: 'desc' }
         }
       }
     });
@@ -667,8 +680,8 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
     let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
 
     if (cuenta.estado === 'abierta') {
-      // Cuenta ABIERTA: calcular en tiempo real desde transacciones
-      const [servicios, productos] = await Promise.all([
+      // Cuenta ABIERTA: calcular en tiempo real desde transacciones y pagos
+      const [servicios, productos, pagosParciales] = await Promise.all([
         prisma.transaccionCuenta.aggregate({
           where: { cuentaId: cuenta.id, tipo: 'servicio' },
           _sum: { subtotal: true }
@@ -676,14 +689,20 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
         prisma.transaccionCuenta.aggregate({
           where: { cuentaId: cuenta.id, tipo: 'producto' },
           _sum: { subtotal: true }
+        }),
+        prisma.pago.aggregate({
+          where: { cuentaPacienteId: cuenta.id, tipoPago: 'parcial' },
+          _sum: { monto: true }
         })
       ]);
 
       totalServicios = parseFloat(servicios._sum.subtotal || 0);
       totalProductos = parseFloat(productos._sum.subtotal || 0);
+      const totalPagosParciales = parseFloat(pagosParciales._sum.monto || 0);
       totalCuenta = totalServicios + totalProductos;
       anticipo = parseFloat(cuenta.anticipo.toString());
-      saldoPendiente = anticipo - totalCuenta;
+      // Saldo = anticipo + pagos parciales - cargos totales
+      saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
     } else {
       // Cuenta CERRADA: usar valores almacenados (snapshot histórico al momento del cierre)
       anticipo = parseFloat(cuenta.anticipo.toString());
@@ -719,6 +738,15 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
         fechaTransaccion: t.fechaTransaccion,
         producto: t.producto,
         servicio: t.servicio
+      })),
+      pagos: cuenta.pagos.map(p => ({
+        id: p.id,
+        monto: parseFloat(p.monto.toString()),
+        metodoPago: p.metodoPago,
+        tipoPago: p.tipoPago,
+        fechaPago: p.fechaPago,
+        observaciones: p.observaciones,
+        empleado: p.empleado
       })),
       hospitalizacion: cuenta.hospitalizacion
     };
@@ -983,6 +1011,86 @@ router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
 });
 
 // ==============================================
+// POST /cuentas/:id/pago-parcial - Registrar pago parcial
+// ==============================================
+router.post('/cuentas/:id/pago-parcial', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { monto, metodoPago, observaciones } = req.body;
+  const cajeroId = req.user.id;
+
+  try {
+    // Validaciones
+    if (!monto || monto <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El monto debe ser mayor a cero'
+      });
+    }
+
+    if (!metodoPago) {
+      return res.status(400).json({
+        success: false,
+        message: 'El método de pago es requerido'
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Obtener cuenta y validar
+      const cuenta = await tx.cuentaPaciente.findUnique({
+        where: { id: parseInt(id) },
+        include: { paciente: true }
+      });
+
+      if (!cuenta) {
+        throw new Error('Cuenta no encontrada');
+      }
+
+      if (cuenta.estado === 'cerrada') {
+        throw new Error('No se pueden registrar pagos en una cuenta cerrada');
+      }
+
+      // 2. Registrar pago parcial
+      const pago = await tx.pago.create({
+        data: {
+          cuentaPacienteId: parseInt(id),
+          monto: parseFloat(monto),
+          metodoPago,
+          tipoPago: 'parcial',
+          empleadoId: cajeroId,
+          observaciones: observaciones || `Pago parcial de $${parseFloat(monto).toFixed(2)}`
+        }
+      });
+
+      logger.info(`💰 Pago parcial registrado en cuenta #${id}`, {
+        paciente: `${cuenta.paciente.nombre} ${cuenta.paciente.apellidoPaterno}`,
+        monto: parseFloat(monto),
+        metodoPago,
+        cajero: cajeroId
+      });
+
+      return { pago, cuenta };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: `Pago parcial de $${parseFloat(monto).toFixed(2)} registrado exitosamente`
+    });
+
+  } catch (error) {
+    logger.logError('PARTIAL_PAYMENT', error, { cuentaId: id, monto, cajeroId });
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Error al registrar pago parcial',
+      error: error.message
+    });
+  }
+});
+
+// ==============================================
 // PUT /cuentas/:id/close - Cerrar cuenta con snapshot
 // ==============================================
 router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
@@ -1007,7 +1115,7 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
       }
 
       // 2. CALCULAR TOTALES EN TIEMPO REAL (single source of truth)
-      const [servicios, productos, anticipos] = await Promise.all([
+      const [servicios, productos, anticipos, pagosParciales] = await Promise.all([
         tx.transaccionCuenta.aggregate({
           where: { cuentaId: parseInt(id), tipo: 'servicio' },
           _sum: { subtotal: true }
@@ -1019,14 +1127,20 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
         tx.transaccionCuenta.aggregate({
           where: { cuentaId: parseInt(id), tipo: 'anticipo' },
           _sum: { subtotal: true }
+        }),
+        tx.pago.aggregate({
+          where: { cuentaPacienteId: parseInt(id), tipoPago: 'parcial' },
+          _sum: { monto: true }
         })
       ]);
 
       const totalServicios = parseFloat(servicios._sum.subtotal || 0);
       const totalProductos = parseFloat(productos._sum.subtotal || 0);
       const anticipo = parseFloat(anticipos._sum.subtotal || 0);
+      const totalPagosParciales = parseFloat(pagosParciales._sum.monto || 0);
       const totalCuenta = totalServicios + totalProductos;
-      const saldoPendiente = anticipo - totalCuenta;
+      // Saldo = anticipo + pagos parciales - cargos totales
+      const saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
 
       // 3. Validar pago si hay saldo pendiente
       if (saldoPendiente < 0 && !montoPagado) {
@@ -1050,16 +1164,17 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
         include: { paciente: true, cajeroCierre: true }
       });
 
-      // 5. Registrar pago si aplica
+      // 5. Registrar pago final si aplica
       let pago = null;
       if (montoPagado && montoPagado > 0) {
         pago = await tx.pago.create({
           data: {
             monto: montoPagado,
             metodoPago: metodoPago || 'efectivo',
+            tipoPago: 'total', // Marcar como pago final al cerrar cuenta
             cuentaPacienteId: parseInt(id),
             empleadoId: cajeroCierreId,
-            observaciones: `Pago al cerrar cuenta #${id}`
+            observaciones: `Pago final al cerrar cuenta #${id}`
           }
         });
       }

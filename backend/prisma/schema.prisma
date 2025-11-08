@@ -44,6 +44,7 @@ model Usuario {
   solicitudesProcesadas     SolicitudProductos[]       @relation("SolicitudAlmacenista")
   historialSolicitudes      HistorialSolicitud[]
   notificaciones            NotificacionSolicitud[]
+  pagosProcesados           Pago[]                     @relation("PagosCajero")
 
   @@index([rol])
   @@index([activo])
@@ -459,6 +460,7 @@ model CuentaPaciente {
   historialModificaciones HistorialModificacionPOS[]
   // Relación con solicitudes de productos
   solicitudesProductos    SolicitudProductos[]
+  pagos                   Pago[]
 
   @@index([pacienteId])
   @@index([estado])
@@ -476,6 +478,32 @@ enum TipoAtencion {
 enum EstadoCuenta {
   abierta
   cerrada
+}
+
+model Pago {
+  id                Int        @id @default(autoincrement())
+  cuentaPacienteId  Int        @map("cuenta_paciente_id")
+  monto             Decimal    @db.Decimal(10, 2)
+  metodoPago        String     @map("metodo_pago") // 'efectivo', 'tarjeta', 'transferencia'
+  tipoPago          TipoPago   @default(total) @map("tipo_pago")
+  empleadoId        Int        @map("empleado_id")
+  observaciones     String?
+  fechaPago         DateTime   @default(now()) @map("fecha_pago")
+  createdAt         DateTime   @default(now()) @map("created_at")
+
+  // Relaciones
+  cuentaPaciente CuentaPaciente @relation(fields: [cuentaPacienteId], references: [id])
+  empleado       Usuario        @relation("PagosCajero", fields: [empleadoId], references: [id])
+
+  @@index([cuentaPacienteId])
+  @@index([empleadoId])
+  @@index([fechaPago])
+  @@map("pagos")
+}
+
+enum TipoPago {
+  parcial
+  total
 }
 
 // Nuevas entidades para hospitalización colaborativa
