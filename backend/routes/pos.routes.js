@@ -1095,7 +1095,7 @@ router.post('/cuentas/:id/pago-parcial', authenticateToken, async (req, res) => 
 // ==============================================
 router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { metodoPago, montoPagado, observaciones } = req.body;
+  const { metodoPago, montoPagado, observaciones, cuentaPorCobrar, motivoCuentaPorCobrar } = req.body;
   const cajeroCierreId = req.user.id;
 
   try {
@@ -1143,28 +1143,77 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
       const saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
 
       // 3. Validar pago si hay saldo pendiente
-      if (saldoPendiente < 0 && !montoPagado) {
-        throw new Error(`Se requiere pago de $${Math.abs(saldoPendiente).toFixed(2)} para cerrar la cuenta`);
+      if (saldoPendiente < 0) {
+        // Si hay deuda y no se proporciona pago ni autorización de CPC
+        if (!montoPagado && !cuentaPorCobrar) {
+          throw new Error(
+            `Se requiere pago de $${Math.abs(saldoPendiente).toFixed(2)} para cerrar la cuenta, ` +
+            `o autorización de administrador para cuenta por cobrar`
+          );
+        }
+
+        // Si se solicita cuenta por cobrar, validar autorización de administrador
+        if (cuentaPorCobrar) {
+          if (req.user.rol !== 'administrador') {
+            throw new Error('Solo administradores pueden autorizar cuentas por cobrar');
+          }
+
+          if (!motivoCuentaPorCobrar) {
+            throw new Error('Se requiere un motivo para autorizar cuenta por cobrar');
+          }
+        }
       }
 
       // 4. GUARDAR SNAPSHOT HISTÓRICO INMUTABLE
+      const updateData = {
+        estado: 'cerrada',
+        anticipo,              // Snapshot calculado
+        totalServicios,        // Snapshot calculado
+        totalProductos,        // Snapshot calculado
+        totalCuenta,           // Snapshot calculado
+        saldoPendiente,        // Snapshot calculado
+        cajeroCierreId,
+        fechaCierre: new Date(),
+        observaciones: observaciones || `Cuenta cerrada - Total: $${totalCuenta.toFixed(2)}`
+      };
+
+      // Agregar campos de cuenta por cobrar si aplica
+      if (cuentaPorCobrar) {
+        updateData.cuentaPorCobrar = true;
+        updateData.autorizacionCPCId = req.user.id;
+        updateData.motivoCuentaPorCobrar = motivoCuentaPorCobrar;
+        updateData.fechaAutorizacionCPC = new Date();
+      }
+
       const cuentaCerrada = await tx.cuentaPaciente.update({
         where: { id: parseInt(id) },
-        data: {
-          estado: 'cerrada',
-          anticipo,              // Snapshot calculado
-          totalServicios,        // Snapshot calculado
-          totalProductos,        // Snapshot calculado
-          totalCuenta,           // Snapshot calculado
-          saldoPendiente,        // Snapshot calculado
-          cajeroCierreId,
-          fechaCierre: new Date(),
-          observaciones: observaciones || `Cuenta cerrada - Total: $${totalCuenta.toFixed(2)}`
-        },
-        include: { paciente: true, cajeroCierre: true }
+        data: updateData,
+        include: { paciente: true, cajeroCierre: true, autorizadorCPC: true }
       });
 
-      // 5. Registrar pago final si aplica
+      // 5. Crear registro de cuenta por cobrar si aplica
+      let historialCPC = null;
+      if (cuentaPorCobrar && saldoPendiente < 0) {
+        historialCPC = await tx.historialCuentaPorCobrar.create({
+          data: {
+            cuentaPacienteId: parseInt(id),
+            montoOriginal: Math.abs(saldoPendiente),
+            saldoPendiente: Math.abs(saldoPendiente),
+            autorizadoPor: req.user.id,
+            motivoAutorizacion: motivoCuentaPorCobrar,
+            estado: 'pendiente'
+          }
+        });
+
+        logger.info(`📋 Cuenta por cobrar creada para cuenta #${id}`, {
+          paciente: `${cuenta.paciente.nombre} ${cuenta.paciente.apellidoPaterno}`,
+          montoOriginal: Math.abs(saldoPendiente),
+          autorizador: req.user.id,
+          motivo: motivoCuentaPorCobrar
+        });
+      }
+
+      // 6. Registrar pago final si aplica
       let pago = null;
       if (montoPagado && montoPagado > 0) {
         pago = await tx.pago.create({
@@ -1183,10 +1232,16 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
         paciente: `${cuenta.paciente.nombre} ${cuenta.paciente.apellidoPaterno}`,
         totales: { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente },
         pago: pago ? { monto: pago.monto, metodo: pago.metodoPago } : null,
+        cuentaPorCobrar: cuentaPorCobrar || false,
         cajero: cajeroCierreId
       });
 
-      return { cuentaCerrada, pago, totales: { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente } };
+      return {
+        cuentaCerrada,
+        pago,
+        historialCPC,
+        totales: { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente }
+      };
     }, {
       maxWait: 5000,
       timeout: 10000
@@ -1203,6 +1258,414 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
     res.status(400).json({
       success: false,
       message: error.message || 'Error al cerrar cuenta',
+      error: error.message
+    });
+  }
+});
+
+// ===================================================================
+// CUENTAS POR COBRAR (CPC) - GESTIÓN COMPLETA
+// ===================================================================
+
+/**
+ * GET /api/pos/cuentas-por-cobrar
+ * Listar todas las cuentas por cobrar con filtros opcionales
+ *
+ * Query params:
+ * - estado: pendiente | pagado_parcial | pagado_total | cancelado
+ * - fechaInicio: fecha inicio (YYYY-MM-DD)
+ * - fechaFin: fecha fin (YYYY-MM-DD)
+ * - pacienteId: ID del paciente
+ * - page: página (default 1)
+ * - limit: registros por página (default 20)
+ *
+ * Roles permitidos: administrador, cajero
+ */
+router.get('/cuentas-por-cobrar', authenticateToken, async (req, res) => {
+  try {
+    const { estado, fechaInicio, fechaFin, pacienteId, page = 1, limit = 20 } = req.query;
+
+    // Solo admin y cajeros pueden ver CPC
+    if (!['administrador', 'cajero'].includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver cuentas por cobrar'
+      });
+    }
+
+    const where = {};
+
+    // Filtros opcionales
+    if (estado) {
+      where.estado = estado;
+    }
+
+    if (fechaInicio || fechaFin) {
+      where.fechaCreacion = {};
+      if (fechaInicio) {
+        where.fechaCreacion.gte = new Date(fechaInicio);
+      }
+      if (fechaFin) {
+        const fechaFinDate = new Date(fechaFin);
+        fechaFinDate.setHours(23, 59, 59, 999);
+        where.fechaCreacion.lte = fechaFinDate;
+      }
+    }
+
+    if (pacienteId) {
+      where.cuentaPaciente = {
+        pacienteId: parseInt(pacienteId)
+      };
+    }
+
+    // Contar total de registros
+    const total = await prisma.historialCuentaPorCobrar.count({ where });
+
+    // Obtener registros con paginación
+    const cuentasPorCobrar = await prisma.historialCuentaPorCobrar.findMany({
+      where,
+      include: {
+        cuentaPaciente: {
+          include: {
+            paciente: {
+              select: {
+                id: true,
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true,
+                telefono: true,
+                email: true
+              }
+            }
+          }
+        },
+        autorizador: {
+          select: {
+            id: true,
+            username: true,
+            nombre: true,
+            apellidoPaterno: true
+          }
+        }
+      },
+      orderBy: { fechaCreacion: 'desc' },
+      skip: (parseInt(page) - 1) * parseInt(limit),
+      take: parseInt(limit)
+    });
+
+    // Formatear respuesta
+    const cuentasFormateadas = cuentasPorCobrar.map(cpc => ({
+      id: cpc.id,
+      cuentaPacienteId: cpc.cuentaPacienteId,
+      paciente: {
+        id: cpc.cuentaPaciente.paciente.id,
+        nombreCompleto: `${cpc.cuentaPaciente.paciente.nombre} ${cpc.cuentaPaciente.paciente.apellidoPaterno} ${cpc.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim(),
+        telefono: cpc.cuentaPaciente.paciente.telefono,
+        email: cpc.cuentaPaciente.paciente.email
+      },
+      montoOriginal: parseFloat(cpc.montoOriginal.toString()),
+      saldoPendiente: parseFloat(cpc.saldoPendiente.toString()),
+      montoPagado: parseFloat(cpc.montoOriginal.toString()) - parseFloat(cpc.saldoPendiente.toString()),
+      porcentajePagado: ((parseFloat(cpc.montoOriginal.toString()) - parseFloat(cpc.saldoPendiente.toString())) / parseFloat(cpc.montoOriginal.toString()) * 100).toFixed(2),
+      estado: cpc.estado,
+      autorizadoPor: {
+        id: cpc.autorizador.id,
+        nombre: `${cpc.autorizador.nombre} ${cpc.autorizador.apellidoPaterno || ''}`.trim(),
+        username: cpc.autorizador.username
+      },
+      motivoAutorizacion: cpc.motivoAutorizacion,
+      fechaCreacion: cpc.fechaCreacion,
+      fechaUltimoPago: cpc.fechaUltimoPago
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        items: cuentasFormateadas,
+        pagination: {
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+          currentPage: parseInt(page),
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.logError('LIST_CPC', error, { userId: req.user.id });
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener cuentas por cobrar',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/pos/cuentas-por-cobrar/:id/pago
+ * Registrar pago contra una cuenta por cobrar
+ *
+ * Body:
+ * - monto: monto del pago (requerido, > 0)
+ * - metodoPago: efectivo | tarjeta | transferencia (requerido)
+ * - observaciones: notas adicionales (opcional)
+ *
+ * Roles permitidos: administrador, cajero
+ */
+router.post('/cuentas-por-cobrar/:id/pago', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { monto, metodoPago, observaciones } = req.body;
+  const cajeroId = req.user.id;
+
+  try {
+    // Validar permisos
+    if (!['administrador', 'cajero'].includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para registrar pagos de CPC'
+      });
+    }
+
+    // Validar datos
+    if (!monto || monto <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El monto debe ser mayor a cero'
+      });
+    }
+
+    if (!metodoPago) {
+      return res.status(400).json({
+        success: false,
+        message: 'El método de pago es requerido'
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Obtener CPC actual
+      const cpc = await tx.historialCuentaPorCobrar.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          cuentaPaciente: {
+            include: {
+              paciente: true
+            }
+          }
+        }
+      });
+
+      if (!cpc) {
+        throw new Error('Cuenta por cobrar no encontrada');
+      }
+
+      if (cpc.estado === 'pagado_total') {
+        throw new Error('Esta cuenta por cobrar ya está pagada completamente');
+      }
+
+      if (cpc.estado === 'cancelado') {
+        throw new Error('Esta cuenta por cobrar está cancelada y no acepta pagos');
+      }
+
+      const saldoPendiente = parseFloat(cpc.saldoPendiente.toString());
+      const montoPago = parseFloat(monto);
+
+      if (montoPago > saldoPendiente) {
+        throw new Error(
+          `El monto de pago (${montoPago.toFixed(2)}) no puede ser mayor al saldo pendiente (${saldoPendiente.toFixed(2)})`
+        );
+      }
+
+      // Registrar pago en tabla Pago
+      const pago = await tx.pago.create({
+        data: {
+          cuentaPacienteId: cpc.cuentaPacienteId,
+          monto: montoPago,
+          metodoPago,
+          tipoPago: 'parcial', // Los pagos de CPC siempre son parciales (cuenta ya cerrada)
+          empleadoId: cajeroId,
+          observaciones: observaciones || `Pago contra cuenta por cobrar #${id}`
+        }
+      });
+
+      // Calcular nuevo saldo
+      const nuevoSaldo = saldoPendiente - montoPago;
+      let nuevoEstado = cpc.estado;
+
+      if (nuevoSaldo === 0) {
+        nuevoEstado = 'pagado_total';
+      } else if (nuevoSaldo < parseFloat(cpc.montoOriginal.toString())) {
+        nuevoEstado = 'pagado_parcial';
+      }
+
+      // Actualizar CPC
+      const cpcActualizado = await tx.historialCuentaPorCobrar.update({
+        where: { id: parseInt(id) },
+        data: {
+          saldoPendiente: nuevoSaldo,
+          estado: nuevoEstado,
+          fechaUltimoPago: new Date()
+        }
+      });
+
+      logger.info(`💰 Pago de CPC registrado`, {
+        cpcId: id,
+        paciente: `${cpc.cuentaPaciente.paciente.nombre} ${cpc.cuentaPaciente.paciente.apellidoPaterno}`,
+        monto: montoPago,
+        nuevoSaldo,
+        estadoAnterior: cpc.estado,
+        estadoNuevo: nuevoEstado,
+        cajero: cajeroId
+      });
+
+      return { pago, cpcActualizado, cuentaPaciente: cpc.cuentaPaciente };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: nuevoSaldo === 0
+        ? `Cuenta por cobrar pagada completamente`
+        : `Pago de ${parseFloat(monto).toFixed(2)} registrado. Saldo pendiente: ${result.cpcActualizado.saldoPendiente.toFixed(2)}`
+    });
+
+  } catch (error) {
+    logger.logError('PAGO_CPC', error, { cpcId: id, monto, cajeroId });
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Error al registrar pago de CPC',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/pos/cuentas-por-cobrar/estadisticas
+ * Obtener estadísticas de cuentas por cobrar
+ *
+ * Devuelve:
+ * - Total de CPC activas (pendiente + pagado_parcial)
+ * - Monto total pendiente de cobro
+ * - Monto total recuperado
+ * - Porcentaje de recuperación
+ * - Distribución por estado
+ * - Top 10 deudores
+ *
+ * Roles permitidos: administrador, cajero, socio
+ */
+router.get('/cuentas-por-cobrar/estadisticas', authenticateToken, async (req, res) => {
+  try {
+    // Permisos
+    if (!['administrador', 'cajero', 'socio'].includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para ver estadísticas de CPC'
+      });
+    }
+
+    const [
+      totalCPC,
+      distribucionEstado,
+      topDeudores
+    ] = await Promise.all([
+      // Total de CPC
+      prisma.historialCuentaPorCobrar.aggregate({
+        _count: true,
+        _sum: {
+          montoOriginal: true,
+          saldoPendiente: true
+        }
+      }),
+
+      // Distribución por estado
+      prisma.historialCuentaPorCobrar.groupBy({
+        by: ['estado'],
+        _count: true,
+        _sum: {
+          montoOriginal: true,
+          saldoPendiente: true
+        }
+      }),
+
+      // Top 10 deudores
+      prisma.historialCuentaPorCobrar.findMany({
+        where: {
+          estado: { in: ['pendiente', 'pagado_parcial'] }
+        },
+        include: {
+          cuentaPaciente: {
+            include: {
+              paciente: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true,
+                  telefono: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          saldoPendiente: 'desc'
+        },
+        take: 10
+      })
+    ]);
+
+    // Calcular métricas
+    const montoTotalOriginal = parseFloat(totalCPC._sum.montoOriginal || 0);
+    const montoTotalPendiente = parseFloat(totalCPC._sum.saldoPendiente || 0);
+    const montoTotalRecuperado = montoTotalOriginal - montoTotalPendiente;
+    const porcentajeRecuperacion = montoTotalOriginal > 0
+      ? ((montoTotalRecuperado / montoTotalOriginal) * 100).toFixed(2)
+      : 0;
+
+    // Formatear distribución por estado
+    const distribucionFormateada = distribucionEstado.map(grupo => ({
+      estado: grupo.estado,
+      cantidad: grupo._count,
+      montoOriginal: parseFloat(grupo._sum.montoOriginal || 0),
+      saldoPendiente: parseFloat(grupo._sum.saldoPendiente || 0)
+    }));
+
+    // Formatear top deudores
+    const deudoresFormateados = topDeudores.map(cpc => ({
+      cpcId: cpc.id,
+      paciente: {
+        id: cpc.cuentaPaciente.paciente.id,
+        nombreCompleto: `${cpc.cuentaPaciente.paciente.nombre} ${cpc.cuentaPaciente.paciente.apellidoPaterno} ${cpc.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim(),
+        telefono: cpc.cuentaPaciente.paciente.telefono
+      },
+      montoOriginal: parseFloat(cpc.montoOriginal.toString()),
+      saldoPendiente: parseFloat(cpc.saldoPendiente.toString()),
+      estado: cpc.estado,
+      fechaCreacion: cpc.fechaCreacion
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        resumen: {
+          totalCPC: totalCPC._count,
+          montoTotalOriginal,
+          montoTotalPendiente,
+          montoTotalRecuperado,
+          porcentajeRecuperacion: parseFloat(porcentajeRecuperacion)
+        },
+        distribucion: distribucionFormateadas,
+        topDeudores: deudoresFormateados
+      }
+    });
+
+  } catch (error) {
+    logger.logError('ESTADISTICAS_CPC', error, { userId: req.user.id });
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener estadísticas de CPC',
       error: error.message
     });
   }

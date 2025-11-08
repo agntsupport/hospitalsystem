@@ -26,6 +26,7 @@ model Usuario {
   // Relaciones
   cuentasApertura           CuentaPaciente[]           @relation("CajeroApertura")
   cuentasCierre             CuentaPaciente[]           @relation("CajeroCierre")
+  cuentasAutorizadasCPC     CuentaPaciente[]           @relation("AutorizadorCPC")
   transacciones             TransaccionCuenta[]
   movimientos               MovimientoInventario[]
   seguimientoOrdenes        SeguimientoOrden[]
@@ -45,6 +46,7 @@ model Usuario {
   historialSolicitudes      HistorialSolicitud[]
   notificaciones            NotificacionSolicitud[]
   pagosProcesados           Pago[]                     @relation("PagosCajero")
+  historialCPCAutorizados   HistorialCuentaPorCobrar[] @relation("AutorizadorCPC_Historial")
 
   @@index([rol])
   @@index([activo])
@@ -441,10 +443,15 @@ model CuentaPaciente {
   habitacionId     Int?         @map("habitacion_id")
   medicoTratanteId Int?         @map("medico_tratante_id")
   cajeroAperturaId Int          @map("cajero_apertura_id")
-  cajeroCierreId   Int?         @map("cajero_cierre_id")
-  fechaApertura    DateTime     @default(now()) @map("fecha_apertura")
-  fechaCierre      DateTime?    @map("fecha_cierre")
-  observaciones    String?
+  cajeroCierreId          Int?     @map("cajero_cierre_id")
+  fechaApertura           DateTime @default(now()) @map("fecha_apertura")
+  fechaCierre             DateTime? @map("fecha_cierre")
+  observaciones           String?
+  // Campos para cuentas por cobrar
+  cuentaPorCobrar         Boolean  @default(false) @map("cuenta_por_cobrar")
+  autorizacionCPCId       Int?     @map("autorizacion_cpc_id")
+  motivoCuentaPorCobrar   String?  @map("motivo_cuenta_por_cobrar")
+  fechaAutorizacionCPC    DateTime? @map("fecha_autorizacion_cpc")
 
   // Relaciones
   paciente                Paciente                   @relation(fields: [pacienteId], references: [id])
@@ -452,6 +459,7 @@ model CuentaPaciente {
   medicoTratante          Empleado?                  @relation(fields: [medicoTratanteId], references: [id])
   cajeroApertura          Usuario                    @relation("CajeroApertura", fields: [cajeroAperturaId], references: [id])
   cajeroCierre            Usuario?                   @relation("CajeroCierre", fields: [cajeroCierreId], references: [id])
+  autorizadorCPC          Usuario?                   @relation("AutorizadorCPC", fields: [autorizacionCPCId], references: [id])
   transacciones           TransaccionCuenta[]
   movimientos             MovimientoInventario[]
   hospitalizacion         Hospitalizacion?
@@ -461,11 +469,13 @@ model CuentaPaciente {
   // Relación con solicitudes de productos
   solicitudesProductos    SolicitudProductos[]
   pagos                   Pago[]
+  historialCPC            HistorialCuentaPorCobrar[]
 
   @@index([pacienteId])
   @@index([estado])
   @@index([cajeroAperturaId])
   @@index([estado, fechaApertura])
+  @@index([cuentaPorCobrar])
   @@map("cuentas_pacientes")
 }
 
@@ -504,6 +514,37 @@ model Pago {
 enum TipoPago {
   parcial
   total
+}
+
+model HistorialCuentaPorCobrar {
+  id                    Int               @id @default(autoincrement())
+  cuentaPacienteId      Int               @map("cuenta_paciente_id")
+  montoOriginal         Decimal           @db.Decimal(10, 2) @map("monto_original")
+  saldoPendiente        Decimal           @db.Decimal(10, 2) @map("saldo_pendiente")
+  autorizadoPor         Int               @map("autorizado_por")
+  motivoAutorizacion    String            @map("motivo_autorizacion")
+  estado                EstadoCPC         @default(pendiente)
+  fechaCreacion         DateTime          @default(now()) @map("fecha_creacion")
+  fechaUltimoPago       DateTime?         @map("fecha_ultimo_pago")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  // Relaciones
+  cuentaPaciente CuentaPaciente @relation(fields: [cuentaPacienteId], references: [id])
+  autorizador    Usuario        @relation("AutorizadorCPC_Historial", fields: [autorizadoPor], references: [id])
+
+  @@index([cuentaPacienteId])
+  @@index([autorizadoPor])
+  @@index([estado])
+  @@index([fechaCreacion])
+  @@map("historial_cuentas_por_cobrar")
+}
+
+enum EstadoCPC {
+  pendiente
+  pagado_parcial
+  pagado_total
+  cancelado
 }
 
 // Nuevas entidades para hospitalización colaborativa
