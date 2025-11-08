@@ -29,6 +29,7 @@ import {
   ContentCut,
   Group,
   Assignment,
+  AccountBalance,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -124,6 +125,13 @@ const menuItems: MenuItem[] = [
     text: 'Facturación',
     icon: <Receipt />,
     path: '/billing',
+    roles: ['cajero', 'administrador', 'socio'],
+  },
+  {
+    id: 'cuentas-por-cobrar',
+    text: 'Cuentas por Cobrar',
+    icon: <AccountBalance />,
+    path: '/cuentas-por-cobrar',
     roles: ['cajero', 'administrador', 'socio'],
   },
   {

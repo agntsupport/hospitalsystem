@@ -22,6 +22,7 @@ const RoomsPage = lazy(() => import('@/pages/rooms/RoomsPage'));
 const PatientsPage = lazy(() => import('@/pages/patients/PatientsPage'));
 const InventoryPage = lazy(() => import('@/pages/inventory/InventoryPage'));
 const BillingPage = lazy(() => import('@/pages/billing/BillingPage'));
+const CuentasPorCobrarPage = lazy(() => import('@/pages/cuentas-por-cobrar/CuentasPorCobrarPage'));
 const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
 const HospitalizationPage = lazy(() => import('@/pages/hospitalization/HospitalizationPage'));
 const QuirofanosPage = lazy(() => import('@/pages/quirofanos/QuirofanosPage'));
@@ -199,7 +200,15 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            
+
+            <Route path="/cuentas-por-cobrar" element={
+              <ProtectedRoute roles={['cajero', 'administrador', 'socio']}>
+                <Layout>
+                  <CuentasPorCobrarPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/hospitalization" element={
               <ProtectedRoute roles={['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
                 <Layout>
