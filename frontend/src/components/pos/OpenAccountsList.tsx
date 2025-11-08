@@ -21,6 +21,7 @@ import {
   Refresh as RefreshIcon,
   AccountBalance as AccountIcon,
   Visibility as ViewIcon,
+  Payment as PaymentIcon,
 } from '@mui/icons-material';
 
 import { PatientAccount } from '@/types/pos.types';
@@ -32,6 +33,7 @@ interface OpenAccountsListProps {
   onAddTransaction: (account: PatientAccount) => void;
   onCloseAccount: (account: PatientAccount) => void;
   onViewAccount: (account: PatientAccount) => void;
+  onPartialPayment?: (account: PatientAccount) => void;
   onRefresh: () => void;
 }
 
@@ -41,6 +43,7 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
   onAddTransaction,
   onCloseAccount,
   onViewAccount,
+  onPartialPayment,
   onRefresh,
 }) => {
   const formatCurrency = (amount: number) => {
@@ -270,6 +273,17 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
                     >
                       Agregar
                     </Button>
+                    {onPartialPayment && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="info"
+                        startIcon={<PaymentIcon />}
+                        onClick={() => onPartialPayment(account)}
+                      >
+                        Pago Parcial
+                      </Button>
+                    )}
                     <Button
                       size="small"
                       variant="contained"

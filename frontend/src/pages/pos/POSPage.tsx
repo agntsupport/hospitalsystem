@@ -33,6 +33,7 @@ import HistoryTab from '@/components/pos/HistoryTab';
 import QuickSalesTab from '@/components/pos/QuickSalesTab';
 import AccountClosureDialog from '@/components/pos/AccountClosureDialog';
 import AccountDetailDialog from '@/components/pos/AccountDetailDialog';
+import PartialPaymentDialog from '@/components/pos/PartialPaymentDialog';
 
 const POSPage: React.FC = () => {
   const [stats, setStats] = useState<POSStats | null>(null);
@@ -48,6 +49,8 @@ const POSPage: React.FC = () => {
   const [accountToClose, setAccountToClose] = useState<PatientAccount | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [accountToView, setAccountToView] = useState<PatientAccount | null>(null);
+  const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
+  const [accountForPartialPayment, setAccountForPartialPayment] = useState<PatientAccount | null>(null);
   
   // Tabs
   const [currentTab, setCurrentTab] = useState(0);
@@ -133,6 +136,18 @@ const POSPage: React.FC = () => {
     loadOpenAccounts();
   };
 
+  const handlePartialPayment = (account: PatientAccount) => {
+    setAccountForPartialPayment(account);
+    setPartialPaymentDialogOpen(true);
+  };
+
+  const handlePartialPaymentRegistered = () => {
+    setPartialPaymentDialogOpen(false);
+    setAccountForPartialPayment(null);
+    loadStats();
+    loadOpenAccounts();
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -201,6 +216,7 @@ const POSPage: React.FC = () => {
               onAddTransaction={handleAddTransaction}
               onCloseAccount={handleCloseAccount}
               onViewAccount={handleViewAccount}
+              onPartialPayment={handlePartialPayment}
               onRefresh={loadOpenAccounts}
             />
           )}
@@ -240,6 +256,16 @@ const POSPage: React.FC = () => {
           setAccountToClose(null);
         }}
         onSuccess={handleClosureSuccess}
+      />
+
+      <PartialPaymentDialog
+        open={partialPaymentDialogOpen}
+        account={accountForPartialPayment}
+        onClose={() => {
+          setPartialPaymentDialogOpen(false);
+          setAccountForPartialPayment(null);
+        }}
+        onPaymentRegistered={handlePartialPaymentRegistered}
       />
 
       <AccountDetailDialog

@@ -116,3 +116,56 @@ export interface CartItem {
   subtotal: number;
   disponible?: number; // Para productos, stock disponible
 }
+
+// === COBROS PARCIALES (FASE 9) ===
+export interface PartialPaymentData {
+  monto: number;
+  metodoPago: 'efectivo' | 'tarjeta' | 'transferencia';
+  observaciones?: string;
+}
+
+// === CUENTAS POR COBRAR (FASE 9) ===
+export type EstadoCPC = 'pendiente' | 'pagado_parcial' | 'pagado_total' | 'cancelado';
+
+export interface CuentaPorCobrar {
+  id: number;
+  cuentaPacienteId: number;
+  montoOriginal: number;
+  saldoPendiente: number;
+  montoPagado: number;
+  estado: EstadoCPC;
+  autorizadoPorId: number;
+  motivoAutorizacion: string;
+  fechaCreacion: string;
+  fechaUltimoPago?: string;
+  // Datos enriquecidos
+  paciente?: Patient;
+  autorizadoPor?: Employee;
+  cuentaPaciente?: PatientAccount;
+}
+
+export interface CPCPaymentData {
+  monto: number;
+  metodoPago: 'efectivo' | 'tarjeta' | 'transferencia';
+  observaciones?: string;
+}
+
+export interface CPCStats {
+  totalCPCActivas: number;
+  montoPendienteTotal: number;
+  montoRecuperadoTotal: number;
+  porcentajeRecuperacion: number;
+  distribucionPorEstado: {
+    pendiente: { cantidad: number; monto: number };
+    pagado_parcial: { cantidad: number; monto: number };
+    pagado_total: { cantidad: number; monto: number };
+    cancelado: { cantidad: number; monto: number };
+  };
+  topDeudores: Array<{
+    id: number;
+    paciente: Patient;
+    montoOriginal: number;
+    saldoPendiente: number;
+    fechaCreacion: string;
+  }>;
+}

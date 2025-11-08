@@ -165,13 +165,52 @@ export const posService = {
     };
   }>> {
     const queryParams = new URLSearchParams();
-    
+
     if (filters.page) queryParams.append('page', filters.page.toString());
     if (filters.limit) queryParams.append('limit', filters.limit.toString());
     if (filters.tipo) queryParams.append('tipo', filters.tipo);
 
     const url = `/pos/cuenta/${accountId}/transacciones${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return api.get(url);
+  },
+
+  // ==================== COBROS PARCIALES (FASE 9) ====================
+  async registerPartialPayment(
+    accountId: number,
+    paymentData: { monto: number; metodoPago: string; observaciones?: string }
+  ): Promise<ApiResponse<{ pago: any; cuenta: PatientAccount }>> {
+    return api.post(`/pos/cuentas/${accountId}/pago-parcial`, paymentData);
+  },
+
+  // ==================== CUENTAS POR COBRAR (FASE 9) ====================
+  async getCuentasPorCobrar(filters: {
+    estado?: string;
+    pacienteId?: number;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<ApiResponse<{
+    cuentasPorCobrar: any[];
+    pagination?: any;
+  }>> {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) queryParams.append(key, value.toString());
+    });
+
+    const url = `/pos/cuentas-por-cobrar${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    return api.get(url);
+  },
+
+  async registerCPCPayment(
+    cpcId: number,
+    paymentData: { monto: number; metodoPago: string; observaciones?: string }
+  ): Promise<ApiResponse<{ pago: any; cuentaPorCobrar: any }>> {
+    return api.post(`/pos/cuentas-por-cobrar/${cpcId}/pago`, paymentData);
+  },
+
+  async getCPCStats(): Promise<ApiResponse<{ stats: any }>> {
+    return api.get('/pos/cuentas-por-cobrar/estadisticas');
   }
 };
 
