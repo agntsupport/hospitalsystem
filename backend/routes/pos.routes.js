@@ -985,7 +985,7 @@ router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
 // ==============================================
 // PUT /cuentas/:id/close - Cerrar cuenta con snapshot
 // ==============================================
-router.put('/cuentas/:id/close', authMiddleware, async (req, res) => {
+router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { metodoPago, montoPagado, observaciones } = req.body;
   const cajeroCierreId = req.user.id;
