@@ -487,6 +487,243 @@ async function main() {
     console.log('👤 Pacientes creados exitosamente');
 
     // ==============================================
+    // CUENTAS DE PACIENTE CON TRANSACCIONES
+    // ==============================================
+    console.log('💰 Creando cuentas de paciente con transacciones...');
+
+    // CUENTA 1: Cuenta ABIERTA con hospitalización activa
+    const cuenta1 = await prisma.cuentaPaciente.create({
+      data: {
+        pacienteId: paciente1.id,
+        tipoAtencion: 'hospitalizacion',
+        estado: 'abierta',
+        anticipo: 10000.00,
+        totalServicios: 3000.00,
+        totalProductos: 150.00,
+        totalCuenta: 3150.00,
+        saldoPendiente: 6850.00,
+        cajeroAperturaId: cajero.id,
+        observaciones: 'Cuenta de ejemplo con hospitalización activa'
+      }
+    });
+
+    // Transacciones para cuenta 1
+    await Promise.all([
+      // Anticipo
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta1.id,
+          tipo: 'anticipo',
+          concepto: 'Anticipo por hospitalización',
+          cantidad: 1,
+          precioUnitario: 10000.00,
+          subtotal: 10000.00,
+          empleadoCargoId: cajero.id,
+          observaciones: 'Anticipo automático por ingreso hospitalario'
+        }
+      }),
+      // Servicio - Habitación estándar (3 días)
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta1.id,
+          tipo: 'servicio',
+          concepto: 'Habitación estándar - Día 1',
+          cantidad: 1,
+          precioUnitario: 1000.00,
+          subtotal: 1000.00,
+          empleadoCargoId: cajero.id
+        }
+      }),
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta1.id,
+          tipo: 'servicio',
+          concepto: 'Habitación estándar - Día 2',
+          cantidad: 1,
+          precioUnitario: 1000.00,
+          subtotal: 1000.00,
+          empleadoCargoId: cajero.id
+        }
+      }),
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta1.id,
+          tipo: 'servicio',
+          concepto: 'Habitación estándar - Día 3',
+          cantidad: 1,
+          precioUnitario: 1000.00,
+          subtotal: 1000.00,
+          empleadoCargoId: cajero.id
+        }
+      }),
+      // Productos - Medicamentos
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta1.id,
+          tipo: 'producto',
+          concepto: 'Paracetamol 500mg',
+          cantidad: 10,
+          precioUnitario: 5.00,
+          subtotal: 50.00,
+          empleadoCargoId: enfermero.id,
+          observaciones: 'Administrado por enfermería'
+        }
+      }),
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta1.id,
+          tipo: 'producto',
+          concepto: 'Suero fisiológico 1L',
+          cantidad: 2,
+          precioUnitario: 50.00,
+          subtotal: 100.00,
+          empleadoCargoId: enfermero.id,
+          observaciones: 'Administrado por enfermería'
+        }
+      })
+    ]);
+
+    console.log('💰 Cuenta 1 creada: ABIERTA con 6 transacciones');
+
+    // CUENTA 2: Cuenta CERRADA con transacciones completas
+    const cuenta2 = await prisma.cuentaPaciente.create({
+      data: {
+        pacienteId: pacienteMenor.id,
+        tipoAtencion: 'hospitalizacion',
+        estado: 'cerrada',
+        anticipo: 10000.00,
+        totalServicios: 1500.00,
+        totalProductos: 36.50,
+        totalCuenta: 1536.50,
+        saldoPendiente: 8463.50,
+        cajeroAperturaId: cajero.id,
+        cajeroCierreId: cajero.id,
+        fechaCierre: new Date('2025-01-05T14:30:00'),
+        observaciones: 'Cuenta cerrada de ejemplo - Paciente dado de alta'
+      }
+    });
+
+    // Transacciones para cuenta 2 (cerrada)
+    await Promise.all([
+      // Anticipo
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta2.id,
+          tipo: 'anticipo',
+          concepto: 'Anticipo por hospitalización',
+          cantidad: 1,
+          precioUnitario: 10000.00,
+          subtotal: 10000.00,
+          empleadoCargoId: cajero.id,
+          observaciones: 'Anticipo automático por ingreso hospitalario',
+          fechaTransaccion: new Date('2025-01-03T08:00:00')
+        }
+      }),
+      // Servicio - Consultorio General (no genera cargo)
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta2.id,
+          tipo: 'servicio',
+          concepto: 'Consulta médica general',
+          cantidad: 1,
+          precioUnitario: 500.00,
+          subtotal: 500.00,
+          empleadoCargoId: medicoEspecialista.id,
+          fechaTransaccion: new Date('2025-01-03T09:00:00')
+        }
+      }),
+      // Servicio - Estudios de laboratorio
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta2.id,
+          tipo: 'servicio',
+          concepto: 'Análisis de sangre completo',
+          cantidad: 1,
+          precioUnitario: 1000.00,
+          subtotal: 1000.00,
+          empleadoCargoId: enfermero.id,
+          fechaTransaccion: new Date('2025-01-03T10:30:00')
+        }
+      }),
+      // Productos
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta2.id,
+          tipo: 'producto',
+          concepto: 'Amoxicilina 500mg',
+          cantidad: 7,
+          precioUnitario: 5.00,
+          subtotal: 35.00,
+          empleadoCargoId: enfermero.id,
+          fechaTransaccion: new Date('2025-01-04T11:00:00')
+        }
+      }),
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta2.id,
+          tipo: 'producto',
+          concepto: 'Gasas estériles',
+          cantidad: 1,
+          precioUnitario: 1.50,
+          subtotal: 1.50,
+          empleadoCargoId: enfermero.id,
+          fechaTransaccion: new Date('2025-01-04T12:00:00')
+        }
+      })
+    ]);
+
+    console.log('💰 Cuenta 2 creada: CERRADA con 5 transacciones');
+
+    // CUENTA 3: Cuenta CERRADA sin saldo pendiente (pagada completa)
+    const cuenta3 = await prisma.cuentaPaciente.create({
+      data: {
+        pacienteId: paciente1.id,
+        tipoAtencion: 'consulta_general',
+        estado: 'cerrada',
+        anticipo: 0.00,
+        totalServicios: 650.00,
+        totalProductos: 0.00,
+        totalCuenta: 650.00,
+        saldoPendiente: 0.00,
+        cajeroAperturaId: cajero.id,
+        cajeroCierreId: cajero.id,
+        fechaCierre: new Date('2024-12-20T16:00:00'),
+        observaciones: 'Consulta externa - Pagado en efectivo'
+      }
+    });
+
+    // Transacciones para cuenta 3
+    await Promise.all([
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta3.id,
+          tipo: 'servicio',
+          concepto: 'Consulta de especialidad - Cardiología',
+          cantidad: 1,
+          precioUnitario: 650.00,
+          subtotal: 650.00,
+          empleadoCargoId: medicoEspecialista.id,
+          fechaTransaccion: new Date('2024-12-20T14:00:00')
+        }
+      }),
+      prisma.transaccionCuenta.create({
+        data: {
+          cuentaId: cuenta3.id,
+          tipo: 'pago',
+          concepto: 'Pago en efectivo',
+          cantidad: 1,
+          precioUnitario: 650.00,
+          subtotal: 650.00,
+          empleadoCargoId: cajero.id,
+          fechaTransaccion: new Date('2024-12-20T15:00:00')
+        }
+      })
+    ]);
+
+    console.log('💰 Cuenta 3 creada: CERRADA con 2 transacciones (pagada completa)');
+    console.log('✅ 3 cuentas con 13 transacciones totales creadas exitosamente');
+
+    // ==============================================
     // CAUSAS DE CANCELACIÓN
     // ==============================================
     console.log('🚫 Creando causas de cancelación...');

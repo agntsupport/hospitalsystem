@@ -982,4 +982,115 @@ router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
   }
 });
 
+// ==============================================
+// PUT /cuentas/:id/close - Cerrar cuenta con snapshot
+// ==============================================
+router.put('/cuentas/:id/close', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { metodoPago, montoPagado, observaciones } = req.body;
+  const cajeroCierreId = req.user.id;
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Obtener cuenta con validación
+      const cuenta = await tx.cuentaPaciente.findUnique({
+        where: { id: parseInt(id) },
+        include: { transacciones: true, paciente: true }
+      });
+
+      if (!cuenta) {
+        throw new Error('Cuenta no encontrada');
+      }
+
+      if (cuenta.estado === 'cerrada') {
+        throw new Error('La cuenta ya está cerrada');
+      }
+
+      // 2. CALCULAR TOTALES EN TIEMPO REAL (single source of truth)
+      const [servicios, productos, anticipos] = await Promise.all([
+        tx.transaccionCuenta.aggregate({
+          where: { cuentaId: parseInt(id), tipo: 'servicio' },
+          _sum: { subtotal: true }
+        }),
+        tx.transaccionCuenta.aggregate({
+          where: { cuentaId: parseInt(id), tipo: 'producto' },
+          _sum: { subtotal: true }
+        }),
+        tx.transaccionCuenta.aggregate({
+          where: { cuentaId: parseInt(id), tipo: 'anticipo' },
+          _sum: { subtotal: true }
+        })
+      ]);
+
+      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
+      const totalProductos = parseFloat(productos._sum.subtotal || 0);
+      const anticipo = parseFloat(anticipos._sum.subtotal || 0);
+      const totalCuenta = totalServicios + totalProductos;
+      const saldoPendiente = anticipo - totalCuenta;
+
+      // 3. Validar pago si hay saldo pendiente
+      if (saldoPendiente < 0 && !montoPagado) {
+        throw new Error(`Se requiere pago de $${Math.abs(saldoPendiente).toFixed(2)} para cerrar la cuenta`);
+      }
+
+      // 4. GUARDAR SNAPSHOT HISTÓRICO INMUTABLE
+      const cuentaCerrada = await tx.cuentaPaciente.update({
+        where: { id: parseInt(id) },
+        data: {
+          estado: 'cerrada',
+          anticipo,              // Snapshot calculado
+          totalServicios,        // Snapshot calculado
+          totalProductos,        // Snapshot calculado
+          totalCuenta,           // Snapshot calculado
+          saldoPendiente,        // Snapshot calculado
+          cajeroCierreId,
+          fechaCierre: new Date(),
+          observaciones: observaciones || `Cuenta cerrada - Total: $${totalCuenta.toFixed(2)}`
+        },
+        include: { paciente: true, cajeroCierre: true }
+      });
+
+      // 5. Registrar pago si aplica
+      let pago = null;
+      if (montoPagado && montoPagado > 0) {
+        pago = await tx.pago.create({
+          data: {
+            monto: montoPagado,
+            metodoPago: metodoPago || 'efectivo',
+            cuentaPacienteId: parseInt(id),
+            empleadoId: cajeroCierreId,
+            observaciones: `Pago al cerrar cuenta #${id}`
+          }
+        });
+      }
+
+      logger.info(`💰 Cuenta #${id} cerrada exitosamente`, {
+        paciente: `${cuenta.paciente.nombre} ${cuenta.paciente.apellidoPaterno}`,
+        totales: { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente },
+        pago: pago ? { monto: pago.monto, metodo: pago.metodoPago } : null,
+        cajero: cajeroCierreId
+      });
+
+      return { cuentaCerrada, pago, totales: { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente } };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: `Cuenta #${id} cerrada exitosamente`
+    });
+
+  } catch (error) {
+    logger.logError('CLOSE_ACCOUNT', error, { cuentaId: id, userId: cajeroCierreId });
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Error al cerrar cuenta',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
