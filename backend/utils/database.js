@@ -12,35 +12,39 @@ const prisma = new PrismaClient({
 });
 
 // ==============================================
-// MIDDLEWARE PRISMA: VALIDACIÓN DE INTEGRIDAD
+// VALIDACIÓN DE INTEGRIDAD DE CUENTAS
 // ==============================================
-// Middleware global para prevenir transacciones en cuentas cerradas
-// Este es el último nivel de defensa contra modificaciones incorrectas
-prisma.$use(async (params, next) => {
-  // Solo validar creación de transacciones en cuentas
-  if (params.model === 'TransaccionCuenta' && params.action === 'create') {
-    const cuentaId = params.args.data.cuentaId;
+// NOTA: En Prisma 6.x, el middleware $use fue removido.
+// La validación de cuentas cerradas se realiza a nivel de aplicación
+// en cada endpoint que crea transacciones.
+//
+// Endpoints que validan antes de crear transacciones:
+// - POST /api/pos/cuentas/:id/items (pos.routes.js)
+// - PUT /api/solicitudes/:id/entregar (solicitudes.routes.js)
+// - PUT /api/quirofanos/cirugias/:id/estado (quirofanos.routes.js)
+// - POST /api/hospitalization/discharge (hospitalization.routes.js)
+//
+// Esta función auxiliar puede usarse en cualquier lugar donde se necesite
+// validar antes de crear transacciones.
+async function validateCuentaAbierta(cuentaId) {
+  const cuenta = await prisma.cuentaPaciente.findUnique({
+    where: { id: parseInt(cuentaId) },
+    select: { estado: true, id: true }
+  });
 
-    // Validar que la cuenta existe y está abierta
-    const cuenta = await prisma.cuentaPaciente.findUnique({
-      where: { id: cuentaId },
-      select: { estado: true, id: true }
-    });
-
-    if (!cuenta) {
-      throw new Error(`No se puede crear transacción: Cuenta ${cuentaId} no encontrada`);
-    }
-
-    if (cuenta.estado === 'cerrada') {
-      throw new Error(
-        `No se pueden agregar transacciones a la cuenta ${cuentaId}. ` +
-        `La cuenta está cerrada y es inmutable.`
-      );
-    }
+  if (!cuenta) {
+    throw new Error(`No se puede crear transacción: Cuenta ${cuentaId} no encontrada`);
   }
 
-  return next(params);
-});
+  if (cuenta.estado === 'cerrada') {
+    throw new Error(
+      `No se pueden agregar transacciones a la cuenta ${cuentaId}. ` +
+      `La cuenta está cerrada y es inmutable.`
+    );
+  }
+
+  return cuenta;
+}
 
 // Manejar cierre graceful de conexiones
 process.on('beforeExit', async () => {
@@ -109,5 +113,6 @@ module.exports = {
   prisma,
   calcularEdad,
   formatPaginationResponse,
-  handlePrismaError
+  handlePrismaError,
+  validateCuentaAbierta
 };
