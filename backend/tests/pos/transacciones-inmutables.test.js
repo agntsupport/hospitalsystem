@@ -110,11 +110,12 @@ describe('Sistema de Integridad de Transacciones - Tests Completos', () => {
     });
 
     // Crear cuenta de prueba
-    testCuenta = await createTestCuentaPaciente({
+    const cuentaResult = await createTestCuentaPaciente({
       pacienteId: testPatient.id,
       anticipo: 10000.00,
       estado: 'abierta'
     });
+    testCuenta = cuentaResult.cuenta;
 
     // Crear quirófano de prueba
     testQuirofano = await prisma.quirofano.create({
