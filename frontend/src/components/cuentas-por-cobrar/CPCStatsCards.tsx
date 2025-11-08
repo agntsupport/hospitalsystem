@@ -32,7 +32,8 @@ interface CPCStatsCardsProps {
 }
 
 const CPCStatsCards: React.FC<CPCStatsCardsProps> = ({ stats }) => {
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number) =>
+    `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const statCards = [
     {
