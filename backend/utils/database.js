@@ -11,6 +11,37 @@ const prisma = new PrismaClient({
   // Connection pool configurado en schema.prisma
 });
 
+// ==============================================
+// MIDDLEWARE PRISMA: VALIDACIÓN DE INTEGRIDAD
+// ==============================================
+// Middleware global para prevenir transacciones en cuentas cerradas
+// Este es el último nivel de defensa contra modificaciones incorrectas
+prisma.$use(async (params, next) => {
+  // Solo validar creación de transacciones en cuentas
+  if (params.model === 'TransaccionCuenta' && params.action === 'create') {
+    const cuentaId = params.args.data.cuentaId;
+
+    // Validar que la cuenta existe y está abierta
+    const cuenta = await prisma.cuentaPaciente.findUnique({
+      where: { id: cuentaId },
+      select: { estado: true, id: true }
+    });
+
+    if (!cuenta) {
+      throw new Error(`No se puede crear transacción: Cuenta ${cuentaId} no encontrada`);
+    }
+
+    if (cuenta.estado === 'cerrada') {
+      throw new Error(
+        `No se pueden agregar transacciones a la cuenta ${cuentaId}. ` +
+        `La cuenta está cerrada y es inmutable.`
+      );
+    }
+  }
+
+  return next(params);
+});
+
 // Manejar cierre graceful de conexiones
 process.on('beforeExit', async () => {
   await prisma.$disconnect();

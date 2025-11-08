@@ -780,6 +780,110 @@ router.put('/cirugias/:id/estado', authenticateToken, auditMiddleware('cirugias'
         where: { id: cirugia.quirofanoId },
         data: { estado: 'limpieza' }
       });
+
+      // Si la cirugía se completó exitosamente, generar cargo automático
+      if (estado === 'completada') {
+        try {
+          // Obtener datos completos de la cirugía y quirófano
+          const cirugiaCompleta = await prisma.cirugiaQuirofano.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+              quirofano: true,
+              paciente: true
+            }
+          });
+
+          // Buscar hospitalización activa del paciente
+          const hospitalizacionActiva = await prisma.hospitalizacion.findFirst({
+            where: {
+              pacienteId: cirugiaCompleta.pacienteId,
+              estado: {
+                notIn: ['alta_medica', 'alta_voluntaria']
+              }
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+
+          if (hospitalizacionActiva && hospitalizacionActiva.cuentaPacienteId) {
+            // Verificar que la cuenta esté abierta
+            const cuenta = await prisma.cuentaPaciente.findUnique({
+              where: { id: hospitalizacionActiva.cuentaPacienteId }
+            });
+
+            if (cuenta && cuenta.estado === 'abierta') {
+              // Calcular horas de cirugía
+              const fechaInicio = new Date(cirugia.fechaInicio);
+              const fechaFin = new Date();
+              const horasCirugia = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60));
+
+              // Buscar o crear servicio de quirófano
+              const codigoServicio = `QUIR-${cirugiaCompleta.quirofano.numero}`;
+              let servicio = await prisma.servicio.findFirst({
+                where: { codigo: codigoServicio }
+              });
+
+              // Si no existe, crear el servicio
+              if (!servicio) {
+                const precioHora = cirugiaCompleta.quirofano.precioHora || 0;
+                servicio = await prisma.servicio.create({
+                  data: {
+                    codigo: codigoServicio,
+                    nombre: `Uso de quirófano ${cirugiaCompleta.quirofano.numero}`,
+                    descripcion: `Servicio de uso de quirófano ${cirugiaCompleta.quirofano.numero}`,
+                    precio: precioHora,
+                    categoria: 'quirofano',
+                    activo: true
+                  }
+                });
+              }
+
+              // Crear transacción de cargo automático
+              const precioUnitario = parseFloat(servicio.precio.toString());
+              const subtotal = horasCirugia * precioUnitario;
+
+              await prisma.transaccionCuenta.create({
+                data: {
+                  cuentaId: hospitalizacionActiva.cuentaPacienteId,
+                  tipo: 'servicio',
+                  concepto: `Uso de quirófano ${cirugiaCompleta.quirofano.numero} - ${cirugiaCompleta.tipoIntervencion}`,
+                  cantidad: horasCirugia,
+                  precioUnitario: precioUnitario,
+                  subtotal: subtotal,
+                  servicioId: servicio.id,
+                  empleadoCargoId: req.user.id,
+                  observaciones: `Cargo automático por cirugía completada (ID: ${cirugia.id})`
+                }
+              });
+
+              logger.logInfo('SURGERY_CHARGE_CREATED', {
+                cirugiaId: cirugia.id,
+                cuentaId: hospitalizacionActiva.cuentaPacienteId,
+                horasCirugia,
+                subtotal,
+                quirofanoNumero: cirugiaCompleta.quirofano.numero
+              });
+            } else {
+              logger.logWarning('SURGERY_CHARGE_SKIPPED_CLOSED_ACCOUNT', {
+                cirugiaId: cirugia.id,
+                cuentaId: hospitalizacionActiva.cuentaPacienteId,
+                motivo: 'Cuenta cerrada'
+              });
+            }
+          } else {
+            logger.logWarning('SURGERY_CHARGE_SKIPPED_NO_HOSPITALIZATION', {
+              cirugiaId: cirugia.id,
+              pacienteId: cirugiaCompleta.pacienteId,
+              motivo: 'No hay hospitalización activa para el paciente'
+            });
+          }
+        } catch (cargoError) {
+          // No fallar la operación completa si hay error en el cargo
+          logger.logError('SURGERY_CHARGE_ERROR', cargoError, {
+            cirugiaId: cirugia.id,
+            motivo: 'Error al generar cargo automático de quirófano'
+          });
+        }
+      }
     }
 
     if (observaciones) {
