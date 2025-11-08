@@ -37,6 +37,22 @@
 
 ---
 
+### 3. [REPORTE_DIAGNOSTICO_BD_LOCAL.md](./REPORTE_DIAGNOSTICO_BD_LOCAL.md) (15KB)
+**Diagnóstico Ejecutado en Base de Datos Local**
+- Resultados de scripts SQL de diagnóstico
+- Identificación de cuentas corruptas (1 encontrada, corregida)
+- Verificación de transacciones (0 transacciones - CRÍTICO)
+- Confirmación: Cuenta #1 NO existe en local (es de producción)
+- Estadísticas post-corrección (113 cuentas, 100% integridad)
+- Scripts de corrección aplicados y validados
+
+**Estado:** ✅ Completo
+**Acción:** Cuenta #8 corregida exitosamente
+**Hallazgo crítico:** Tabla transacciones_cuenta VACÍA (0 registros)
+**Última actualización:** 7 Nov 2025 - 17:45
+
+---
+
 ## 🎯 Resumen Ejecutivo
 
 ### Problema Detectado
@@ -55,14 +71,19 @@ Adicionalmente, el modal muestra "No se encontraron transacciones para esta cuen
 1. **Datos corruptos en BD:** La columna `totalCuenta` tiene valores incorrectos para cuentas cerradas históricas
 2. **Falta de endpoint:** No existe `PUT /api/pos/cuentas/:id/close` en el backend
 3. **Cierre incompleto:** El proceso de cierre de cuenta no valida ni calcula correctamente los totales
+4. **🔴 CRÍTICO:** Tabla `transacciones_cuenta` VACÍA - 0 transacciones registradas (BD local)
 
 ### Soluciones Implementadas
 ✅ **Snapshot histórico** - Las cuentas cerradas ahora respetan sus valores almacenados (commit `6ae1d9a`)
 ✅ **Validaciones anti-corrupción** - Imposible agregar transacciones a cuentas cerradas
 ✅ **Tests de snapshot** - 2 nuevos tests para validar inmutabilidad (29/29 passing)
+✅ **Diagnóstico BD local** - Script SQL ejecutado, 1 cuenta corrupta identificada y corregida
+✅ **Corrección cuenta #8** - Totales recalculados correctamente ($0.00 → $25.00)
 
 ### Soluciones Pendientes
-⏳ **Limpieza de datos** - Corregir todas las cuentas cerradas con totales incorrectos
+✅ **Limpieza de datos LOCAL** - Completada (cuenta #8 corregida, 0 cuentas corruptas restantes)
+🔴 **URGENTE: Diagnóstico PRODUCCIÓN** - Ejecutar scripts en BD de producción para cuenta #1
+🔴 **CRÍTICO: Investigar transacciones vacías** - Por qué tabla transacciones_cuenta tiene 0 registros
 ⏳ **Endpoint de cierre** - Implementar `PUT /api/pos/cuentas/:id/close` con validaciones
 ⏳ **Constraints de BD** - Agregar validación a nivel de PostgreSQL
 ⏳ **Tests E2E** - Validar ciclo completo de apertura → transacciones → cierre
