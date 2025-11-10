@@ -166,7 +166,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
     try {
       const roomsResponse = await roomsService.getRooms({ estado: 'disponible' });
       console.log('Rooms response:', roomsResponse);
-      
+
       if (roomsResponse.success) {
         let filteredRooms = roomsResponse.data?.rooms || [];
 
@@ -184,6 +184,16 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
         }
 
         setAvailableRooms(filteredRooms);
+
+        // Preseleccionar Consultorio General si está disponible y no hay otra habitación seleccionada
+        if (!watchedValues.habitacionId || watchedValues.habitacionId === 0) {
+          const consultorioGeneral = filteredRooms.find((room: Room) =>
+            room.tipo === 'consultorio_general' || room.numero === 'CONS-GEN'
+          );
+          if (consultorioGeneral) {
+            setValue('habitacionId', consultorioGeneral.id);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading rooms:', error);

@@ -216,6 +216,7 @@ model Habitacion {
 }
 
 enum TipoHabitacion {
+  consultorio_general
   individual
   doble
   suite

@@ -1,7 +1,7 @@
 export interface Room {
   id: number;
   numero: string;
-  tipo: 'individual' | 'doble' | 'triple' | 'suite' | 'cuidados_intensivos';
+  tipo: 'consultorio_general' | 'individual' | 'doble' | 'triple' | 'suite' | 'cuidados_intensivos';
   precioPorDia: number;
   estado: 'disponible' | 'ocupada' | 'mantenimiento';
   descripcion: string;
