@@ -18,6 +18,7 @@ import {
   Autocomplete,
   Chip,
   FormHelperText,
+  ListSubheader,
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -170,28 +171,33 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       if (roomsResponse.success) {
         let filteredRooms = roomsResponse.data?.rooms || [];
 
-        // Filtrar por tipo según nivel de cuidado
+        // Aplicar filtros especiales solo cuando sea necesario
         if (watchedValues.requiereAislamiento) {
+          // Si requiere aislamiento, solo mostrar habitaciones individuales
           filteredRooms = filteredRooms.filter((room: Room) =>
             room.tipo === 'individual'
           );
-        }
-
-        if (watchedValues.nivelCuidado === 'intensivo') {
+        } else if (watchedValues.nivelCuidado === 'intensivo') {
+          // Si es cuidado intensivo, solo mostrar terapia intensiva
           filteredRooms = filteredRooms.filter((room: Room) =>
-            room.tipo === 'cuidados_intensivos'
+            room.tipo === 'terapia_intensiva'
           );
         }
+        // Si no hay filtros especiales, mostrar TODAS las habitaciones disponibles
 
         setAvailableRooms(filteredRooms);
 
         // Preseleccionar Consultorio General si está disponible y no hay otra habitación seleccionada
-        if (!watchedValues.habitacionId || watchedValues.habitacionId === 0) {
+        // Solo si no requiere aislamiento ni cuidados intensivos
+        if ((!watchedValues.habitacionId || watchedValues.habitacionId === 0) &&
+            !watchedValues.requiereAislamiento &&
+            watchedValues.nivelCuidado !== 'intensivo') {
           const consultorioGeneral = filteredRooms.find((room: Room) =>
-            room.tipo === 'consultorio_general' || room.numero === 'CONS-GEN'
+            room.tipo === 'consultorio_general'
           );
           if (consultorioGeneral) {
             setValue('habitacionId', consultorioGeneral.id);
+            console.log('Consultorio General preseleccionado:', consultorioGeneral.numero);
           }
         }
       }
@@ -210,6 +216,30 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       setSelectedPatient(null);
       setValue('pacienteId', 0);
     }
+  };
+
+  // Helper para obtener el nombre legible del tipo de habitación
+  const getRoomTypeLabel = (tipo: string): string => {
+    const labels: { [key: string]: string } = {
+      'consultorio_general': 'Consultorio General',
+      'individual': 'Habitación Individual',
+      'doble': 'Habitación Doble',
+      'suite': 'Suite',
+      'terapia_intensiva': 'Terapia Intensiva'
+    };
+    return labels[tipo] || tipo;
+  };
+
+  // Agrupar habitaciones por tipo
+  const groupRoomsByType = () => {
+    const groups: { [key: string]: Room[] } = {};
+    availableRooms.forEach((room) => {
+      if (!groups[room.tipo]) {
+        groups[room.tipo] = [];
+      }
+      groups[room.tipo].push(room);
+    });
+    return groups;
   };
 
 
@@ -455,32 +485,42 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
                 <Controller
                   name="habitacionId"
                   control={control}
-                  render={({ field, fieldState }) => (
-                    <FormControl fullWidth required error={!!fieldState.error}>
-                      <InputLabel>Habitación</InputLabel>
-                      <Select
-                        {...field}
-                        value={field.value || ''}
-                        label="Habitación"
-                      >
-                        {availableRooms.map((room) => (
-                          <MenuItem key={room.id} value={room.id}>
-                            {room.numero} - {room.tipo} - Piso {room.piso}
-                            {room.caracteristicas && (
-                              <Chip 
-                                label={room.caracteristicas} 
-                                size="small" 
-                                sx={{ ml: 1 }}
-                              />
-                            )}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {fieldState.error && (
-                        <FormHelperText>{fieldState.error.message}</FormHelperText>
-                      )}
-                    </FormControl>
-                  )}
+                  render={({ field, fieldState }) => {
+                    const roomGroups = groupRoomsByType();
+                    return (
+                      <FormControl fullWidth required error={!!fieldState.error}>
+                        <InputLabel>Habitación / Consultorio</InputLabel>
+                        <Select
+                          {...field}
+                          value={field.value || ''}
+                          label="Habitación / Consultorio"
+                        >
+                          {Object.entries(roomGroups).map(([tipo, rooms]) => [
+                            <ListSubheader key={`header-${tipo}`} sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                              {getRoomTypeLabel(tipo)}
+                            </ListSubheader>,
+                            ...rooms.map((room) => (
+                              <MenuItem key={room.id} value={room.id} sx={{ pl: 4 }}>
+                                {room.numero}
+                                {room.descripcion && ` - ${room.descripcion}`}
+                                {room.tipo === 'consultorio_general' && (
+                                  <Chip
+                                    label="Sin cargo"
+                                    size="small"
+                                    color="success"
+                                    sx={{ ml: 1 }}
+                                  />
+                                )}
+                              </MenuItem>
+                            ))
+                          ])}
+                        </Select>
+                        {fieldState.error && (
+                          <FormHelperText>{fieldState.error.message}</FormHelperText>
+                        )}
+                      </FormControl>
+                    );
+                  }}
                 />
               </Grid>
 
