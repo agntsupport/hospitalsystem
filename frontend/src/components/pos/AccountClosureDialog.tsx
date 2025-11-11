@@ -141,7 +141,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
     });
 
     const charges = services + products;
-    const balance = charges - advances; // Positivo = cobrar, Negativo = devolver
+    const balance = advances - charges; // Positivo = devolver, Negativo = cobrar
 
     setTotalServices(services);
     setTotalProducts(products);
@@ -149,8 +149,8 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
     setTotalCharges(charges);
     setFinalBalance(balance);
 
-    // Si hay saldo a devolver, preestablecerlo
-    if (balance < 0) {
+    // Si hay saldo a devolver, no requiere pago adicional
+    if (balance > 0) {
       setAmountReceived('0');
     }
   };
@@ -321,7 +321,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
 
   // Usar accountDetails - esperamos que esté cargado antes de mostrar contenido
   const patient = account.paciente || accountDetails?.paciente;
-  const isRefund = finalBalance < 0;
+  const isRefund = finalBalance > 0;
 
   return (
     <Dialog 
@@ -485,12 +485,12 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                 </Grid>
 
                 <Grid item xs={6}>
-                  <Typography variant="h6" color={isRefund ? 'error.main' : 'primary'}>
-                    {isRefund ? 'Saldo a Devolver:' : 'Total a Cobrar:'}
+                  <Typography variant="h6" color={isRefund ? 'success.main' : finalBalance < 0 ? 'error.main' : 'primary'}>
+                    {isRefund ? 'Devolver al Paciente:' : finalBalance < 0 ? 'Total a Cobrar:' : 'Saldo:'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6} textAlign="right">
-                  <Typography variant="h6" color={isRefund ? 'error.main' : 'primary'}>
+                  <Typography variant="h6" color={isRefund ? 'success.main' : finalBalance < 0 ? 'error.main' : 'primary'}>
                     ${Math.abs(finalBalance).toFixed(2)}
                   </Typography>
                 </Grid>
@@ -659,9 +659,9 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                     variant="outlined"
                     size="small"
                     color="success"
-                    onClick={() => handleQuickAmount(finalBalance)}
+                    onClick={() => handleQuickAmount(Math.abs(finalBalance))}
                   >
-                    Exacto (${finalBalance.toFixed(2)})
+                    Exacto (${Math.abs(finalBalance).toFixed(2)})
                   </Button>
                 </Box>
               </Grid>
