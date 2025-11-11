@@ -4,6 +4,7 @@ const { prisma } = require('../utils/database');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const logger = require('../utils/logger');
+const { calcularTotalesCuenta, formatearTotales } = require('../utils/posCalculations');
 
 // ==============================================
 // ENDPOINTS PARA MÓDULO POS - VENTAS RÁPIDAS
@@ -521,45 +522,9 @@ router.get('/cuentas', authenticateToken, async (req, res) => {
 
     // Formatear cuentas: calcular en tiempo real SOLO si está abierta, usar valores almacenados si está cerrada
     const cuentasFormatted = await Promise.all(cuentas.map(async (cuenta) => {
-      let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
-
-      if (cuenta.estado === 'abierta') {
-        // Cuenta ABIERTA: calcular en tiempo real desde transacciones
-        const [servicios, productos, anticipos, pagosParciales] = await Promise.all([
-          prisma.transaccionCuenta.aggregate({
-            where: { cuentaId: cuenta.id, tipo: 'servicio' },
-            _sum: { subtotal: true }
-          }),
-          prisma.transaccionCuenta.aggregate({
-            where: { cuentaId: cuenta.id, tipo: 'producto' },
-            _sum: { subtotal: true }
-          }),
-          prisma.transaccionCuenta.aggregate({
-            where: { cuentaId: cuenta.id, tipo: 'anticipo' },
-            _sum: { subtotal: true }
-          }),
-          prisma.pago.aggregate({
-            where: { cuentaPacienteId: cuenta.id, tipoPago: 'parcial' },
-            _sum: { monto: true }
-          })
-        ]);
-
-        totalServicios = parseFloat(servicios._sum.subtotal || 0);
-        totalProductos = parseFloat(productos._sum.subtotal || 0);
-        totalCuenta = totalServicios + totalProductos;
-        // Usar anticipos de transacciones si existen, sino usar el campo de la cuenta (compatibilidad legacy)
-        const anticiposTransacciones = parseFloat(anticipos._sum.subtotal || 0);
-        anticipo = anticiposTransacciones > 0 ? anticiposTransacciones : parseFloat(cuenta.anticipo || 0);
-        const totalPagosParciales = parseFloat(pagosParciales._sum.monto || 0);
-        saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
-      } else {
-        // Cuenta CERRADA: usar valores almacenados (snapshot histórico)
-        anticipo = parseFloat(cuenta.anticipo.toString());
-        totalServicios = parseFloat(cuenta.totalServicios.toString());
-        totalProductos = parseFloat(cuenta.totalProductos.toString());
-        totalCuenta = parseFloat(cuenta.totalCuenta.toString());
-        saldoPendiente = parseFloat(cuenta.saldoPendiente.toString());
-      }
+      // Usar helper centralizado para calcular totales
+      const totales = await calcularTotalesCuenta(cuenta, prisma);
+      const { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente } = totales;
 
       return {
         id: cuenta.id,
@@ -687,41 +652,9 @@ router.get('/cuenta/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Calcular totales: en tiempo real si ABIERTA, valores almacenados si CERRADA
-    let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
-
-    if (cuenta.estado === 'abierta') {
-      // Cuenta ABIERTA: calcular en tiempo real desde transacciones y pagos
-      const [servicios, productos, pagosParciales] = await Promise.all([
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: cuenta.id, tipo: 'servicio' },
-          _sum: { subtotal: true }
-        }),
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: cuenta.id, tipo: 'producto' },
-          _sum: { subtotal: true }
-        }),
-        prisma.pago.aggregate({
-          where: { cuentaPacienteId: cuenta.id, tipoPago: 'parcial' },
-          _sum: { monto: true }
-        })
-      ]);
-
-      totalServicios = parseFloat(servicios._sum.subtotal || 0);
-      totalProductos = parseFloat(productos._sum.subtotal || 0);
-      const totalPagosParciales = parseFloat(pagosParciales._sum.monto || 0);
-      totalCuenta = totalServicios + totalProductos;
-      anticipo = parseFloat(cuenta.anticipo.toString());
-      // Saldo = anticipo + pagos parciales - cargos totales
-      saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
-    } else {
-      // Cuenta CERRADA: usar valores almacenados (snapshot histórico al momento del cierre)
-      anticipo = parseFloat(cuenta.anticipo.toString());
-      totalServicios = parseFloat(cuenta.totalServicios.toString());
-      totalProductos = parseFloat(cuenta.totalProductos.toString());
-      totalCuenta = parseFloat(cuenta.totalCuenta.toString());
-      saldoPendiente = parseFloat(cuenta.saldoPendiente.toString());
-    }
+    // Usar helper centralizado para calcular totales
+    const totales = await calcularTotalesCuenta(cuenta, prisma);
+    const { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente } = totales;
 
     // Formatear respuesta
     const cuentaFormatted = {
@@ -859,46 +792,9 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
       } : null
     }));
 
-    // Calcular totales: en tiempo real si ABIERTA, valores almacenados si CERRADA
-    let totalServicios, totalProductos, totalCuenta, anticipo, saldoPendiente;
-
-    if (cuenta.estado === 'abierta') {
-      // Cuenta ABIERTA: calcular en tiempo real desde transacciones
-      const [servicios, productos, anticipos, pagosParciales] = await Promise.all([
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: parseInt(id), tipo: 'servicio' },
-          _sum: { subtotal: true }
-        }),
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: parseInt(id), tipo: 'producto' },
-          _sum: { subtotal: true }
-        }),
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: parseInt(id), tipo: 'anticipo' },
-          _sum: { subtotal: true }
-        }),
-        prisma.pago.aggregate({
-          where: { cuentaPacienteId: parseInt(id), tipoPago: 'parcial' },
-          _sum: { monto: true }
-        })
-      ]);
-
-      totalServicios = parseFloat(servicios._sum.subtotal || 0);
-      totalProductos = parseFloat(productos._sum.subtotal || 0);
-      totalCuenta = totalServicios + totalProductos;
-      // Usar anticipos de transacciones si existen, sino usar el campo de la cuenta (compatibilidad legacy)
-      const anticiposTransacciones = parseFloat(anticipos._sum.subtotal || 0);
-      anticipo = anticiposTransacciones > 0 ? anticiposTransacciones : parseFloat(cuenta.anticipo || 0);
-      const totalPagosParciales = parseFloat(pagosParciales._sum.monto || 0);
-      saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
-    } else {
-      // Cuenta CERRADA: usar valores almacenados (snapshot histórico al momento del cierre)
-      anticipo = parseFloat(cuenta.anticipo.toString());
-      totalServicios = parseFloat(cuenta.totalServicios.toString());
-      totalProductos = parseFloat(cuenta.totalProductos.toString());
-      totalCuenta = parseFloat(cuenta.totalCuenta.toString());
-      saldoPendiente = parseFloat(cuenta.saldoPendiente.toString());
-    }
+    // Usar helper centralizado para calcular totales
+    const totales = await calcularTotalesCuenta(cuenta, prisma);
+    const { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente } = totales;
 
     res.json({
       success: true,
