@@ -312,7 +312,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
         espacioData.habitacionId = parseInt(espacioValue);
       }
 
-      await hospitalizationService.createAdmission({
+      const response = await hospitalizationService.createAdmission({
         pacienteId: data.pacienteId,
         ...espacioData,
         medicoTratanteId: data.medicoTratanteId,
@@ -323,6 +323,12 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
         observacionesIngreso: data.observaciones,
         autorizacion: data.autorizacionSeguro
       } as any);
+
+      // ✅ VALIDAR respuesta antes de asumir éxito
+      if (!response.success) {
+        toast.error(response.message || 'Error al registrar el ingreso');
+        return;
+      }
 
       toast.success('Ingreso hospitalario registrado exitosamente');
       onSuccess();
