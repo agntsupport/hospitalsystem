@@ -304,9 +304,18 @@ app.use('/api/notificaciones', notificacionesRoutes);
 // NOTA FASE 1: Los endpoints /api/services y /api/suppliers fueron migrados exitosamente a:
 //   - routes/inventory.routes.js (GET /api/inventory/services y GET /api/inventory/suppliers)
 //   - routes/pos.routes.js (GET /api/pos/services para POS)
-// Los endpoints patient-accounts permanecen aquí temporalmente y serán migrados a billing.routes.js en FASE 2
 
-// Patient Accounts (compatibilidad POS)
+// ==============================================
+// ⚠️ ENDPOINTS LEGACY DEPRECATED - PARA ELIMINAR
+// ==============================================
+// Los siguientes 3 endpoints son LEGACY y serán eliminados en versión futura.
+// Usar en su lugar: /api/pos/cuentas, /api/pos/cuenta/:id/transacciones, etc.
+// Fecha de deprecación: 11 Noviembre 2025
+// Razón: Endpoints modernos en pos.routes.js con mejor lógica de negocio
+// ==============================================
+
+// @deprecated - Usar GET /api/pos/cuentas en su lugar
+// Patient Accounts (compatibilidad POS) - DEPRECATED
 app.get('/api/patient-accounts', authenticateToken, async (req, res) => {
   try {
     const { estado = 'abierta', limit = 50 } = req.query;
@@ -450,7 +459,8 @@ app.get('/api/patient-accounts', authenticateToken, async (req, res) => {
 // Migrado por: Opción 2 completa (sin excepciones)
 // ==============================================
 
-// POST /api/patient-accounts/:id/transactions - Agregar transacción a cuenta
+// @deprecated - No usar, agregar items vía solicitudes o servicios directamente
+// POST /api/patient-accounts/:id/transactions - Agregar transacción a cuenta - DEPRECATED
 app.post('/api/patient-accounts/:id/transactions', authenticateToken, auditMiddleware('transacciones_cuenta'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -655,7 +665,8 @@ app.post('/api/patient-accounts/:id/transactions', authenticateToken, auditMiddl
   }
 });
 
-// GET /api/patient-accounts/consistency-check - Verificar y corregir inconsistencias
+// @deprecated - Endpoint de diagnóstico obsoleto, integrar en herramientas admin
+// GET /api/patient-accounts/consistency-check - Verificar y corregir inconsistencias - DEPRECATED
 app.get('/api/patient-accounts/consistency-check', authenticateToken, async (req, res) => {
   try {
     const inconsistencies = [];

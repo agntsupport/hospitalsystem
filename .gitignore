@@ -44,7 +44,13 @@ tmp/
 temp/
 *.tmp
 *.temp
+*.png
+!frontend/public/*.png
+!frontend/src/assets/*.png
 
 # OS files
 Thumbs.db
 Desktop.ini
+
+# Carpetas legacy a evitar
+backend/frontend/
