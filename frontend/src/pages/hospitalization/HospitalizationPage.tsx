@@ -86,6 +86,7 @@ const HospitalizationPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
+  const [selectedSpaceType, setSelectedSpaceType] = useState<string>('');
 
   // Estados de paginación
   const [totalItems, setTotalItems] = useState(0);
@@ -104,7 +105,7 @@ const HospitalizationPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [filters]);
+  }, [filters, selectedSpaceType]);
 
   const loadData = async () => {
     try {
@@ -118,7 +119,19 @@ const HospitalizationPage: React.FC = () => {
       ]);
 
       if (admissionsResponse.success && admissionsResponse.data) {
-        setAdmissions(admissionsResponse.data?.items || []);
+        let admissionsData = admissionsResponse.data?.items || [];
+
+        // Aplicar filtro de tipo de espacio en el frontend
+        if (selectedSpaceType) {
+          admissionsData = admissionsData.filter((admission: any) => {
+            if (selectedSpaceType === 'habitacion' && admission.habitacion) return true;
+            if (selectedSpaceType === 'consultorio' && admission.consultorio) return true;
+            if (selectedSpaceType === 'quirofano' && admission.quirofano) return true;
+            return false;
+          });
+        }
+
+        setAdmissions(admissionsData);
         setTotalItems(admissionsResponse.data?.pagination?.total || 0);
         setTotalPages(admissionsResponse.data?.pagination?.totalPages || 1);
       } else {
@@ -150,6 +163,7 @@ const HospitalizationPage: React.FC = () => {
     setSearchTerm('');
     setSelectedStatus('');
     setSelectedSpecialty('');
+    setSelectedSpaceType('');
     setFilters({
       pagina: 1,
       limite: 10
@@ -396,6 +410,22 @@ const HospitalizationPage: React.FC = () => {
             </FormControl>
           </Grid>
 
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Tipo de Espacio</InputLabel>
+              <Select
+                value={selectedSpaceType}
+                label="Tipo de Espacio"
+                onChange={(e) => setSelectedSpaceType(e.target.value)}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="habitacion">🛏️ Habitaciones</MenuItem>
+                <MenuItem value="consultorio">🏥 Consultorios</MenuItem>
+                <MenuItem value="quirofano">⚕️ Quirófanos</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
           <Grid item xs={12} md={2}>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
@@ -473,7 +503,7 @@ const HospitalizationPage: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Paciente</TableCell>
-                    <TableCell>Habitación</TableCell>
+                    <TableCell>Espacio Asignado</TableCell>
                     <TableCell>Diagnóstico</TableCell>
                     <TableCell>Médico Tratante</TableCell>
                     <TableCell>Ingreso</TableCell>
@@ -484,27 +514,59 @@ const HospitalizationPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {admissions.map((admission) => (
-                    <TableRow key={admission.id} hover>
-                      <TableCell>
-                        <Box>
-                          <Typography variant="body2" fontWeight="medium">
-                            {admission.paciente.nombre}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {admission.paciente.numeroExpediente} • {admission.numeroIngreso}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {admission.habitacion.numero}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {admission.habitacion.tipo} • Piso {admission.habitacion.piso}
-                        </Typography>
-                      </TableCell>
+                  {admissions.map((admission) => {
+                    // Determinar el espacio asignado y su icono
+                    let espacioInfo = { numero: '', tipo: '', icono: '', detalles: '' };
+
+                    if (admission.habitacion) {
+                      espacioInfo = {
+                        numero: admission.habitacion.numero,
+                        tipo: 'Habitación',
+                        icono: '🛏️',
+                        detalles: `${admission.habitacion.tipo}${admission.habitacion.piso ? ` • Piso ${admission.habitacion.piso}` : ''}`
+                      };
+                    } else if (admission.consultorio) {
+                      espacioInfo = {
+                        numero: admission.consultorio.numero,
+                        tipo: 'Consultorio',
+                        icono: '🏥',
+                        detalles: `${admission.consultorio.tipo}${admission.consultorio.especialidad ? ` • ${admission.consultorio.especialidad}` : ''}`
+                      };
+                    } else if (admission.quirofano) {
+                      espacioInfo = {
+                        numero: admission.quirofano.numero,
+                        tipo: 'Quirófano',
+                        icono: '⚕️',
+                        detalles: `${admission.quirofano.tipo}${admission.quirofano.especialidad ? ` • ${admission.quirofano.especialidad}` : ''}`
+                      };
+                    }
+
+                    return (
+                      <TableRow key={admission.id} hover>
+                        <TableCell>
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {admission.paciente.nombre}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {admission.paciente.numeroExpediente} • {admission.numeroIngreso}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <span style={{ fontSize: '1.2rem' }}>{espacioInfo.icono}</span>
+                            <Box>
+                              <Typography variant="body2" fontWeight="medium">
+                                {espacioInfo.numero}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                {espacioInfo.tipo} • {espacioInfo.detalles}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
 
                       <TableCell>
                         <Typography variant="body2">
@@ -628,7 +690,8 @@ const HospitalizationPage: React.FC = () => {
                         </Box>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
