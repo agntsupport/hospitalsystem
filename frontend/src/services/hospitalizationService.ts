@@ -401,30 +401,37 @@ class HospitalizationService {
    */
   validateAdmissionForm(data: HospitalAdmissionForm): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-    
+
     if (!data.pacienteId) {
       errors.push('El paciente es requerido');
     }
-    
-    if (!data.habitacionId) {
-      errors.push('La habitación es requerida');
+
+    // Validar que al menos uno de los tres espacios esté presente
+    const espaciosProporcionados = [data.habitacionId, data.consultorioId, data.quirofanoId].filter(Boolean).length;
+
+    if (espaciosProporcionados === 0) {
+      errors.push('Debe seleccionar una habitación, consultorio o quirófano');
     }
-    
+
+    if (espaciosProporcionados > 1) {
+      errors.push('Solo puede seleccionar una habitación, consultorio o quirófano (no más de uno)');
+    }
+
     if (!data.motivoIngreso || data.motivoIngreso.trim().length < 10) {
       errors.push('El motivo de ingreso debe tener al menos 10 caracteres');
     }
-    
+
     if (!data.diagnosticoIngreso || data.diagnosticoIngreso.trim().length < 5) {
       errors.push('El diagnóstico de ingreso debe tener al menos 5 caracteres');
     }
-    
+
     if (!data.medicoTratanteId) {
       errors.push('El médico tratante es requerido');
     }
-    
+
     // Campos opcionales - no requeridos por el backend
     // tipoHospitalizacion y especialidad son opcionales
-    
+
     return {
       valid: errors.length === 0,
       errors

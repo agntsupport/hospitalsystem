@@ -565,7 +565,10 @@ export type Specialty = typeof SPECIALTIES[number];
 // Tipo para formularios
 export interface HospitalAdmissionForm {
   pacienteId: number;
-  habitacionId: number;
+  // Uno de estos tres campos debe estar presente (validado en el servicio)
+  habitacionId?: number;
+  consultorioId?: number;
+  quirofanoId?: number;
   motivoIngreso: string;
   diagnosticoIngreso: string;
   tipoHospitalizacion: AdmissionType;
