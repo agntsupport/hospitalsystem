@@ -95,6 +95,21 @@ const PartialPaymentDialog: React.FC<PartialPaymentDialogProps> = ({
     setError(null);
     setSuccess(false);
 
+    // Validación P1.1: Pago parcial excesivo
+    const saldoFuturo = (account.saldoPendiente || 0) + data.monto;
+    const anticipo = account.anticipo || 0;
+
+    // Si el saldo futuro supera el 150% del anticipo, mostrar advertencia
+    if (saldoFuturo > anticipo * 1.5) {
+      const exceso = saldoFuturo - anticipo;
+      setError(
+        `⚠️ Advertencia: Este pago generará un crédito excesivo a favor del paciente de $${exceso.toFixed(2)}. ` +
+        `El saldo futuro será de $${saldoFuturo.toFixed(2)}, superando el anticipo inicial ($${anticipo.toFixed(2)}) en un 50%.`
+      );
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await posService.registerPartialPayment(account.id, {
         monto: data.monto,

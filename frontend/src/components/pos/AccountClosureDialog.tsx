@@ -80,6 +80,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   const [totalServices, setTotalServices] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalAdvances, setTotalAdvances] = useState(0);
+  const [totalPartialPayments, setTotalPartialPayments] = useState(0);
   const [totalCharges, setTotalCharges] = useState(0);
   const [finalBalance, setFinalBalance] = useState(0);
   const [changeAmount, setChangeAmount] = useState(0);
@@ -124,7 +125,9 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
     let services = 0;
     let products = 0;
     let advances = 0;
+    let partialPayments = 0;
 
+    // Calcular totales de transacciones
     accountDetails.transacciones.forEach((t: any) => {
       const amount = parseFloat(t.subtotal || t.precioUnitario || 0);
       switch (t.tipo) {
@@ -140,12 +143,22 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
       }
     });
 
+    // Calcular pagos parciales si existen
+    if (accountDetails.pagos && Array.isArray(accountDetails.pagos)) {
+      accountDetails.pagos.forEach((p: any) => {
+        if (p.tipoPago === 'parcial') {
+          partialPayments += parseFloat(p.monto || 0);
+        }
+      });
+    }
+
     const charges = services + products;
-    const balance = advances - charges; // Positivo = devolver, Negativo = cobrar
+    const balance = (advances + partialPayments) - charges; // Positivo = devolver, Negativo = cobrar
 
     setTotalServices(services);
     setTotalProducts(products);
     setTotalAdvances(advances);
+    setTotalPartialPayments(partialPayments);
     setTotalCharges(charges);
     setFinalBalance(balance);
 
@@ -427,6 +440,60 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
             </Grid>
           )}
 
+          {/* Detalle de Pagos Parciales */}
+          {!loading && accountDetails?.pagos && accountDetails.pagos.some((p: any) => p.tipoPago === 'parcial') && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                Pagos Parciales Realizados
+              </Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Fecha</TableCell>
+                      <TableCell>Método</TableCell>
+                      <TableCell>Cajero</TableCell>
+                      <TableCell align="right">Monto</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {accountDetails.pagos
+                      .filter((pago: any) => pago.tipoPago === 'parcial')
+                      .map((pago: any) => (
+                        <TableRow key={pago.id}>
+                          <TableCell>
+                            {new Date(pago.fechaPago).toLocaleString('es-MX', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={pago.metodoPago}
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {pago.empleado ? `${pago.empleado.nombre} ${pago.empleado.apellidos}` : 'N/A'}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography color="success.main" fontWeight="bold">
+                              +${parseFloat(pago.monto || 0).toFixed(2)}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Grid>
+          )}
+
           {/* Resumen de Totales */}
           {!loading && (
           <Grid item xs={12}>
@@ -479,6 +546,21 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                     -${totalAdvances.toFixed(2)}
                   </Typography>
                 </Grid>
+
+                {totalPartialPayments > 0 && (
+                  <>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="success.main" fontWeight="bold">
+                        Pagos Parciales:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} textAlign="right">
+                      <Typography variant="body2" color="success.main" fontWeight="bold">
+                        -${totalPartialPayments.toFixed(2)}
+                      </Typography>
+                    </Grid>
+                  </>
+                )}
 
                 <Grid item xs={12}>
                   <Divider />
