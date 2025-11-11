@@ -1114,6 +1114,43 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
         throw new Error('La cuenta ya está cerrada');
       }
 
+      // 1.1 VALIDAR NOTA DE ALTA PARA HOSPITALIZACIONES (Flujo Crítico #1)
+      if (cuenta.tipoAtencion === 'hospitalizacion') {
+        logger.info(`🏥 Validando alta médica para cuenta #${id}...`);
+
+        // Buscar hospitalización asociada
+        const hospitalizacion = await tx.hospitalizacion.findUnique({
+          where: { cuentaPacienteId: parseInt(id) }
+        });
+
+        if (hospitalizacion) {
+          // Verificar si ya fue dado de alta
+          const yaFueDadoDeAlta = hospitalizacion.fechaAlta &&
+            ['alta_medica', 'alta_voluntaria'].includes(hospitalizacion.estado);
+
+          logger.info(`🏥 Estado hospitalización: ${hospitalizacion.estado}, Alta: ${yaFueDadoDeAlta}`);
+
+          if (!yaFueDadoDeAlta) {
+            // Si NO fue dado de alta, validar que exista nota de alta
+            const notaAlta = await tx.notaHospitalizacion.findFirst({
+              where: {
+                hospitalizacionId: hospitalizacion.id,
+                tipoNota: 'alta'
+              }
+            });
+
+            if (!notaAlta) {
+              logger.warn(`⚠️ Intento de cerrar cuenta #${id} sin alta médica`);
+              throw new Error('No se puede cerrar la cuenta. Falta "Nota de Alta" por parte de un médico.');
+            }
+
+            logger.info(`✅ Nota de alta encontrada para cuenta #${id}`);
+          } else {
+            logger.info(`✅ Paciente ya fue dado de alta - permitir cierre de cuenta #${id}`);
+          }
+        }
+      }
+
       // 2. CALCULAR TOTALES EN TIEMPO REAL (single source of truth)
       const [servicios, productos, anticipos, pagosParciales] = await Promise.all([
         tx.transaccionCuenta.aggregate({
@@ -1142,6 +1179,8 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
       // Saldo = anticipo + pagos parciales - cargos totales
       const saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
 
+      logger.info(`💰 Totales cuenta #${id}: Anticipo: $${anticipo}, Total: $${totalCuenta}, Saldo: $${saldoPendiente}`);
+
       // 3. Validar pago si hay saldo pendiente
       if (saldoPendiente < 0) {
         // Si hay deuda y no se proporciona pago ni autorización de CPC
@@ -1164,7 +1203,7 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
         }
       }
 
-      // 4. GUARDAR SNAPSHOT HISTÓRICO INMUTABLE
+      // 4. GUARDAR SNAPSHOT HISTÓRICO INMUTABLE (estado al momento del cierre)
       const updateData = {
         estado: 'cerrada',
         anticipo,              // Snapshot calculado

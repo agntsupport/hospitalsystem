@@ -144,7 +144,8 @@ export const API_ROUTES = {
     BASE: '/patient-accounts',
     BY_ID: (id: number | string) => `/patient-accounts/${id}`,
     TRANSACTIONS: (id: number | string) => `/patient-accounts/${id}/transactions`,
-    CLOSE: (id: number | string) => `/patient-accounts/${id}/close`
+    // MIGRADO A ENDPOINT MODULAR: /pos/cuentas/:id/close (con validación de nota de alta)
+    CLOSE: (id: number | string) => `/pos/cuentas/${id}/close`
   }
 } as const;
 
