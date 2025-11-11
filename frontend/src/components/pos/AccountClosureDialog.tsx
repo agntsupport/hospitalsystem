@@ -282,36 +282,25 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
         toast.error(response.message || 'Error al cerrar la cuenta');
       }
     } catch (error: any) {
-      // Log detallado del error
+      // El interceptor de axios transforma los errores a ApiError (sin .response)
+      // ApiError = { success: false, message: string, error: string, status?: number }
       console.error('=== ERROR AL CERRAR CUENTA ===');
       console.error('Error completo:', error);
-      console.error('Error.response:', error?.response);
-      console.error('Error.response.data:', error?.response?.data);
-      console.error('Error.response.status:', error?.response?.status);
       console.error('Error.message:', error?.message);
+      console.error('Error.error:', error?.error);
+      console.error('Error.status:', error?.status);
 
-      // Intentar extraer el mensaje de error del backend
-      const errorMessage = error?.response?.data?.message
-        || error?.message
+      // Extraer mensaje del formato ApiError
+      const errorMessage = error?.message
+        || error?.error
         || 'Error al procesar el cierre de cuenta';
 
-      // Si hay una acción requerida, mostrarla también
-      const requiredAction = error?.response?.data?.requiredAction;
-
       console.error('Mensaje extraído:', errorMessage);
-      console.error('Acción requerida:', requiredAction);
 
       toast.error(errorMessage, {
-        autoClose: requiredAction ? false : 5000,
+        autoClose: 5000,
         closeButton: true
       });
-
-      if (requiredAction) {
-        toast.warning(requiredAction, {
-          autoClose: false,
-          closeButton: true
-        });
-      }
     } finally {
       setProcessingPayment(false);
     }
