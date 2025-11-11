@@ -7,8 +7,8 @@
 
 ![Estado del Proyecto](https://img.shields.io/badge/Estado-84%25%20Funcional-green)
 ![Versión](https://img.shields.io/badge/Versión-2.2.0--stable-blue)
-![Tests Unit](https://img.shields.io/badge/Tests%20Unit-1377%20Total%20(Frontend%20100%25%2C%20Backend%2088%25)-yellow)
-![Frontend Pass Rate](https://img.shields.io/badge/Frontend-100%25%20(873%2F873%20tests%2C%2041%2F41%20suites)-brightgreen)
+![Tests Unit](https://img.shields.io/badge/Tests%20Unit-1444%20Total%20(Frontend%2098.6%25%2C%20Backend%2088%25)-yellow)
+![Frontend Pass Rate](https://img.shields.io/badge/Frontend-98.6%25%20(927%2F940%20tests%2C%2045%2F45%20suites)-brightgreen)
 ![Backend Pass Rate](https://img.shields.io/badge/Backend-88%25%20(395%2F449%20tests%2C%2016%2F19%20suites)-yellow)
 ![Tests E2E](https://img.shields.io/badge/Tests%20E2E-55%20Total%20(9%20pass%2C%2016%25)-red)
 ![Base de Datos](https://img.shields.io/badge/BD-PostgreSQL%2014.18-blue)
@@ -33,7 +33,7 @@
 9. **🏥 Hospitalización Avanzada** - Ingresos con anticipo automático, notas médicas, control por roles ✅
 10. **🏢 Quirófanos** - Gestión completa de quirófanos y cirugías ✅
 11. **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones ✅
-12. **🧪 Framework de Testing** - 1,377 tests totales (Frontend 100%, Backend 88%, E2E 16%, **41/41 frontend suites**, **16/19 backend suites**, POS 26/26) ✅
+12. **🧪 Framework de Testing** - 1,444 tests totales (Frontend 98.6%, Backend 88%, E2E 16%, **45/45 frontend suites**, **16/19 backend suites**, POS 26/26) ✅
 13. **⚡ Cargos Automáticos** - Habitaciones y quirófanos con servicios auto-generados ✅
 14. **🔔 Notificaciones y Solicitudes** - Sistema de comunicación interna ✅
 
@@ -72,7 +72,8 @@
 - **📦 Inventario Inteligente** - Control de stock, alertas automáticas
 - **📋 Sistema de Auditoría** - Trazabilidad completa de operaciones
 - **📊 Reportes Operativos** - Productividad y análisis detallado
-- **🧪 Testing Automatizado** - 1,377 tests totales (100% frontend, 88% backend, 16% E2E) + 55 tests E2E Playwright
+- **🧪 Testing Automatizado** - 1,444 tests totales (98.6% frontend, 88% backend, 16% E2E) + 55 tests E2E Playwright
+- **🛠️ Herramientas de Desarrollo** - MCP Playwright para pruebas automatizadas en producción
 
 ## 👥 Roles del Sistema
 

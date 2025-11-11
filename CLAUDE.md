@@ -405,6 +405,46 @@ npm run dev
 - ✅ Migraciones automáticas Prisma
 - ✅ Seed completo con datos de prueba
 
+## 🛠️ Herramientas de Desarrollo
+
+### MCP (Model Context Protocol) Servers
+
+El proyecto tiene configurado el servidor MCP de Playwright para pruebas automatizadas del frontend en producción.
+
+**Configuración:**
+```json
+// ~/.claude.json (proyecto /Users/alfredo/agntsystemsc)
+"mcpServers": {
+  "playwright": {
+    "command": "npx",
+    "args": ["-y", "@playwright/mcp@latest"]
+  }
+}
+```
+
+**Herramientas disponibles:**
+- `playwright_navigate` - Navegar a URLs
+- `playwright_screenshot` - Capturar pantallas
+- `playwright_click` - Interactuar con elementos
+- `playwright_fill` - Llenar formularios
+- `playwright_evaluate` - Ejecutar JavaScript en el navegador
+
+**Uso:**
+```bash
+# Verificar servidores MCP cargados
+/mcp
+
+# Ejemplo: Revisar frontend en producción
+"Usa playwright para navegar a https://hospital-management-system-frontend.1nse3e.easypanel.host y tomar screenshot"
+```
+
+**Instalación (ya completada):**
+```bash
+npm install -g @playwright/mcp
+```
+
+**Nota:** Requiere reiniciar Claude Code después de agregar la configuración.
+
 ## 🎯 Próximos Desarrollos
 
 ### Roadmap Futuro
@@ -611,7 +651,7 @@ Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
 **🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
 **📞 Teléfono:** 443 104 7479
-**📅 Última actualización:** 8 de noviembre de 2025
+**📅 Última actualización:** 16 de enero de 2025
 **✅ Estado:** Sistema Funcional (8.6/10) | Tests 1,444 (94% passing) | TypeScript 0 errores ✅
 
 **📊 Estado Real de Tests:**

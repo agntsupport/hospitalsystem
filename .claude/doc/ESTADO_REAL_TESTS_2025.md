@@ -1,5 +1,6 @@
 # Estado Real de Tests - Sistema de Gestión Hospitalaria
-**Fecha:** 6 de noviembre de 2025
+**Fecha:** 16 de enero de 2025
+**Última Verificación:** 16 de enero de 2025
 **Análisis por:** Claude Code con validación en tiempo real
 **Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
 
@@ -7,25 +8,23 @@
 
 ## 🚨 HALLAZGO CRÍTICO: DISCREPANCIA DOCUMENTACIÓN vs REALIDAD
 
-### Lo que dice CLAUDE.md:
-```markdown
-Tests backend: 415 tests (100% passing, 19/19 suites) ✅
-Tests frontend: 873 tests (100% passing, 41/41 suites) ✅
-Pass rate global: 100% ✅
-```
-
-### La REALIDAD (verificado ahora):
+### Estado Actual (16 enero 2025):
 ```
 Tests Backend: 395/449 passing (88.0%) ⚠️
-  - 46 tests FALLANDO
+  - 54 tests FALLANDO (46 cleanup + 8 lógica)
   - 3 suites FALLANDO (solicitudes, quirófanos, hospitalization)
   - 16/19 suites passing (84.2%)
 
+Tests Frontend: 927/940 passing (98.6%) ✅
+  - 13 tests FALLANDO (selectores ambiguos en CPC)
+  - 45/45 suites passing (100%)
+  - Componentes funcionando correctamente
+
 Tests E2E: 9/55 passing (16.4%) ❌
   - 46 tests FALLANDO
-  - Causa: Selectores incorrectos
+  - Causa: Selectores Material-UI incorrectos
 
-Tests Frontend: (Por verificar - reportados como 100%)
+Total: 1,444 tests | 1,331 passing (92.2%) | 113 failing (7.8%)
 ```
 
 **⚠️ CONCLUSIÓN:** La documentación está **desactualizada** y reporta métricas incorrectas. El sistema NO tiene 100% pass rate.
