@@ -116,7 +116,7 @@ describe('Hospitalization Module - Critical Tests', () => {
   });
 
   describe('POST /api/hospitalization/admissions - Create Admission', () => {
-    it('should create admission with automatic $10,000 MXN advance payment', async () => {
+    it('should create admission with automatic $10,000 MXN advance payment for HABITACION', async () => {
       const response = await request(app)
         .post('/api/hospitalization/admissions')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -153,6 +153,107 @@ describe('Hospitalization Module - Critical Tests', () => {
       await prisma.hospitalizacion.delete({ where: { id: hospitalizacionId } });
       await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: cuenta.id } });
       await prisma.cuentaPaciente.delete({ where: { id: cuenta.id } });
+    });
+
+    it('should NOT create advance payment for CONSULTORIO admission', async () => {
+      // Crear consultorio de prueba
+      const timestamp = Date.now();
+      const testConsultorio = await prisma.consultorio.create({
+        data: {
+          numero: `TEST-CONSUL-${timestamp}`,
+          tipo: 'consulta_general',
+          estado: 'disponible'
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/hospitalization/admissions')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          pacienteId: testPatient.id,
+          consultorioId: testConsultorio.id,
+          medicoTratanteId: testMedico.id,
+          motivoIngreso: 'Test consultorio admission',
+          diagnosticoIngreso: 'Test diagnosis'
+        });
+
+      if (response.status !== 201) {
+        console.log('Response body:', JSON.stringify(response.body, null, 2));
+      }
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.admission).toBeDefined();
+
+      const hospitalizacionId = response.body.data.admission.id;
+
+      // Verificar que NO se creó anticipo (debe ser $0.00)
+      const hospitalizacion = await prisma.hospitalizacion.findUnique({
+        where: { id: hospitalizacionId },
+        include: { cuentaPaciente: true }
+      });
+      const cuenta = hospitalizacion.cuentaPaciente;
+
+      expect(cuenta).toBeTruthy();
+      expect(parseFloat(cuenta.anticipo)).toBe(0); // NO debe haber anticipo
+      expect(cuenta.estado).toBe('abierta');
+
+      // Limpiar (orden correcto para FK constraints)
+      await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId } });
+      await prisma.hospitalizacion.delete({ where: { id: hospitalizacionId } });
+      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuentaPaciente.delete({ where: { id: cuenta.id } });
+      await prisma.consultorio.delete({ where: { id: testConsultorio.id } });
+    });
+
+    it('should create admission with automatic $10,000 MXN advance payment for QUIROFANO', async () => {
+      // Crear quirófano de prueba
+      const timestamp = Date.now();
+      const testQuirofano = await prisma.quirofano.create({
+        data: {
+          numero: `TEST-QUIR-${timestamp}`,
+          tipo: 'cirugia_mayor',
+          estado: 'disponible',
+          especialidad: 'cirugia_general'
+        }
+      });
+
+      const response = await request(app)
+        .post('/api/hospitalization/admissions')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          pacienteId: testPatient.id,
+          quirofanoId: testQuirofano.id,
+          medicoTratanteId: testMedico.id,
+          motivoIngreso: 'Test quirofano admission',
+          diagnosticoIngreso: 'Test diagnosis'
+        });
+
+      if (response.status !== 201) {
+        console.log('Response body:', JSON.stringify(response.body, null, 2));
+      }
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.admission).toBeDefined();
+
+      const hospitalizacionId = response.body.data.admission.id;
+
+      // Verificar que se creó la cuenta del paciente con anticipo
+      const hospitalizacion = await prisma.hospitalizacion.findUnique({
+        where: { id: hospitalizacionId },
+        include: { cuentaPaciente: true }
+      });
+      const cuenta = hospitalizacion.cuentaPaciente;
+
+      expect(cuenta).toBeTruthy();
+      expect(parseFloat(cuenta.anticipo)).toBe(10000); // $10,000 MXN
+      expect(cuenta.estado).toBe('abierta');
+
+      // Limpiar (orden correcto para FK constraints)
+      await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId } });
+      await prisma.hospitalizacion.delete({ where: { id: hospitalizacionId } });
+      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: cuenta.id } });
+      await prisma.cuentaPaciente.delete({ where: { id: cuenta.id } });
+      await prisma.quirofano.delete({ where: { id: testQuirofano.id } });
     });
 
     it('should prevent admission when room is already occupied', async () => {

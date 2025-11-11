@@ -499,18 +499,21 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
       }
 
       // 3. Crear transacción de anticipo automático de $10,000 MXN
-      await tx.transaccionCuenta.create({
-        data: {
-          cuentaId: cuentaPaciente.id,
-          tipo: 'anticipo',
-          concepto: 'Anticipo por hospitalización',
-          cantidad: 1,
-          precioUnitario: 10000.00,
-          subtotal: 10000.00,
-          empleadoCargoId: req.user.id,
-          observaciones: 'Anticipo automático por ingreso hospitalario'
-        }
-      });
+      // SOLO para habitaciones y quirófanos, NO para consultorios (Flujo #1)
+      if (habitacionId || quirofanoId) {
+        await tx.transaccionCuenta.create({
+          data: {
+            cuentaId: cuentaPaciente.id,
+            tipo: 'anticipo',
+            concepto: 'Anticipo por hospitalización',
+            cantidad: 1,
+            precioUnitario: 10000.00,
+            subtotal: 10000.00,
+            empleadoCargoId: req.user.id,
+            observaciones: 'Anticipo automático por ingreso hospitalario'
+          }
+        });
+      }
 
       // 4. Generar cargo inicial SOLO si es habitación (consultorios y quirófanos no generan cargo automático)
       if (habitacionId) {
