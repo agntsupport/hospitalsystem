@@ -25,7 +25,9 @@ import {
   MenuItem,
   InputAdornment,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import {
   MonetizationOn as MoneyIcon,
@@ -36,10 +38,12 @@ import {
   ShoppingCart as CartIcon,
   CreditCard as CardIcon,
   AccountBalance as BankIcon,
-  CheckCircle as CheckIcon
+  CheckCircle as CheckIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import posService from '@/services/posService';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AccountClosureDialogProps {
   open: boolean;
@@ -56,6 +60,9 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   account,
   onSuccess
 }) => {
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('administrador');
+
   const [loading, setLoading] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
@@ -64,6 +71,10 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   const [cardAmount, setCardAmount] = useState('');
   const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [accountDetails, setAccountDetails] = useState<any>(null);
+
+  // Estados para CPC (Cuenta Por Cobrar)
+  const [authorizeCPC, setAuthorizeCPC] = useState(false);
+  const [motivoCPC, setMotivoCPC] = useState('');
 
   // Cálculos de saldo
   const [totalServices, setTotalServices] = useState(0);
@@ -166,22 +177,44 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   };
 
   const validatePayment = () => {
-    if (finalBalance > 0) {
-      // Hay saldo a cobrar
+    // Si hay deuda (saldo negativo)
+    if (finalBalance < 0) {
+      const deuda = Math.abs(finalBalance);
+
+      // Si se autoriza CPC, validar motivo
+      if (authorizeCPC) {
+        if (!isAdmin) {
+          toast.error('Solo administradores pueden autorizar cuentas por cobrar');
+          return false;
+        }
+        if (!motivoCPC.trim()) {
+          toast.error('Debe proporcionar un motivo para autorizar la cuenta por cobrar');
+          return false;
+        }
+        // CPC autorizado correctamente, no requiere pago
+        return true;
+      }
+
+      // Si NO se autoriza CPC, validar que se haya ingresado pago
+      let totalReceived = 0;
       if (paymentMethod === 'mixto') {
-        const totalReceived = parseFloat(cashAmount || '0') + parseFloat(cardAmount || '0');
-        if (totalReceived < finalBalance) {
-          toast.error(`Monto insuficiente. Faltan $${(finalBalance - totalReceived).toFixed(2)}`);
-          return false;
-        }
+        totalReceived = parseFloat(cashAmount || '0') + parseFloat(cardAmount || '0');
       } else {
-        const received = parseFloat(amountReceived || '0');
-        if (received < finalBalance) {
-          toast.error(`Monto insuficiente. Faltan $${(finalBalance - received).toFixed(2)}`);
-          return false;
-        }
+        totalReceived = parseFloat(amountReceived || '0');
+      }
+
+      if (totalReceived < deuda) {
+        toast.error(`Monto insuficiente. El paciente debe $${deuda.toFixed(2)}. ${isAdmin ? 'O autorice cuenta por cobrar.' : ''}`);
+        return false;
       }
     }
+
+    // Si hay saldo a favor del paciente (positivo), no requiere validación de pago
+    if (finalBalance > 0) {
+      return true;
+    }
+
+    // Saldo = 0, todo correcto
     return true;
   };
 
@@ -192,6 +225,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
 
     setProcessingPayment(true);
     try {
+      // Calcular monto total recibido
       let finalAmount = 0;
       if (paymentMethod === 'mixto') {
         finalAmount = parseFloat(cashAmount || '0') + parseFloat(cardAmount || '0');
@@ -199,25 +233,44 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
         finalAmount = parseFloat(amountReceived || '0');
       }
 
-      const response = await posService.closeAccount(account.id, {
-        montoRecibido: finalBalance > 0 ? finalAmount : 0,
+      // Preparar datos de cierre
+      const closeData: any = {
         metodoPago: paymentMethod
-      });
+      };
+
+      // Solo agregar montoPagado si hay deuda y se está pagando (no CPC)
+      if (finalBalance < 0 && !authorizeCPC) {
+        closeData.montoPagado = finalAmount;
+      }
+
+      // Agregar datos de CPC si está autorizado
+      if (authorizeCPC && finalBalance < 0) {
+        closeData.cuentaPorCobrar = true;
+        closeData.motivoCuentaPorCobrar = motivoCPC;
+      }
+
+      const response = await posService.closeAccount(account.id, closeData);
 
       if (response.success) {
-        toast.success('Cuenta cerrada exitosamente');
-
-        // Si hay cambio, mostrarlo
-        if (changeAmount > 0) {
-          toast.info(`Cambio a entregar: $${changeAmount.toFixed(2)}`, {
+        // Mensaje de éxito según el escenario
+        if (authorizeCPC) {
+          toast.success(`Cuenta cerrada con autorización CPC. Saldo por cobrar: $${Math.abs(finalBalance).toFixed(2)}`, {
+            autoClose: 8000
+          });
+        } else if (finalBalance < 0) {
+          toast.success('Cuenta cerrada exitosamente. Pago recibido.');
+        } else if (finalBalance > 0) {
+          toast.warning(`Cuenta cerrada. Devolver al paciente: $${Math.abs(finalBalance).toFixed(2)}`, {
             autoClose: 10000,
             closeButton: true
           });
+        } else {
+          toast.success('Cuenta cerrada exitosamente');
         }
 
-        // Si hay devolución (saldo negativo)
-        if (finalBalance < 0) {
-          toast.warning(`Devolver al paciente: $${Math.abs(finalBalance).toFixed(2)}`, {
+        // Si hay cambio, mostrarlo
+        if (changeAmount > 0 && !authorizeCPC) {
+          toast.info(`Cambio a entregar: $${changeAmount.toFixed(2)}`, {
             autoClose: 10000,
             closeButton: true
           });
@@ -457,8 +510,59 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
           </Grid>
           )}
 
-          {/* Sección de Pago (solo si hay saldo a cobrar) */}
-          {!loading && finalBalance > 0 && (
+          {/* Sección CPC - Cuenta Por Cobrar (solo administradores, solo si hay deuda) */}
+          {!loading && finalBalance < 0 && isAdmin && (
+            <Grid item xs={12}>
+              <Alert severity="warning" icon={<WarningIcon />}>
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  El paciente debe: ${Math.abs(finalBalance).toFixed(2)}
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={authorizeCPC}
+                      onChange={(e) => setAuthorizeCPC(e.target.checked)}
+                      color="warning"
+                    />
+                  }
+                  label="Autorizar Cuenta Por Cobrar (CPC)"
+                />
+                {authorizeCPC && (
+                  <Box mt={2}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      label="Motivo de autorización CPC"
+                      value={motivoCPC}
+                      onChange={(e) => setMotivoCPC(e.target.value)}
+                      placeholder="Ej: Paciente sin recursos, autorización médica especial, etc."
+                      required
+                      error={authorizeCPC && !motivoCPC.trim()}
+                      helperText={authorizeCPC && !motivoCPC.trim() ? 'El motivo es requerido' : ''}
+                    />
+                  </Box>
+                )}
+              </Alert>
+            </Grid>
+          )}
+
+          {/* Mensaje informativo para cajeros cuando hay deuda */}
+          {!loading && finalBalance < 0 && !isAdmin && (
+            <Grid item xs={12}>
+              <Alert severity="error" icon={<WarningIcon />}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  El paciente debe: ${Math.abs(finalBalance).toFixed(2)}
+                </Typography>
+                <Typography variant="body2" mt={1}>
+                  Debe recibir el pago completo o solicitar autorización de un administrador para cuenta por cobrar.
+                </Typography>
+              </Alert>
+            </Grid>
+          )}
+
+          {/* Sección de Pago (solo si hay deuda y NO está autorizado CPC) */}
+          {!loading && finalBalance < 0 && !authorizeCPC && (
             <>
               <Grid item xs={12}>
                 <Divider>
@@ -611,10 +715,13 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
           onClick={handleCloseAccount}
           disabled={processingPayment || loading}
           startIcon={processingPayment ? <CircularProgress size={20} /> : <CheckIcon />}
-          color={isRefund ? 'warning' : 'primary'}
+          color={authorizeCPC ? 'warning' : finalBalance > 0 ? 'success' : 'primary'}
         >
-          {processingPayment ? 'Procesando...' : 
-           isRefund ? 'Procesar Devolución' : 'Cobrar y Cerrar Cuenta'}
+          {processingPayment ? 'Procesando...' :
+           authorizeCPC ? 'Autorizar CPC y Cerrar Cuenta' :
+           finalBalance > 0 ? 'Procesar Devolución y Cerrar' :
+           finalBalance < 0 ? 'Cobrar y Cerrar Cuenta' :
+           'Cerrar Cuenta'}
         </Button>
       </DialogActions>
     </Dialog>

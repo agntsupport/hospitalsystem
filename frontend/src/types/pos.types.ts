@@ -91,8 +91,11 @@ export interface AddTransactionData {
 }
 
 export interface CloseAccountData {
-  montoRecibido?: number;
-  metodoPago?: string;
+  montoPagado?: number;
+  metodoPago?: 'efectivo' | 'tarjeta' | 'transferencia' | 'mixto';
+  observaciones?: string;
+  cuentaPorCobrar?: boolean;
+  motivoCuentaPorCobrar?: string;
 }
 
 export interface POSStats {
