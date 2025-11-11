@@ -254,6 +254,22 @@ router.get('/admissions', validatePagination, async (req, res) => {
               tipo: true
             }
           },
+          consultorio: {
+            select: {
+              id: true,
+              numero: true,
+              tipo: true,
+              especialidad: true
+            }
+          },
+          quirofano: {
+            select: {
+              id: true,
+              numero: true,
+              tipo: true,
+              especialidad: true
+            }
+          },
           medicoEspecialista: {
             select: {
               id: true,
@@ -270,34 +286,59 @@ router.get('/admissions', validatePagination, async (req, res) => {
       prisma.hospitalizacion.count({ where })
     ]);
 
-    const admisionesFormatted = admisiones.map(admision => ({
-      id: admision.id,
-      numeroIngreso: `ING-${admision.id}`,
-      cuentaPacienteId: admision.cuentaPacienteId, // INCLUIR ID DE CUENTA
-      paciente: admision.cuentaPaciente?.paciente ? {
-        ...admision.cuentaPaciente.paciente,
-        nombreCompleto: `${admision.cuentaPaciente.paciente.nombre} ${admision.cuentaPaciente.paciente.apellidoPaterno} ${admision.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim()
-      } : null,
-      cuentaPaciente: admision.cuentaPaciente ? {
-        id: admision.cuentaPaciente.id,
-        tipoAtencion: admision.cuentaPaciente.tipoAtencion,
-        estado: admision.cuentaPaciente.estado,
-        fechaApertura: admision.cuentaPaciente.fechaApertura
-      } : null,
-      // INCLUIR ANTICIPO EN LA RESPUESTA (VALIDACIÓN FLUJO CRÍTICO #1)
-      anticipo: admision.cuentaPaciente ? parseFloat(admision.cuentaPaciente.anticipo.toString()) : 0.00,
-      fechaIngreso: admision.fechaIngreso,
-      fechaAlta: admision.fechaAlta,
-      diagnosticoIngreso: admision.diagnosticoIngreso,
-      especialidad: 'General',
-      estado: admision.estado,
-      habitacion: admision.habitacion,
-      medicoTratante: admision.medicoEspecialista ? {
-        id: admision.medicoEspecialista.id,
-        username: `${admision.medicoEspecialista.nombre} ${admision.medicoEspecialista.apellidoPaterno}`
-      } : null,
-      observaciones: admision.indicacionesGenerales
-    }));
+    const admisionesFormatted = admisiones.map(admision => {
+      // Determinar el espacio asignado
+      let espacioAsignado = null;
+      if (admision.habitacion) {
+        espacioAsignado = {
+          tipo: 'habitacion',
+          ...admision.habitacion
+        };
+      } else if (admision.consultorio) {
+        espacioAsignado = {
+          tipo: 'consultorio',
+          ...admision.consultorio
+        };
+      } else if (admision.quirofano) {
+        espacioAsignado = {
+          tipo: 'quirofano',
+          ...admision.quirofano
+        };
+      }
+
+      return {
+        id: admision.id,
+        numeroIngreso: `ING-${admision.id}`,
+        cuentaPacienteId: admision.cuentaPacienteId, // INCLUIR ID DE CUENTA
+        paciente: admision.cuentaPaciente?.paciente ? {
+          ...admision.cuentaPaciente.paciente,
+          nombreCompleto: `${admision.cuentaPaciente.paciente.nombre} ${admision.cuentaPaciente.paciente.apellidoPaterno} ${admision.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim()
+        } : null,
+        cuentaPaciente: admision.cuentaPaciente ? {
+          id: admision.cuentaPaciente.id,
+          tipoAtencion: admision.cuentaPaciente.tipoAtencion,
+          estado: admision.cuentaPaciente.estado,
+          fechaApertura: admision.cuentaPaciente.fechaApertura
+        } : null,
+        // INCLUIR ANTICIPO EN LA RESPUESTA (VALIDACIÓN FLUJO CRÍTICO #1)
+        anticipo: admision.cuentaPaciente ? parseFloat(admision.cuentaPaciente.anticipo.toString()) : 0.00,
+        fechaIngreso: admision.fechaIngreso,
+        fechaAlta: admision.fechaAlta,
+        diagnosticoIngreso: admision.diagnosticoIngreso,
+        especialidad: 'General',
+        estado: admision.estado,
+        espacio: espacioAsignado,
+        // Mantener compatibilidad con código anterior
+        habitacion: admision.habitacion || espacioAsignado, // Si no hay habitación, devolver el espacio asignado
+        consultorio: admision.consultorio,
+        quirofano: admision.quirofano,
+        medicoTratante: admision.medicoEspecialista ? {
+          id: admision.medicoEspecialista.id,
+          username: `${admision.medicoEspecialista.nombre} ${admision.medicoEspecialista.apellidoPaterno}`
+        } : null,
+        observaciones: admision.indicacionesGenerales
+      };
+    });
 
     res.json(formatPaginationResponse(admisionesFormatted, total, page, limit));
 
@@ -308,20 +349,41 @@ router.get('/admissions', validatePagination, async (req, res) => {
 });
 
 // POST /admissions - Crear nueva admisión
-router.post('/admissions', authenticateToken, authorizeRoles(['administrador', 'cajero', 'medico_residente', 'medico_especialista']), auditMiddleware('hospitalizacion'), validateRequired(['pacienteId', 'habitacionId', 'diagnosticoIngreso', 'motivoIngreso', 'medicoTratanteId']), async (req, res) => {
+router.post('/admissions', authenticateToken, authorizeRoles(['administrador', 'cajero', 'medico_residente', 'medico_especialista']), auditMiddleware('hospitalizacion'), validateRequired(['pacienteId', 'diagnosticoIngreso', 'motivoIngreso', 'medicoTratanteId']), async (req, res) => {
   try {
     const {
       pacienteId,
       habitacionId,
+      consultorioId,
+      quirofanoId,
       diagnosticoIngreso,
       motivoIngreso,
       medicoTratanteId,
       observaciones
     } = req.body;
     
+    // Validar que solo uno de los tres campos esté presente
+    const espaciosProporcionados = [habitacionId, consultorioId, quirofanoId].filter(Boolean).length;
+
+    if (espaciosProporcionados === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe proporcionar habitacionId, consultorioId o quirofanoId'
+      });
+    }
+
+    if (espaciosProporcionados > 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo puede proporcionar uno de: habitacionId, consultorioId o quirofanoId'
+      });
+    }
+
     logger.logOperation('CREATE_ADMISSION', {
       pacienteId,
       habitacionId,
+      consultorioId,
+      quirofanoId,
       medicoTratanteId,
       // Medical data (diagnosticoIngreso, motivoIngreso, observaciones) automatically redacted
       diagnosticoIngreso,
@@ -329,46 +391,112 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
       observaciones
     });
 
-    // Validar que la habitación esté disponible
-    const habitacion = await prisma.habitacion.findUnique({
-      where: { id: parseInt(habitacionId) }
-    });
+    // Validar y obtener el espacio (habitación, consultorio o quirófano)
+    let espacio = null;
+    let tipoEspacio = '';
+    let espacioIdKey = '';
 
-    if (!habitacion) {
-      return res.status(404).json({
-        success: false,
-        message: 'Habitación no encontrada'
+    if (habitacionId) {
+      espacio = await prisma.habitacion.findUnique({
+        where: { id: parseInt(habitacionId) }
       });
-    }
+      tipoEspacio = 'habitación';
+      espacioIdKey = 'habitacionId';
 
-    if (habitacion.estado !== 'disponible') {
-      return res.status(409).json({
-        success: false,
-        message: `La habitación ${habitacion.numero} no está disponible para ingreso (estado: ${habitacion.estado})`
+      if (!espacio) {
+        return res.status(404).json({
+          success: false,
+          message: 'Habitación no encontrada'
+        });
+      }
+
+      if (espacio.estado !== 'disponible') {
+        return res.status(409).json({
+          success: false,
+          message: `La habitación ${espacio.numero} no está disponible para ingreso (estado: ${espacio.estado})`
+        });
+      }
+    } else if (consultorioId) {
+      espacio = await prisma.consultorio.findUnique({
+        where: { id: parseInt(consultorioId) }
       });
+      tipoEspacio = 'consultorio';
+      espacioIdKey = 'consultorioId';
+
+      if (!espacio) {
+        return res.status(404).json({
+          success: false,
+          message: 'Consultorio no encontrado'
+        });
+      }
+
+      if (espacio.estado !== 'disponible') {
+        return res.status(409).json({
+          success: false,
+          message: `El consultorio ${espacio.numero} no está disponible para ingreso (estado: ${espacio.estado})`
+        });
+      }
+    } else if (quirofanoId) {
+      espacio = await prisma.quirofano.findUnique({
+        where: { id: parseInt(quirofanoId) }
+      });
+      tipoEspacio = 'quirófano';
+      espacioIdKey = 'quirofanoId';
+
+      if (!espacio) {
+        return res.status(404).json({
+          success: false,
+          message: 'Quirófano no encontrado'
+        });
+      }
+
+      if (espacio.estado !== 'disponible') {
+        return res.status(409).json({
+          success: false,
+          message: `El quirófano ${espacio.numero} no está disponible para ingreso (estado: ${espacio.estado})`
+        });
+      }
     }
 
     // No necesitamos generar numero de ingreso aquí, se genera después con el ID
 
     const admision = await prisma.$transaction(async (tx) => {
       // 1. Crear cuenta de paciente para hospitalización
+      const cuentaPacienteData = {
+        pacienteId: parseInt(pacienteId),
+        tipoAtencion: 'hospitalizacion',
+        estado: 'abierta',
+        cajeroAperturaId: req.user.id, // Usuario actual que crea la cuenta
+        medicoTratanteId: medicoTratanteId ? parseInt(medicoTratanteId) : null,
+        observaciones
+      };
+
+      // Agregar el ID del espacio correcto a la cuenta
+      if (habitacionId) {
+        cuentaPacienteData.habitacionId = parseInt(habitacionId);
+      }
+
       const cuentaPaciente = await tx.cuentaPaciente.create({
-        data: {
-          pacienteId: parseInt(pacienteId),
-          tipoAtencion: 'hospitalizacion',
-          estado: 'abierta',
-          cajeroAperturaId: req.user.id, // Usuario actual que crea la cuenta
-          habitacionId: parseInt(habitacionId),
-          medicoTratanteId: medicoTratanteId ? parseInt(medicoTratanteId) : null,
-          observaciones
-        }
+        data: cuentaPacienteData
       });
 
-      // 2. Actualizar estado de la habitación
-      await tx.habitacion.update({
-        where: { id: parseInt(habitacionId) },
-        data: { estado: 'ocupada' }
-      });
+      // 2. Actualizar estado del espacio (habitación, consultorio o quirófano)
+      if (habitacionId) {
+        await tx.habitacion.update({
+          where: { id: parseInt(habitacionId) },
+          data: { estado: 'ocupada' }
+        });
+      } else if (consultorioId) {
+        await tx.consultorio.update({
+          where: { id: parseInt(consultorioId) },
+          data: { estado: 'ocupado' }
+        });
+      } else if (quirofanoId) {
+        await tx.quirofano.update({
+          where: { id: parseInt(quirofanoId) },
+          data: { estado: 'ocupado' }
+        });
+      }
 
       // 3. Crear transacción de anticipo automático de $10,000 MXN
       await tx.transaccionCuenta.create({
@@ -384,26 +512,38 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
         }
       });
 
-      // 4. Generar cargo inicial de habitación (día 1)
-      await generarCargosHabitacion(
-        cuentaPaciente.id, 
-        parseInt(habitacionId), 
-        new Date(), // Fecha de ingreso es hoy
-        req.user.id,
-        tx
-      );
+      // 4. Generar cargo inicial SOLO si es habitación (consultorios y quirófanos no generan cargo automático)
+      if (habitacionId) {
+        await generarCargosHabitacion(
+          cuentaPaciente.id,
+          parseInt(habitacionId),
+          new Date(), // Fecha de ingreso es hoy
+          req.user.id,
+          tx
+        );
+      }
 
-      // 5. Crear hospitalización
+      // 5. Crear hospitalización con el campo correcto
+      const hospitalizacionData = {
+        cuentaPacienteId: cuentaPaciente.id,
+        medicoEspecialistaId: parseInt(medicoTratanteId),
+        motivoHospitalizacion: motivoIngreso,
+        diagnosticoIngreso,
+        estado: 'en_observacion',
+        indicacionesGenerales: observaciones
+      };
+
+      // Agregar el ID del espacio correcto
+      if (habitacionId) {
+        hospitalizacionData.habitacionId = parseInt(habitacionId);
+      } else if (consultorioId) {
+        hospitalizacionData.consultorioId = parseInt(consultorioId);
+      } else if (quirofanoId) {
+        hospitalizacionData.quirofanoId = parseInt(quirofanoId);
+      }
+
       const hospitalizacion = await tx.hospitalizacion.create({
-        data: {
-          cuentaPacienteId: cuentaPaciente.id,
-          habitacionId: parseInt(habitacionId),
-          medicoEspecialistaId: parseInt(medicoTratanteId),
-          motivoHospitalizacion: motivoIngreso,
-          diagnosticoIngreso,
-          estado: 'en_observacion',
-          indicacionesGenerales: observaciones
-        },
+        data: hospitalizacionData,
         include: {
           cuentaPaciente: {
             include: {
@@ -417,13 +557,29 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
               }
             }
           },
-          habitacion: {
+          habitacion: habitacionId ? {
             select: {
               id: true,
               numero: true,
               tipo: true
             }
-          },
+          } : false,
+          consultorio: consultorioId ? {
+            select: {
+              id: true,
+              numero: true,
+              tipo: true,
+              especialidad: true
+            }
+          } : false,
+          quirofano: quirofanoId ? {
+            select: {
+              id: true,
+              numero: true,
+              tipo: true,
+              especialidad: true
+            }
+          } : false,
           medicoEspecialista: {
             select: {
               id: true,
@@ -441,6 +597,25 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
       timeout: 10000  // Máximo 10 segundos ejecutando la transacción
     });
 
+    // Determinar el espacio asignado
+    let espacioAsignado = null;
+    if (admision.habitacion) {
+      espacioAsignado = {
+        tipo: 'habitacion',
+        ...admision.habitacion
+      };
+    } else if (admision.consultorio) {
+      espacioAsignado = {
+        tipo: 'consultorio',
+        ...admision.consultorio
+      };
+    } else if (admision.quirofano) {
+      espacioAsignado = {
+        tipo: 'quirofano',
+        ...admision.quirofano
+      };
+    }
+
     res.status(201).json({
       success: true,
       message: 'Admisión creada exitosamente',
@@ -455,7 +630,11 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
           fechaIngreso: admision.fechaIngreso,
           diagnosticoIngreso: admision.diagnosticoIngreso,
           estado: admision.estado,
+          espacio: espacioAsignado,
+          // Mantener compatibilidad con código anterior
           habitacion: admision.habitacion,
+          consultorio: admision.consultorio,
+          quirofano: admision.quirofano,
           medicoTratante: admision.medicoEspecialista ? {
             id: admision.medicoEspecialista.id,
             nombre: `${admision.medicoEspecialista.nombre} ${admision.medicoEspecialista.apellidoPaterno} ${admision.medicoEspecialista.apellidoMaterno || ''}`.trim()
@@ -483,21 +662,37 @@ router.put('/admissions/:id/discharge', authenticateToken, authorizeRoles(['enfe
     } = req.body;
 
     const admision = await prisma.$transaction(async (tx) => {
-      // Obtener admisión actual
+      // Obtener admisión actual con todos los espacios
       const admisionActual = await tx.hospitalizacion.findUnique({
         where: { id: parseInt(id) },
-        include: { habitacion: true }
+        include: {
+          habitacion: true,
+          consultorio: true,
+          quirofano: true
+        }
       });
 
       if (!admisionActual) {
         throw new Error('Admisión no encontrada');
       }
 
-      // Liberar habitación
-      await tx.habitacion.update({
-        where: { id: admisionActual.habitacionId },
-        data: { estado: 'disponible' }
-      });
+      // Liberar el espacio correcto
+      if (admisionActual.habitacionId) {
+        await tx.habitacion.update({
+          where: { id: admisionActual.habitacionId },
+          data: { estado: 'disponible' }
+        });
+      } else if (admisionActual.consultorioId) {
+        await tx.consultorio.update({
+          where: { id: admisionActual.consultorioId },
+          data: { estado: 'disponible' }
+        });
+      } else if (admisionActual.quirofanoId) {
+        await tx.quirofano.update({
+          where: { id: admisionActual.quirofanoId },
+          data: { estado: 'disponible' }
+        });
+      }
 
       // Actualizar admisión
       return await tx.hospitalizacion.update({
@@ -774,6 +969,22 @@ router.get('/admissions/:id/patient-status', authenticateToken, authorizeRoles([
             tipo: true
           }
         },
+        consultorio: {
+          select: {
+            id: true,
+            numero: true,
+            tipo: true,
+            especialidad: true
+          }
+        },
+        quirofano: {
+          select: {
+            id: true,
+            numero: true,
+            tipo: true,
+            especialidad: true
+          }
+        },
         medicoEspecialista: {
           select: {
             id: true,
@@ -793,6 +1004,30 @@ router.get('/admissions/:id/patient-status', authenticateToken, authorizeRoles([
       });
     }
 
+    // Determinar el espacio asignado
+    let espacioAsignado = null;
+    if (hospitalizacion.habitacion) {
+      espacioAsignado = {
+        tipo: 'habitacion',
+        numero: hospitalizacion.habitacion.numero,
+        tipoEspacio: hospitalizacion.habitacion.tipo
+      };
+    } else if (hospitalizacion.consultorio) {
+      espacioAsignado = {
+        tipo: 'consultorio',
+        numero: hospitalizacion.consultorio.numero,
+        tipoEspacio: hospitalizacion.consultorio.tipo,
+        especialidad: hospitalizacion.consultorio.especialidad
+      };
+    } else if (hospitalizacion.quirofano) {
+      espacioAsignado = {
+        tipo: 'quirofano',
+        numero: hospitalizacion.quirofano.numero,
+        tipoEspacio: hospitalizacion.quirofano.tipo,
+        especialidad: hospitalizacion.quirofano.especialidad
+      };
+    }
+
     // Solo información básica del estado del paciente
     const estadoPaciente = {
       hospitalizacion: {
@@ -808,7 +1043,7 @@ router.get('/admissions/:id/patient-status', authenticateToken, authorizeRoles([
         id: hospitalizacion.cuentaPaciente.paciente.id,
         nombreCompleto: `${hospitalizacion.cuentaPaciente.paciente.nombre} ${hospitalizacion.cuentaPaciente.paciente.apellidoPaterno} ${hospitalizacion.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim(),
         numeroExpediente: hospitalizacion.cuentaPaciente.paciente.numeroExpediente,
-        edad: hospitalizacion.cuentaPaciente.paciente.fechaNacimiento ? 
+        edad: hospitalizacion.cuentaPaciente.paciente.fechaNacimiento ?
           Math.floor((new Date() - new Date(hospitalizacion.cuentaPaciente.paciente.fechaNacimiento)) / (365.25 * 24 * 60 * 60 * 1000)) : null,
         genero: hospitalizacion.cuentaPaciente.paciente.genero,
         tipoSangre: hospitalizacion.cuentaPaciente.paciente.tipoSangre,
@@ -818,10 +1053,14 @@ router.get('/admissions/:id/patient-status', authenticateToken, authorizeRoles([
           relacion: hospitalizacion.cuentaPaciente.paciente.contactoEmergenciaRelacion
         }
       },
+      espacio: espacioAsignado,
+      // Mantener compatibilidad
       habitacion: hospitalizacion.habitacion ? {
         numero: hospitalizacion.habitacion.numero,
         tipo: hospitalizacion.habitacion.tipo
       } : null,
+      consultorio: hospitalizacion.consultorio,
+      quirofano: hospitalizacion.quirofano,
       medicoTratante: hospitalizacion.medicoEspecialista ? {
         nombre: `${hospitalizacion.medicoEspecialista.nombre} ${hospitalizacion.medicoEspecialista.apellidoPaterno} ${hospitalizacion.medicoEspecialista.apellidoMaterno || ''}`.trim(),
         especialidad: hospitalizacion.medicoEspecialista.especialidad

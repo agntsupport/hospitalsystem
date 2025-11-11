@@ -102,6 +102,8 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
+  const [availableOffices, setAvailableOffices] = useState<any[]>([]);
+  const [availableQuirofanos, setAvailableQuirofanos] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<Employee[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
@@ -165,8 +167,18 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
   const loadAvailableRooms = async () => {
     try {
-      const roomsResponse = await roomsService.getRooms({ estado: 'disponible' });
-      console.log('Rooms response:', roomsResponse);
+      // Cargar habitaciones, consultorios y quirófanos en paralelo
+      const [roomsResponse, officesResponse, quirofanosResponse] = await Promise.all([
+        roomsService.getRooms({ estado: 'disponible' }),
+        roomsService.getOffices({ estado: 'disponible' }),
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/quirofanos?estado=disponible`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }).then(res => res.json())
+      ]);
+
+      console.log('Spaces response:', { roomsResponse, officesResponse, quirofanosResponse });
 
       if (roomsResponse.success) {
         let filteredRooms = roomsResponse.data?.rooms || [];
@@ -183,27 +195,39 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
             room.tipo === 'terapia_intensiva'
           );
         }
-        // Si no hay filtros especiales, mostrar TODAS las habitaciones disponibles
 
         setAvailableRooms(filteredRooms);
+      }
 
-        // Preseleccionar Consultorio General si está disponible y no hay otra habitación seleccionada
-        // Solo si no requiere aislamiento ni cuidados intensivos
-        if ((!watchedValues.habitacionId || watchedValues.habitacionId === 0) &&
-            !watchedValues.requiereAislamiento &&
-            watchedValues.nivelCuidado !== 'intensivo') {
-          const consultorioGeneral = filteredRooms.find((room: Room) =>
-            room.tipo === 'consultorio_general'
-          );
-          if (consultorioGeneral) {
-            setValue('habitacionId', consultorioGeneral.id);
-            console.log('Consultorio General preseleccionado:', consultorioGeneral.numero);
-          }
+      // Cargar consultorios disponibles
+      if (officesResponse.success) {
+        setAvailableOffices(officesResponse.data?.offices || []);
+      }
+
+      // Cargar quirófanos disponibles
+      if (quirofanosResponse.success) {
+        setAvailableQuirofanos(quirofanosResponse.data?.items || []);
+      }
+
+      // Preseleccionar Consultorio General si está disponible y no hay otra selección
+      // Solo si no requiere aislamiento ni cuidados intensivos
+      if ((!watchedValues.habitacionId || watchedValues.habitacionId === 0) &&
+          !watchedValues.requiereAislamiento &&
+          watchedValues.nivelCuidado !== 'intensivo') {
+
+        // Buscar consultorio general primero
+        const consultorioGeneral = (officesResponse.data?.offices || []).find((office: any) =>
+          office.tipo === 'consulta_general'
+        );
+
+        if (consultorioGeneral) {
+          setValue('habitacionId', `consultorio_${consultorioGeneral.id}`);
+          console.log('Consultorio General preseleccionado:', consultorioGeneral.numero);
         }
       }
     } catch (error) {
-      console.error('Error loading rooms:', error);
-      toast.error('Error al cargar habitaciones');
+      console.error('Error loading spaces:', error);
+      toast.error('Error al cargar habitaciones, consultorios y quirófanos');
     }
   };
 
@@ -218,27 +242,50 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
     }
   };
 
-  // Helper para obtener el nombre legible del tipo de habitación
-  const getRoomTypeLabel = (tipo: string): string => {
+  // Helper para obtener el nombre legible del tipo
+  const getSpaceTypeLabel = (category: string): string => {
     const labels: { [key: string]: string } = {
-      'consultorio_general': 'Consultorio General',
-      'individual': 'Habitación Individual',
-      'doble': 'Habitación Doble',
-      'suite': 'Suite',
-      'terapia_intensiva': 'Terapia Intensiva'
+      'habitaciones': '🛏️ Habitaciones',
+      'consultorios': '🏥 Consultorios',
+      'quirofanos': '⚕️ Quirófanos'
     };
-    return labels[tipo] || tipo;
+    return labels[category] || category;
   };
 
-  // Agrupar habitaciones por tipo
-  const groupRoomsByType = () => {
-    const groups: { [key: string]: Room[] } = {};
-    availableRooms.forEach((room) => {
-      if (!groups[room.tipo]) {
-        groups[room.tipo] = [];
-      }
-      groups[room.tipo].push(room);
-    });
+  // Agrupar todos los espacios por categoría
+  const groupAllSpaces = () => {
+    const groups: { [key: string]: any[] } = {};
+
+    // Agregar habitaciones
+    if (availableRooms.length > 0) {
+      groups['habitaciones'] = availableRooms.map(room => ({
+        ...room,
+        espacioId: `habitacion_${room.id}`,
+        espacioTipo: 'habitacion',
+        label: `${room.numero} - ${room.tipo}`
+      }));
+    }
+
+    // Agregar consultorios
+    if (availableOffices.length > 0) {
+      groups['consultorios'] = availableOffices.map(office => ({
+        ...office,
+        espacioId: `consultorio_${office.id}`,
+        espacioTipo: 'consultorio',
+        label: `${office.numero} - ${office.tipo}${office.especialidad ? ` (${office.especialidad})` : ''}`
+      }));
+    }
+
+    // Agregar quirófanos
+    if (availableQuirofanos.length > 0) {
+      groups['quirofanos'] = availableQuirofanos.map(quirofano => ({
+        ...quirofano,
+        espacioId: `quirofano_${quirofano.id}`,
+        espacioTipo: 'quirofano',
+        label: `${quirofano.numero} - ${quirofano.tipo}${quirofano.especialidad ? ` (${quirofano.especialidad})` : ''}`
+      }));
+    }
+
     return groups;
   };
 
@@ -249,10 +296,25 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       // Transform data to match the API expectations
       // Buscar especialidad del médico seleccionado
       const medicoSeleccionado = doctors.find(doc => doc.id === data.medicoTratanteId);
-      
+
+      // Extraer el tipo de espacio y el ID del valor seleccionado
+      const espacioValue = String(data.habitacionId);
+      let espacioData: any = {};
+
+      if (espacioValue.startsWith('habitacion_')) {
+        espacioData.habitacionId = parseInt(espacioValue.replace('habitacion_', ''));
+      } else if (espacioValue.startsWith('consultorio_')) {
+        espacioData.consultorioId = parseInt(espacioValue.replace('consultorio_', ''));
+      } else if (espacioValue.startsWith('quirofano_')) {
+        espacioData.quirofanoId = parseInt(espacioValue.replace('quirofano_', ''));
+      } else {
+        // Por compatibilidad, si es un número directo, asumir que es habitación
+        espacioData.habitacionId = parseInt(espacioValue);
+      }
+
       await hospitalizationService.createAdmission({
         pacienteId: data.pacienteId,
-        habitacionId: data.habitacionId,
+        ...espacioData,
         medicoTratanteId: data.medicoTratanteId,
         motivoIngreso: data.motivoIngreso,
         diagnosticoIngreso: data.diagnosticoIngreso,
@@ -266,7 +328,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       onSuccess();
       handleClose();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Error al registrar el ingreso');
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Error al registrar el ingreso');
     } finally {
       setLoading(false);
     }
@@ -486,30 +548,34 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
                   name="habitacionId"
                   control={control}
                   render={({ field, fieldState }) => {
-                    const roomGroups = groupRoomsByType();
+                    const spaceGroups = groupAllSpaces();
                     return (
                       <FormControl fullWidth required error={!!fieldState.error}>
-                        <InputLabel>Habitación / Consultorio</InputLabel>
+                        <InputLabel>Habitación / Consultorio / Quirófano</InputLabel>
                         <Select
                           {...field}
                           value={field.value || ''}
-                          label="Habitación / Consultorio"
+                          label="Habitación / Consultorio / Quirófano"
                         >
-                          {Object.entries(roomGroups).map(([tipo, rooms]) => [
-                            <ListSubheader key={`header-${tipo}`} sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                              {getRoomTypeLabel(tipo)}
+                          {Object.entries(spaceGroups).map(([category, spaces]) => [
+                            <ListSubheader key={`header-${category}`} sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                              {getSpaceTypeLabel(category)}
                             </ListSubheader>,
-                            ...rooms.map((room) => (
-                              <MenuItem key={room.id} value={room.id} sx={{ pl: 4 }}>
-                                {room.numero}
-                                {room.descripcion && ` - ${room.descripcion}`}
-                                {room.tipo === 'consultorio_general' && (
+                            ...spaces.map((space) => (
+                              <MenuItem key={space.espacioId} value={space.espacioId} sx={{ pl: 4 }}>
+                                {space.label}
+                                {space.espacioTipo === 'consultorio' && space.tipo === 'consulta_general' && (
                                   <Chip
                                     label="Sin cargo"
                                     size="small"
                                     color="success"
                                     sx={{ ml: 1 }}
                                   />
+                                )}
+                                {space.descripcion && (
+                                  <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                                    {space.descripcion}
+                                  </Typography>
                                 )}
                               </MenuItem>
                             ))

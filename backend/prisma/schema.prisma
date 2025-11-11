@@ -240,7 +240,8 @@ model Consultorio {
   updatedAt    DateTime          @updatedAt @map("updated_at")
 
   // Relaciones
-  citas CitaMedica[]
+  citas              CitaMedica[]
+  hospitalizaciones  Hospitalizacion[]
 
   @@map("consultorios")
 }
@@ -272,8 +273,9 @@ model Quirofano {
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   // Relaciones
-  citas    CitaMedica[]
-  cirugias CirugiaQuirofano[]
+  citas              CitaMedica[]
+  cirugias           CirugiaQuirofano[]
+  hospitalizaciones  Hospitalizacion[]
 
   @@index([estado])
   @@index([tipo])
@@ -552,7 +554,9 @@ enum EstadoCPC {
 model Hospitalizacion {
   id                    Int                   @id @default(autoincrement())
   cuentaPacienteId      Int                   @unique @map("cuenta_paciente_id")
-  habitacionId          Int                   @map("habitacion_id")
+  habitacionId          Int?                  @map("habitacion_id")
+  consultorioId         Int?                  @map("consultorio_id")
+  quirofanoId           Int?                  @map("quirofano_id")
   medicoEspecialistaId  Int                   @map("medico_especialista_id")
   fechaIngreso          DateTime              @default(now()) @map("fecha_ingreso")
   fechaAlta             DateTime?             @map("fecha_alta")
@@ -564,15 +568,20 @@ model Hospitalizacion {
   createdAt             DateTime              @default(now()) @map("created_at")
   updatedAt             DateTime              @updatedAt @map("updated_at")
 
-  // Relaciones
+  // Relaciones (solo una debe estar presente)
   cuentaPaciente       CuentaPaciente        @relation(fields: [cuentaPacienteId], references: [id])
-  habitacion           Habitacion            @relation(fields: [habitacionId], references: [id])
+  habitacion           Habitacion?           @relation(fields: [habitacionId], references: [id])
+  consultorio          Consultorio?          @relation(fields: [consultorioId], references: [id])
+  quirofano            Quirofano?            @relation(fields: [quirofanoId], references: [id])
   medicoEspecialista   Empleado              @relation(fields: [medicoEspecialistaId], references: [id])
   ordenesMedicas       OrdenMedica[]
   notasHospitalizacion NotaHospitalizacion[]
 
   @@index([estado])
   @@index([fechaIngreso])
+  @@index([habitacionId])
+  @@index([consultorioId])
+  @@index([quirofanoId])
   @@map("hospitalizaciones")
 }
 
