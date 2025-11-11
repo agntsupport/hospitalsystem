@@ -8,9 +8,19 @@ export const admissionFormSchema = yup.object({
     .positive('Debe seleccionar un paciente'),
   
   habitacionId: yup
-    .number()
-    .required('La habitación es requerida')
-    .positive('Debe seleccionar una habitación'),
+    .mixed()
+    .required('El espacio (habitación/consultorio/quirófano) es requerido')
+    .test('valid-space', 'Debe seleccionar un espacio válido', function(value) {
+      // Aceptar números (compatibilidad con versión anterior)
+      if (typeof value === 'number' && value > 0) return true;
+
+      // Aceptar strings con formato: habitacion_X, consultorio_X, quirofano_X
+      if (typeof value === 'string') {
+        return /^(habitacion|consultorio|quirofano)_\d+$/.test(value);
+      }
+
+      return false;
+    }),
   
   medicoTratanteId: yup
     .number()
