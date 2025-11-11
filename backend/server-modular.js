@@ -113,19 +113,22 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // ==============================================
 // RATE LIMITING GLOBAL
 // ==============================================
-// Limitar requests generales a 100 por 15 minutos por IP
+// Limitar requests generales a 500 por 15 minutos por IP
 // NOTA: Desactivado en ambiente de testing para permitir E2E tests
+// MEJORA: Aumentado de 100 a 500 para soportar operaciones normales del hospital
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // 100 requests por ventana
-  message: 'Demasiadas solicitudes desde esta IP, por favor intente después de 15 minutos',
+  max: 500, // 500 requests por ventana (↑ de 100 para operaciones normales)
+  message: 'Demasiadas solicitudes, por favor intente después de 15 minutos',
   standardHeaders: true,
   legacyHeaders: false,
+  // Omitir rate limiting para health checks
+  skip: (req) => req.path === '/health'
 });
 
 if (!isTestEnv) {
   app.use('/api/', generalLimiter);
-  console.log('✅ Rate limiting global enabled (100 requests / 15 min)');
+  console.log('✅ Rate limiting global enabled (500 requests / 15 min per IP)');
 } else {
   console.log('⚠️  Rate limiting global DISABLED (test environment)');
 }
