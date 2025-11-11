@@ -277,9 +277,8 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
     return null;
   }
 
-  // Usar accountDetails si está disponible, sino usar account básico
-  const currentAccount = accountDetails || account;
-  const patient = currentAccount.paciente;
+  // Usar accountDetails - esperamos que esté cargado antes de mostrar contenido
+  const patient = account.paciente || accountDetails?.paciente;
   const isRefund = finalBalance < 0;
 
   return (
@@ -315,8 +314,8 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                 <strong>Paciente:</strong> {patient?.nombre} {patient?.apellidoPaterno} {patient?.apellidoMaterno}
               </Typography>
               <Typography variant="caption">
-                Cuenta #{currentAccount.id} • {currentAccount.tipoAtencion === 'hospitalizacion' ? 'Hospitalización' : 'Consulta'}
-                {currentAccount.habitacion && ` • Habitación ${currentAccount.habitacion.numero}`}
+                Cuenta #{account.id} • {account.tipoAtencion === 'hospitalizacion' ? 'Hospitalización' : 'Consulta'}
+                {account.habitacion && ` • Habitación ${account.habitacion.numero}`}
               </Typography>
             </Alert>
           </Grid>
@@ -332,7 +331,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
           )}
 
           {/* Detalle de Transacciones */}
-          {!loading && currentAccount.transacciones && (
+          {!loading && accountDetails?.transacciones && (
             <Grid item xs={12}>
               <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                 Detalle de Cargos
@@ -349,7 +348,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {currentAccount.transacciones.map((trans: any) => (
+                    {accountDetails.transacciones.map((trans: any) => (
                       <TableRow key={trans.id}>
                         <TableCell>{trans.concepto}</TableCell>
                         <TableCell>
