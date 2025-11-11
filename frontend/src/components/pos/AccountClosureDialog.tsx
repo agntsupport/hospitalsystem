@@ -63,7 +63,8 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [showPaymentSection, setShowPaymentSection] = useState(false);
-  
+  const [accountDetails, setAccountDetails] = useState<any>(null);
+
   // Cálculos de saldo
   const [totalServices, setTotalServices] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -72,22 +73,48 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   const [finalBalance, setFinalBalance] = useState(0);
   const [changeAmount, setChangeAmount] = useState(0);
 
+  // Cargar detalles completos de la cuenta cuando se abre el diálogo
   useEffect(() => {
-    if (account && account.transacciones) {
+    if (open && account?.id) {
+      loadAccountDetails();
+    }
+  }, [open, account?.id]);
+
+  const loadAccountDetails = async () => {
+    if (!account?.id) return;
+
+    setLoading(true);
+    try {
+      const response = await posService.getPatientAccountById(account.id);
+      if (response.success && response.data) {
+        setAccountDetails(response.data.account);
+      }
+    } catch (error) {
+      console.error('Error loading account details:', error);
+      toast.error('Error al cargar detalles de la cuenta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (accountDetails && accountDetails.transacciones) {
       calculateBalance();
     }
-  }, [account]);
+  }, [accountDetails]);
 
   useEffect(() => {
     calculateChange();
   }, [amountReceived, cashAmount, cardAmount, paymentMethod, finalBalance]);
 
   const calculateBalance = () => {
+    if (!accountDetails || !accountDetails.transacciones) return;
+
     let services = 0;
     let products = 0;
     let advances = 0;
 
-    account.transacciones.forEach((t: any) => {
+    accountDetails.transacciones.forEach((t: any) => {
       const amount = parseFloat(t.subtotal || t.precioUnitario || 0);
       switch (t.tipo) {
         case 'servicio':
@@ -246,9 +273,13 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
     }
   };
 
-  if (!account) return null;
+  if (!account) {
+    return null;
+  }
 
-  const patient = account.paciente;
+  // Usar accountDetails si está disponible, sino usar account básico
+  const currentAccount = accountDetails || account;
+  const patient = currentAccount.paciente;
   const isRefund = finalBalance < 0;
 
   return (
@@ -284,66 +315,79 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
                 <strong>Paciente:</strong> {patient?.nombre} {patient?.apellidoPaterno} {patient?.apellidoMaterno}
               </Typography>
               <Typography variant="caption">
-                Cuenta #{account.id} • {account.tipoAtencion === 'hospitalizacion' ? 'Hospitalización' : 'Consulta'}
-                {account.habitacion && ` • Habitación ${account.habitacion.numero}`}
+                Cuenta #{currentAccount.id} • {currentAccount.tipoAtencion === 'hospitalizacion' ? 'Hospitalización' : 'Consulta'}
+                {currentAccount.habitacion && ` • Habitación ${currentAccount.habitacion.numero}`}
               </Typography>
             </Alert>
           </Grid>
 
+          {/* Loading indicator */}
+          {loading && (
+            <Grid item xs={12} textAlign="center">
+              <CircularProgress size={40} />
+              <Typography variant="body2" color="text.secondary" mt={2}>
+                Cargando detalles de la cuenta...
+              </Typography>
+            </Grid>
+          )}
+
           {/* Detalle de Transacciones */}
-          <Grid item xs={12}>
-            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
-              Detalle de Cargos
-            </Typography>
-            <TableContainer component={Paper} variant="outlined">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Concepto</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell align="center">Cantidad</TableCell>
-                    <TableCell align="right">P. Unitario</TableCell>
-                    <TableCell align="right">Subtotal</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {account.transacciones.map((trans: any) => (
-                    <TableRow key={trans.id}>
-                      <TableCell>{trans.concepto}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={trans.tipo} 
-                          size="small"
-                          color={
-                            trans.tipo === 'anticipo' ? 'success' :
-                            trans.tipo === 'servicio' ? 'primary' : 'default'
-                          }
-                          variant={trans.tipo === 'anticipo' ? 'filled' : 'outlined'}
-                        />
-                      </TableCell>
-                      <TableCell align="center">{trans.cantidad || 1}</TableCell>
-                      <TableCell align="right">
-                        ${parseFloat(trans.precioUnitario || trans.subtotal || 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right">
-                        {trans.tipo === 'anticipo' ? (
-                          <Typography color="success.main" fontWeight="bold">
-                            +${parseFloat(trans.subtotal || 0).toFixed(2)}
-                          </Typography>
-                        ) : (
-                          <Typography>
-                            ${parseFloat(trans.subtotal || 0).toFixed(2)}
-                          </Typography>
-                        )}
-                      </TableCell>
+          {!loading && currentAccount.transacciones && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                Detalle de Cargos
+              </Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Concepto</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell align="center">Cantidad</TableCell>
+                      <TableCell align="right">P. Unitario</TableCell>
+                      <TableCell align="right">Subtotal</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Grid>
+                  </TableHead>
+                  <TableBody>
+                    {currentAccount.transacciones.map((trans: any) => (
+                      <TableRow key={trans.id}>
+                        <TableCell>{trans.concepto}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={trans.tipo}
+                            size="small"
+                            color={
+                              trans.tipo === 'anticipo' ? 'success' :
+                              trans.tipo === 'servicio' ? 'primary' : 'default'
+                            }
+                            variant={trans.tipo === 'anticipo' ? 'filled' : 'outlined'}
+                          />
+                        </TableCell>
+                        <TableCell align="center">{trans.cantidad || 1}</TableCell>
+                        <TableCell align="right">
+                          ${parseFloat(trans.precioUnitario || trans.subtotal || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {trans.tipo === 'anticipo' ? (
+                            <Typography color="success.main" fontWeight="bold">
+                              +${parseFloat(trans.subtotal || 0).toFixed(2)}
+                            </Typography>
+                          ) : (
+                            <Typography>
+                              ${parseFloat(trans.subtotal || 0).toFixed(2)}
+                            </Typography>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Grid>
+          )}
 
           {/* Resumen de Totales */}
+          {!loading && (
           <Grid item xs={12}>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Grid container spacing={2}>
@@ -412,9 +456,10 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
               </Grid>
             </Paper>
           </Grid>
+          )}
 
           {/* Sección de Pago (solo si hay saldo a cobrar) */}
-          {finalBalance > 0 && (
+          {!loading && finalBalance > 0 && (
             <>
               <Grid item xs={12}>
                 <Divider>
@@ -543,7 +588,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
           )}
 
           {/* Mensaje de Devolución */}
-          {isRefund && (
+          {!loading && isRefund && (
             <Grid item xs={12}>
               <Alert severity="warning" icon={<AttachMoneyIcon />}>
                 <Typography variant="h6">
