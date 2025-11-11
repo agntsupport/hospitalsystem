@@ -36,6 +36,7 @@ import { patientsService } from '@/services/patientsService';
 import { roomsService } from '@/services/roomsService';
 import { employeeService } from '@/services/employeeService';
 import hospitalizationService from '@/services/hospitalizationService';
+import quirofanosService from '@/services/quirofanosService';
 import { toast } from 'react-toastify';
 import { Patient } from '@/types/patients.types';
 import { Room } from '@/types/rooms.types';
@@ -171,11 +172,7 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
       const [roomsResponse, officesResponse, quirofanosResponse] = await Promise.all([
         roomsService.getRooms({ estado: 'disponible' }),
         roomsService.getOffices({ estado: 'disponible' }),
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/quirofanos?estado=disponible`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }).then(res => res.json())
+        quirofanosService.getQuirofanos({ estado: 'disponible' })
       ]);
 
       console.log('Spaces response:', { roomsResponse, officesResponse, quirofanosResponse });
