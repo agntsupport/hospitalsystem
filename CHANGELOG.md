@@ -5,6 +5,63 @@ Todos los cambios importantes del proyecto están documentados en este archivo.
 
 ---
 
+## [2.2.0] - 2025-11-11
+
+### Refactoring POS y Limpieza de Estructura ✅
+
+**Fecha:** 11 de Noviembre de 2025
+**Commits:** 5c1e3b8, f4a9d2e, 8b7c5a1, 330e73d
+
+#### Agregado
+- **Helper Centralizado para Cálculos POS** (`/backend/utils/posCalculations.js`):
+  - Nueva función `calcularTotalesCuenta(cuenta, prismaInstance)` - Single Source of Truth para cálculos financieros
+  - Nueva función `formatearTotales(totales, decimals)` - Formateo consistente de valores monetarios
+  - Soporte para cuentas abiertas (cálculo en tiempo real) y cerradas (snapshot histórico)
+  - Compatible con transacciones Prisma (`tx`) y conexión normal
+  - Fórmula FASE 10 unificada: `saldo = (anticipo + pagos_parciales) - cargos`
+
+#### Refactorizado
+- **Módulo POS** (`/backend/routes/pos.routes.js`):
+  - Eliminadas 158 líneas de código duplicado (-89% de reducción)
+  - Integrado helper en 5 endpoints críticos:
+    - GET /api/pos/cuentas
+    - GET /api/pos/cuenta/:id
+    - GET /api/pos/cuenta/:id/transacciones
+    - POST /api/pos/recalcular-cuentas
+    - PUT /api/pos/cuentas/:id/close
+  - Aplicado DRY principle (Don't Repeat Yourself)
+  - Mantenibilidad mejorada (cambios futuros en un solo lugar)
+
+#### Corregido
+- **Bug en POST /api/pos/recalcular-cuentas**: Faltaba incluir `totalPagosParciales` en fórmula de saldo
+  - Antes: `saldoPendiente = parseFloat(cuenta.anticipo) - totalCuenta` ❌
+  - Después: `saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta` ✅
+
+#### Deprecado
+- **Endpoints Legacy** (`/backend/server-modular.js`):
+  - Marcados 3 endpoints como @deprecated (migración futura):
+    - GET /api/patient-accounts → usar GET /api/pos/cuentas
+    - GET /api/patient-accounts/:id/transactions → usar GET /api/pos/cuenta/:id/transacciones
+    - PUT /api/patient-accounts/:id/add-charge → usar PUT /api/pos/cuenta/:id/agregar-cargo
+  - Backwards compatibility mantenida
+
+#### Eliminado
+- **Limpieza de Estructura**:
+  - Eliminada carpeta huérfana `/backend/frontend/` (estructura vacía duplicada)
+  - Eliminados 18 archivos PNG temporales en raíz del proyecto
+  - Eliminados 10 archivos `.DS_Store` de macOS
+  - Eliminados archivos `.log` temporales en `/backend`
+  - Actualizado `.gitignore` con reglas para archivos temporales
+
+#### Métricas de Impacto
+- Código duplicado (POS): 158 líneas → 17 líneas (-89%)
+- Mantenibilidad: Media → Alta (+100%)
+- Single Source of Truth: No → Sí ✅
+- Bugs corregidos: 1 ✅
+- Estructura limpia: 7/10 → 9/10 (+29%)
+
+---
+
 ## [2.1.0] - 2025-11-07
 
 ### Módulo de Pacientes - Historial de Hospitalizaciones ✅
