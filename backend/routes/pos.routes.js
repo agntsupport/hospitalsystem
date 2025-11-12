@@ -852,22 +852,9 @@ router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
     const resultados = [];
 
     for (const cuenta of cuentasAbiertas) {
-      // Calcular totales por tipo de transacción
-      const [servicios, productos] = await Promise.all([
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: cuenta.id, tipo: 'servicio' },
-          _sum: { subtotal: true }
-        }),
-        prisma.transaccionCuenta.aggregate({
-          where: { cuentaId: cuenta.id, tipo: 'producto' },
-          _sum: { subtotal: true }
-        })
-      ]);
-
-      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
-      const totalProductos = parseFloat(productos._sum.subtotal || 0);
-      const totalCuenta = totalServicios + totalProductos;
-      const saldoPendiente = parseFloat(cuenta.anticipo) - totalCuenta;
+      // Usar helper centralizado para calcular totales (incluye pagos parciales)
+      const totales = await calcularTotalesCuenta(cuenta, prisma);
+      const { totalServicios, totalProductos, totalCuenta, saldoPendiente } = totales;
 
       // Verificar si hay cambios
       const cambios = (
@@ -1079,32 +1066,9 @@ router.put('/cuentas/:id/close', authenticateToken, async (req, res) => {
       }
 
       // 2. CALCULAR TOTALES EN TIEMPO REAL (single source of truth)
-      const [servicios, productos, anticipos, pagosParciales] = await Promise.all([
-        tx.transaccionCuenta.aggregate({
-          where: { cuentaId: parseInt(id), tipo: 'servicio' },
-          _sum: { subtotal: true }
-        }),
-        tx.transaccionCuenta.aggregate({
-          where: { cuentaId: parseInt(id), tipo: 'producto' },
-          _sum: { subtotal: true }
-        }),
-        tx.transaccionCuenta.aggregate({
-          where: { cuentaId: parseInt(id), tipo: 'anticipo' },
-          _sum: { subtotal: true }
-        }),
-        tx.pago.aggregate({
-          where: { cuentaPacienteId: parseInt(id), tipoPago: 'parcial' },
-          _sum: { monto: true }
-        })
-      ]);
-
-      const totalServicios = parseFloat(servicios._sum.subtotal || 0);
-      const totalProductos = parseFloat(productos._sum.subtotal || 0);
-      const anticipo = parseFloat(anticipos._sum.subtotal || 0);
-      const totalPagosParciales = parseFloat(pagosParciales._sum.monto || 0);
-      const totalCuenta = totalServicios + totalProductos;
-      // Saldo = anticipo + pagos parciales - cargos totales
-      const saldoPendiente = (anticipo + totalPagosParciales) - totalCuenta;
+      // Usar helper centralizado para calcular totales (con transacción)
+      const totales = await calcularTotalesCuenta(cuenta, tx);
+      const { anticipo, totalServicios, totalProductos, totalCuenta, saldoPendiente } = totales;
 
       logger.info(`💰 Totales cuenta #${id}: Anticipo: $${anticipo}, Total: $${totalCuenta}, Saldo: $${saldoPendiente}`);
 
