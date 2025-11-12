@@ -100,7 +100,36 @@ const CuentasPorCobrarPage: React.FC = () => {
     try {
       const response = await posService.getCPCStats();
       if (response.success && response.data) {
-        setStats(response.data);
+        // Transformar datos del backend al formato esperado por el componente
+        const { resumen, distribucion } = response.data;
+
+        // Crear objeto de distribución por estado con valores por defecto
+        const distribucionPorEstado = {
+          pendiente: { cantidad: 0, monto: 0 },
+          pagado_parcial: { cantidad: 0, monto: 0 },
+          pagado_total: { cantidad: 0, monto: 0 },
+          cancelado: { cantidad: 0, monto: 0 }
+        };
+
+        // Llenar con datos reales del backend
+        if (distribucion && Array.isArray(distribucion)) {
+          distribucion.forEach((item: any) => {
+            if (distribucionPorEstado.hasOwnProperty(item.estado)) {
+              distribucionPorEstado[item.estado as keyof typeof distribucionPorEstado] = {
+                cantidad: item.cantidad || 0,
+                monto: item.saldoPendiente || 0
+              };
+            }
+          });
+        }
+
+        setStats({
+          totalCPCActivas: resumen?.totalCPC ?? 0,
+          montoPendienteTotal: resumen?.montoTotalPendiente ?? 0,
+          montoRecuperadoTotal: resumen?.montoTotalRecuperado ?? 0,
+          porcentajeRecuperacion: resumen?.porcentajeRecuperacion ?? 0,
+          distribucionPorEstado
+        });
       }
     } catch (err) {
       console.error('Error loading CPC stats:', err);

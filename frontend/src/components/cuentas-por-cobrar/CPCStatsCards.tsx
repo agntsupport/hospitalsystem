@@ -32,8 +32,10 @@ interface CPCStatsCardsProps {
 }
 
 const CPCStatsCards: React.FC<CPCStatsCardsProps> = ({ stats }) => {
-  const formatCurrency = (amount: number) =>
-    `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (amount: number | undefined | null) => {
+    const value = amount ?? 0;
+    return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const statCards = [
     {
@@ -62,7 +64,7 @@ const CPCStatsCards: React.FC<CPCStatsCardsProps> = ({ stats }) => {
     },
     {
       title: 'Tasa de Recuperación',
-      value: `${stats.porcentajeRecuperacion.toFixed(1)}%`,
+      value: `${(stats.porcentajeRecuperacion ?? 0).toFixed(1)}%`,
       subtitle: 'Porcentaje cobrado',
       icon: <AssessmentIcon fontSize="large" />,
       color: 'info.main',
