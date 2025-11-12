@@ -1,284 +1,416 @@
-# Guía de Deployment en EasyPanel
+# 🚀 GUÍA DE DEPLOYMENT EN EASYPANEL
+## Sistema de Gestión Hospitalaria Integral
 
-**Sistema de Gestión Hospitalaria Integral**
-**Desarrollado por:** Alfredo Manuel Reyes
-**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
-
----
-
-## 📋 Prerequisitos
-
-Antes de empezar, asegúrate de tener:
-
-1. Una cuenta en EasyPanel
-2. Un proyecto creado en EasyPanel
-3. Acceso a git con tu repositorio
-4. Los dominios asignados por EasyPanel para tus servicios
+**Última actualización:** 7 de Noviembre 2025
+**Desarrollado por:** Alfredo Manuel Reyes - AGNT
 
 ---
 
-## 🏗️ Arquitectura en EasyPanel
+## 📋 PRE-REQUISITOS
 
-Este sistema requiere **3 servicios separados** en EasyPanel:
-
-1. **PostgreSQL** - Base de datos
-2. **Backend** - API Node.js/Express (puerto 3001)
-3. **Frontend** - React SPA con Nginx (puerto 80)
-
----
-
-## 📝 Pasos de Deployment
-
-### 1. Crear el Servicio de PostgreSQL
-
-1. En EasyPanel, crea un nuevo servicio de tipo **PostgreSQL**
-2. Configura las siguientes variables de entorno:
-   ```
-   POSTGRES_DB=hospital_management
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=[genera-una-contraseña-segura]
-   ```
-3. Anota el nombre del servicio (lo necesitarás para el backend)
-4. El puerto por defecto es 5432
-
-### 2. Crear el Servicio del Backend
-
-1. Crea un nuevo servicio de tipo **App** (Git)
-2. Conecta tu repositorio
-3. Configura el **Build**:
-   - **Dockerfile path**: `backend/Dockerfile`
-   - **Build context**: `backend`
-
-4. Configura las **Variables de Entorno**:
-   ```bash
-   # Base de datos
-   DATABASE_URL=postgresql://postgres:[POSTGRES_PASSWORD]@[POSTGRES_SERVICE_NAME]:5432/hospital_management?schema=public
-
-   # Node
-   NODE_ENV=production
-   PORT=3001
-
-   # Seguridad
-   JWT_SECRET=[genera-con: openssl rand -base64 32]
-   TRUST_PROXY=true
-   ```
-
-5. Configura el **Puerto**: `3001`
-
-6. **IMPORTANTE**: Anota el dominio que EasyPanel asigna al backend
-   - Ejemplo: `https://hospital-management-system-app.1nse3e.easypanel.host`
-
-### 3. Crear el Servicio del Frontend
-
-1. Crea un nuevo servicio de tipo **App** (Git)
-2. Conecta tu repositorio
-3. Configura el **Build**:
-   - **Dockerfile path**: `frontend/Dockerfile`
-   - **Build context**: `frontend`
-   - **Build arguments** (muy importante):
-     ```
-     VITE_API_URL=https://[TU-DOMINIO-BACKEND].easypanel.host/api
-     ```
-     ⚠️ **NOTA CRÍTICA**: La URL DEBE incluir `/api` al final
-
-4. Configura el **Puerto**: `80`
-
-5. **IMPORTANTE**: Anota el dominio que EasyPanel asigna al frontend
-   - Ejemplo: `https://hospital-management-system-frontend.1nse3e.easypanel.host`
-
-### 4. Configurar CORS en el Backend
-
-El backend ya tiene configurado CORS, pero **debes verificar** que el dominio del frontend esté en la lista de orígenes permitidos.
-
-1. Ve a `backend/server-modular.js` línea 68-73
-2. Verifica que tu dominio frontend esté en `allowedOrigins`:
-   ```javascript
-   const allowedOrigins = [
-     'http://localhost:3000',
-     'http://localhost:3002',
-     'http://localhost:5173',
-     'https://hospital-management-system-frontend.1nse3e.easypanel.host' // ← Tu dominio
-   ];
-   ```
-3. Si no está, agrégalo y haz commit/push
+✅ Cuenta en EasyPanel: https://easypanel.io
+✅ Repositorio GitHub con el código
+✅ Archivos Docker preparados (✅ completados)
+✅ Variables de entorno configuradas
 
 ---
 
-## 🔍 Verificación Post-Deployment
+## 🏗️ ARQUITECTURA DEL DEPLOYMENT
 
-### Backend Health Check
-
-```bash
-curl https://[TU-DOMINIO-BACKEND].easypanel.host/health
+```
+┌─────────────────────────────────────────────┐
+│           EasyPanel Platform                │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌──────────────┐  ┌──────────────┐       │
+│  │   Frontend   │  │   Backend    │       │
+│  │  React+Nginx │  │ Node.js+API  │       │
+│  │   (Port 80)  │  │  (Port 3001) │       │
+│  └──────┬───────┘  └──────┬───────┘       │
+│         │                  │                │
+│         └─────────┬────────┘                │
+│                   │                         │
+│          ┌────────▼────────┐               │
+│          │   PostgreSQL    │               │
+│          │   Database      │               │
+│          └─────────────────┘               │
+│                                             │
+└─────────────────────────────────────────────┘
 ```
 
-Deberías recibir:
+---
+
+## 📝 PASO 1: PREPARAR VARIABLES DE ENTORNO
+
+### 1.1 Generar JWT_SECRET seguro
+
+```bash
+# Ejecuta en tu terminal local:
+openssl rand -base64 32
+```
+
+Guarda el resultado, lo usarás en EasyPanel.
+
+### 1.2 Preparar valores para EasyPanel
+
+Necesitarás estos valores:
+
+| Variable | Valor Ejemplo | Descripción |
+|----------|---------------|-------------|
+| `POSTGRES_DB` | `hospital_management` | Nombre de la BD |
+| `POSTGRES_USER` | `postgres` | Usuario PostgreSQL |
+| `POSTGRES_PASSWORD` | `[seguro123]` | Password BD (generado por EasyPanel) |
+| `JWT_SECRET` | `[tu_secret_generado]` | Del paso 1.1 |
+| `NODE_ENV` | `production` | Ambiente |
+| `BACKEND_PORT` | `3001` | Puerto backend |
+| `FRONTEND_PORT` | `80` | Puerto frontend |
+| `VITE_API_URL` | `https://hospital-api.easypanel.host` | URL del backend |
+
+---
+
+## 🚀 PASO 2: CREAR PROYECTO EN EASYPANEL
+
+### 2.1 Login en EasyPanel
+1. Ve a https://easypanel.io
+2. Inicia sesión o crea cuenta
+3. Click en **"New Project"**
+
+### 2.2 Configurar Proyecto
+- **Nombre:** `hospital-management-system`
+- **Description:** Sistema de Gestión Hospitalaria Integral
+
+---
+
+## 🗄️ PASO 3: CREAR BASE DE DATOS POSTGRESQL
+
+### 3.1 Agregar Servicio PostgreSQL
+1. En tu proyecto, click **"Add Service"**
+2. Selecciona **"Database"** → **"PostgreSQL"**
+3. Configurar:
+   - **Name:** `hospital-db`
+   - **Version:** `14` o `15`
+   - **Database:** `hospital_management`
+   - **User:** `postgres`
+   - **Password:** (genera uno seguro o usa el generado automáticamente)
+
+4. Click **"Create"**
+
+### 3.2 Verificar PostgreSQL
+- Espera a que el estado sea **"Running"** (verde)
+- Anota la **Connection String** que aparece en los detalles del servicio
+
+---
+
+## 🔧 PASO 4: DESPLEGAR BACKEND
+
+### 4.1 Agregar Servicio Backend
+1. Click **"Add Service"** → **"App"**
+2. Configurar:
+   - **Name:** `hospital-backend`
+   - **Source:** **GitHub Repository**
+   - **Repository:** `tu-usuario/agntsystemsc` (o tu repo)
+   - **Branch:** `master`
+   - **Build Context:** `./backend`
+   - **Dockerfile:** `./backend/Dockerfile`
+
+### 4.2 Configurar Variables de Entorno
+
+Click en **"Environment Variables"** y agrega:
+
+```env
+DATABASE_URL=postgresql://postgres:[password]@hospital-db:5432/hospital_management?schema=public
+PORT=3001
+NODE_ENV=production
+JWT_SECRET=[tu_jwt_secret_del_paso_1.1]
+TRUST_PROXY=true
+```
+
+**IMPORTANTE:** Reemplaza `[password]` con el password de PostgreSQL del Paso 3.1
+
+### 4.3 Configurar Puertos
+- **Internal Port:** `3001`
+- **External Port:** Asignar automáticamente
+- **Enable HTTPS:** ✅ Sí
+
+### 4.4 Configurar Dominio
+EasyPanel te asignará un dominio automáticamente:
+- Ejemplo: `https://hospital-backend-abc123.easypanel.host`
+- Anota este dominio, lo usarás para el frontend
+
+### 4.5 Deploy Backend
+1. Click **"Deploy"**
+2. Espera a que el build termine (puede tomar 3-5 minutos)
+3. Verifica que el estado sea **"Running"**
+
+### 4.6 Verificar Backend
+```bash
+curl https://hospital-backend-abc123.easypanel.host/health
+```
+
+Deberías ver:
 ```json
 {
   "status": "ok",
-  "timestamp": "2025-01-07T...",
-  "uptime": 123.45,
-  "database": "connected"
+  "message": "Sistema Hospitalario API...",
+  "database": "PostgreSQL con Prisma"
 }
 ```
 
-### Frontend Check
+---
 
-Abre en tu navegador:
+## 🎨 PASO 5: DESPLEGAR FRONTEND
+
+### 5.1 Agregar Servicio Frontend
+1. Click **"Add Service"** → **"App"**
+2. Configurar:
+   - **Name:** `hospital-frontend`
+   - **Source:** **GitHub Repository**
+   - **Repository:** `tu-usuario/agntsystemsc`
+   - **Branch:** `master`
+   - **Build Context:** `./frontend`
+   - **Dockerfile:** `./frontend/Dockerfile`
+
+### 5.2 Configurar Variables de Entorno
+
+Click en **"Environment Variables"** y agrega:
+
+```env
+VITE_API_URL=https://hospital-backend-abc123.easypanel.host
 ```
-https://[TU-DOMINIO-FRONTEND].easypanel.host
+
+**IMPORTANTE:** Usa el dominio del backend del Paso 4.4
+
+### 5.3 Configurar Puertos
+- **Internal Port:** `80`
+- **External Port:** Asignar automáticamente
+- **Enable HTTPS:** ✅ Sí
+
+### 5.4 Deploy Frontend
+1. Click **"Deploy"**
+2. Espera a que el build termine (puede tomar 5-7 minutos)
+3. Verifica que el estado sea **"Running"**
+
+### 5.5 Obtener Dominio Frontend
+EasyPanel te asignará un dominio automáticamente:
+- Ejemplo: `https://hospital-frontend-xyz789.easypanel.host`
+
+---
+
+## 🌱 PASO 6: SEEDEAR BASE DE DATOS (OPCIONAL)
+
+Si quieres cargar datos de prueba:
+
+### 6.1 Acceder al Container del Backend
+1. En EasyPanel, ve al servicio **hospital-backend**
+2. Click en **"Console"** o **"Shell"**
+
+### 6.2 Ejecutar Seed
+```bash
+# Dentro del container
+npm run db:seed
 ```
 
-Deberías ver la página de login del sistema hospitalario.
+---
 
-### Test de API desde Frontend
+## ✅ PASO 7: VERIFICACIÓN FINAL
 
-1. Abre la consola del navegador (F12)
-2. Ve a la pestaña **Network**
-3. Intenta hacer login con: `admin / admin123`
-4. Verifica que las requests vayan a:
+### 7.1 Checklist de Verificación
+
+- [ ] PostgreSQL corriendo (verde)
+- [ ] Backend corriendo (verde)
+- [ ] Frontend corriendo (verde)
+- [ ] Health check del backend: `curl https://[tu-backend]/health`
+- [ ] Frontend accesible: `https://[tu-frontend]`
+- [ ] Login funciona con: `admin / admin123`
+
+### 7.2 URLs Finales
+
+Anota tus URLs de producción:
+
+```
+Frontend:  https://hospital-frontend-[tu-id].easypanel.host
+Backend:   https://hospital-backend-[tu-id].easypanel.host
+```
+
+---
+
+## 🔐 PASO 8: CONFIGURACIÓN DE SEGURIDAD POST-DEPLOYMENT
+
+### 8.1 Cambiar Credenciales por Defecto
+
+**CRÍTICO:** Una vez que el sistema esté funcionando, cambia las credenciales:
+
+1. Login con `admin / admin123`
+2. Ve a **Configuración** → **Usuarios**
+3. Cambia el password del usuario `admin`
+
+### 8.2 Variables de Entorno Sensibles
+
+Verifica que estén configuradas:
+- ✅ `JWT_SECRET` - único y seguro
+- ✅ `POSTGRES_PASSWORD` - único y seguro
+- ✅ `NODE_ENV=production`
+- ✅ `TRUST_PROXY=true`
+
+---
+
+## 📊 MONITOREO Y LOGS
+
+### Ver Logs en EasyPanel
+
+1. **Backend Logs:**
+   - Ve al servicio `hospital-backend`
+   - Click en **"Logs"**
+   - Filtra por errores: búsqueda `ERROR` o `error`
+
+2. **Frontend Logs:**
+   - Ve al servicio `hospital-frontend`
+   - Click en **"Logs"**
+
+3. **PostgreSQL Logs:**
+   - Ve al servicio `hospital-db`
+   - Click en **"Logs"**
+
+---
+
+## 🔄 ACTUALIZAR EL SISTEMA
+
+### Deployments Automáticos
+
+EasyPanel puede configurarse para auto-deploy cuando haces push a GitHub:
+
+1. Ve al servicio (backend o frontend)
+2. Click en **"Settings"**
+3. Habilita **"Auto Deploy"**
+4. Selecciona la rama: `master`
+
+Ahora, cada `git push origin master` desplegará automáticamente.
+
+### Deploy Manual
+
+Si prefieres control manual:
+
+1. Ve al servicio
+2. Click **"Deploy"** o **"Redeploy"**
+3. EasyPanel hará pull del último código y rebuildeará
+
+---
+
+## 🐛 TROUBLESHOOTING
+
+### Backend no arranca
+
+**Error:** `Prisma: Can't connect to database`
+
+**Solución:**
+1. Verifica que PostgreSQL esté corriendo
+2. Verifica `DATABASE_URL` en variables de entorno del backend
+3. El formato debe ser: `postgresql://user:password@hostname:5432/dbname?schema=public`
+4. En EasyPanel, el hostname es el **nombre del servicio** de PostgreSQL: `hospital-db`
+
+### Frontend muestra error de conexión API
+
+**Error:** `Network Error` o `Failed to fetch`
+
+**Solución:**
+1. Verifica que `VITE_API_URL` apunte al dominio correcto del backend
+2. Debe incluir `https://` (no `http://`)
+3. NO debe tener trailing slash: ❌ `https://api.com/` → ✅ `https://api.com`
+4. Rebuild del frontend después de cambiar `VITE_API_URL`
+
+### Migrations no aplican
+
+**Error:** `Prisma migrate failed`
+
+**Solución:**
+1. Accede a la consola del backend en EasyPanel
+2. Ejecuta manualmente:
+   ```bash
+   npx prisma migrate deploy
    ```
-   https://[TU-DOMINIO-BACKEND].easypanel.host/api/auth/login
-   ```
-5. Si ves errores 404, verifica la configuración de `VITE_API_URL`
+
+### CORS Errors en el Frontend
+
+**Error:** `Access-Control-Allow-Origin`
+
+**Solución:**
+Ya está configurado en el backend (`cors` habilitado), pero verifica:
+1. Backend debe tener `TRUST_PROXY=true`
+2. Frontend debe usar HTTPS (no HTTP)
+3. Ambos servicios deben tener HTTPS habilitado en EasyPanel
 
 ---
 
-## 🐛 Troubleshooting
+## 📞 SOPORTE
 
-### Error 404 en `/auth/login`
-
-**Problema**: El frontend está llamando al endpoint incorrecto.
-
-**Causa**: `VITE_API_URL` no incluye `/api` al final.
-
-**Solución**:
-1. Reconstruye el frontend con el build argument correcto:
-   ```
-   VITE_API_URL=https://[BACKEND].easypanel.host/api
-   ```
-
-### CORS Error
-
-**Problema**: Error de CORS en la consola del navegador.
-
-**Causa**: El dominio del frontend no está en `allowedOrigins` del backend.
-
-**Solución**:
-1. Edita `backend/server-modular.js` línea 68-73
-2. Agrega tu dominio frontend a `allowedOrigins`
-3. Commit y push
-4. EasyPanel reconstruirá automáticamente
-
-### Backend no inicia
-
-**Problema**: El contenedor del backend se reinicia constantemente.
-
-**Causa posible 1**: Error de conexión a la base de datos.
-
-**Solución**:
-1. Verifica que `DATABASE_URL` tenga el nombre correcto del servicio PostgreSQL
-2. Verifica que la contraseña sea correcta
-3. Verifica que el servicio PostgreSQL esté corriendo
-
-**Causa posible 2**: `JWT_SECRET` no está definido.
-
-**Solución**:
-1. Genera un JWT_SECRET: `openssl rand -base64 32`
-2. Agrégalo a las variables de entorno del backend
-
-### Redirect Loop (HTTPS)
-
-**Problema**: El navegador entra en un loop de redirects infinitos.
-
-**Causa**: El backend no tiene `TRUST_PROXY=true` configurado.
-
-**Solución**:
-1. Agrega `TRUST_PROXY=true` a las variables de entorno del backend
-2. Reconstruye el servicio
+**Desarrollado por:** Alfredo Manuel Reyes
+**Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
+**Teléfono:** 443 104 7479
 
 ---
 
-## 📊 Monitoreo
+## 🎯 PRÓXIMOS PASOS RECOMENDADOS
 
-### Logs del Backend
+Después del deployment exitoso:
 
-En EasyPanel, ve al servicio del backend y selecciona la pestaña **Logs**.
+1. **Configurar Dominio Propio** (opcional):
+   - Compra un dominio (ej: `hospitalsystem.com`)
+   - En EasyPanel, ve a cada servicio → **"Domains"**
+   - Agrega tu dominio personalizado
+   - Configura DNS según instrucciones de EasyPanel
 
-Busca estos mensajes al iniciar:
+2. **Configurar Backups Automáticos**:
+   - En PostgreSQL service → **"Backups"**
+   - Habilita backups automáticos diarios
+   - Guarda en almacenamiento externo (S3, etc.)
+
+3. **Monitoreo y Alertas**:
+   - Configura notificaciones de EasyPanel
+   - Recibe alertas si algún servicio falla
+
+4. **SSL/HTTPS**:
+   - EasyPanel provee SSL automático con Let's Encrypt
+   - Verifica que ambos servicios tengan el candado 🔒
+
+---
+
+## ✅ CHECKLIST FINAL DE DEPLOYMENT
+
 ```
-✅ Trust proxy enabled (behind reverse proxy)
-✅ HTTPS enforcement enabled (production mode)
-🚀 Servidor escuchando en puerto 3001
-✅ Base de datos conectada exitosamente
-```
+PREPARACIÓN:
+- [ ] JWT_SECRET generado (openssl rand -base64 32)
+- [ ] Variables de entorno preparadas
+- [ ] Archivos Docker creados (✅ ya están)
 
-### Logs del Frontend
+EASYPANEL SETUP:
+- [ ] Proyecto creado en EasyPanel
+- [ ] PostgreSQL desplegado y corriendo
+- [ ] Backend desplegado y corriendo
+- [ ] Frontend desplegado y corriendo
 
-En EasyPanel, ve al servicio del frontend y selecciona la pestaña **Logs**.
+VERIFICACIÓN:
+- [ ] Health check backend: /health retorna 200
+- [ ] Frontend accesible y carga
+- [ ] Login funciona (admin / admin123)
+- [ ] Dashboard muestra datos
+- [ ] Tabla de ocupación visible
 
-Deberías ver:
-```
-/docker-entrypoint.sh: Configuration complete; ready for start up
+SEGURIDAD:
+- [ ] Password de admin cambiado
+- [ ] JWT_SECRET único (no default)
+- [ ] POSTGRES_PASSWORD seguro
+- [ ] HTTPS habilitado en ambos servicios
+
+POST-DEPLOYMENT:
+- [ ] Backups automáticos configurados
+- [ ] Monitoreo y alertas habilitados
+- [ ] Dominio personalizado (opcional)
+- [ ] Documentación entregada a cliente
 ```
 
 ---
 
-## 🔄 Redeploy
+**🏥 Sistema de Gestión Hospitalaria Integral**
+**✅ Ready for Production Deployment**
 
-Para redesplegar después de cambios:
-
-1. Haz commit y push de tus cambios
-2. En EasyPanel, ve al servicio que quieres actualizar
-3. Click en **Redeploy**
-4. EasyPanel reconstruirá la imagen y reiniciará el servicio
-
-**NOTA**: El backend tiene protección en el seed para no borrar datos existentes.
-
----
-
-## 📌 Checklist de Deployment
-
-- [ ] PostgreSQL creado y configurado
-- [ ] Backend desplegado con todas las variables de entorno
-- [ ] Frontend desplegado con `VITE_API_URL` correcto (con `/api`)
-- [ ] Dominio del frontend agregado a CORS en backend
-- [ ] Backend health check responde OK
-- [ ] Frontend carga correctamente
-- [ ] Login funciona (admin/admin123)
-- [ ] Sin errores de CORS en consola
-- [ ] Sin errores 404 en Network tab
-
----
-
-## 🔐 Seguridad Post-Deployment
-
-Después del primer deployment exitoso:
-
-1. **Cambia las credenciales por defecto**:
-   - Usuario: `admin / admin123` → Cambiar password inmediatamente
-
-2. **Desactiva el seed automático** (opcional):
-   - Si no quieres que el seed se ejecute en cada deploy
-   - Edita `backend/Dockerfile` línea 33
-   - Cambia: `CMD ["sh", "-c", "npx prisma db push && npx prisma db seed && node server-modular.js"]`
-   - A: `CMD ["sh", "-c", "npx prisma db push && node server-modular.js"]`
-
-3. **Configura backups de la base de datos**:
-   - EasyPanel ofrece backups automáticos
-   - Configúralo en la configuración del servicio PostgreSQL
-
----
-
-## 🆘 Soporte
-
-Si tienes problemas adicionales:
-
-1. Revisa los logs en EasyPanel
-2. Verifica la configuración de variables de entorno
-3. Confirma que todos los servicios estén corriendo
-4. Contacta: Alfredo Manuel Reyes - 443 104 7479
-
----
-
-**© 2025 AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial. Todos los derechos reservados.**
+*© 2025 AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial*
