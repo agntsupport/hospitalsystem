@@ -218,6 +218,7 @@ const POSPage: React.FC = () => {
               onViewAccount={handleViewAccount}
               onPartialPayment={handlePartialPayment}
               onRefresh={loadOpenAccounts}
+              onCreateAccount={handleNewAccount}
             />
           )}
           

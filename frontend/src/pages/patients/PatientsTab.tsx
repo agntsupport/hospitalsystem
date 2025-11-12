@@ -419,8 +419,8 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
               <TableCell>Expediente</TableCell>
               <TableCell>Edad</TableCell>
               <TableCell>Género</TableCell>
-              <TableCell>Contacto</TableCell>
-              <TableCell>Ciudad</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Contacto</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Ciudad</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell align="center">Acciones</TableCell>
             </TableRow>
@@ -479,7 +479,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                       icon={getGenderIcon(patient.genero)}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Box>
                       {patient.telefono && (
                         <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -495,7 +495,7 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                       )}
                     </Box>
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Typography variant="body2">
                       {patient.ciudad || 'No especificada'}
                     </Typography>
@@ -517,6 +517,8 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                           size="small"
                           color="info"
                           onClick={() => handleOpenViewDialog(patient)}
+                          aria-label="Ver detalles del paciente"
+                          title="Ver detalles del paciente"
                         >
                           <ViewIcon />
                         </IconButton>
@@ -526,6 +528,8 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                           size="small"
                           color="primary"
                           onClick={() => handleOpenEditDialog(patient)}
+                          aria-label="Editar paciente"
+                          title="Editar paciente"
                         >
                           <EditIcon />
                         </IconButton>
@@ -535,6 +539,8 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                           size="small"
                           color="error"
                           onClick={() => handleOpenDeleteDialog(patient)}
+                          aria-label="Eliminar paciente"
+                          title="Eliminar paciente"
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -544,6 +550,8 @@ const PatientsTab: React.FC<PatientsTabProps> = ({ onStatsChange, onPatientCreat
                           size="small"
                           color="info"
                           onClick={() => handleOpenAuditTrail(patient)}
+                          aria-label="Ver historial de cambios"
+                          title="Ver historial de cambios"
                         >
                           <HistoryIcon />
                         </IconButton>

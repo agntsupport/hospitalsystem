@@ -22,6 +22,7 @@ import {
   AccountBalance as AccountIcon,
   Visibility as ViewIcon,
   Payment as PaymentIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 
 import { PatientAccount } from '@/types/pos.types';
@@ -35,6 +36,7 @@ interface OpenAccountsListProps {
   onViewAccount: (account: PatientAccount) => void;
   onPartialPayment?: (account: PatientAccount) => void;
   onRefresh: () => void;
+  onCreateAccount?: () => void;
 }
 
 const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
@@ -45,6 +47,7 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
   onViewAccount,
   onPartialPayment,
   onRefresh,
+  onCreateAccount,
 }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -94,21 +97,32 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
 
   if (!accounts || accounts.length === 0) {
     return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <AccountIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-        <Typography variant="h6" color="text.secondary" gutterBottom>
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <AccountIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+        <Typography variant="h6" gutterBottom>
           No hay cuentas abiertas
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Todas las cuentas están cerradas o no hay cuentas registradas
+          Crea una nueva cuenta para un paciente o busca cuentas cerradas en el historial
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={onRefresh}
-        >
-          Actualizar
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+          {onCreateAccount && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={onCreateAccount}
+            >
+              Nueva Cuenta
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={onRefresh}
+          >
+            Actualizar
+          </Button>
+        </Box>
       </Box>
     );
   }

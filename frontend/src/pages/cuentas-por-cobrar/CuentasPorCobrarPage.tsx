@@ -35,6 +35,8 @@ import {
   Person as PersonIcon,
   CalendarToday as CalendarIcon,
   AttachMoney as MoneyIcon,
+  History as HistoryIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 
 import { posService } from '@/services/posService';
@@ -98,7 +100,7 @@ const CuentasPorCobrarPage: React.FC = () => {
     try {
       const response = await posService.getCPCStats();
       if (response.success && response.data) {
-        setStats(response.data.stats);
+        setStats(response.data);
       }
     } catch (err) {
       console.error('Error loading CPC stats:', err);
@@ -256,9 +258,37 @@ const CuentasPorCobrarPage: React.FC = () => {
                   {filteredCuentas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} align="center">
-                        <Typography variant="body2" color="text.secondary" py={3}>
-                          No se encontraron cuentas por cobrar
-                        </Typography>
+                        <Box sx={{ textAlign: 'center', py: 8 }}>
+                          <AccountIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                          <Typography variant="h6" gutterBottom>
+                            No hay cuentas por cobrar
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                            {searchTerm || estadoFiltro !== 'todos'
+                              ? 'No se encontraron cuentas que coincidan con los filtros seleccionados'
+                              : 'Excelente - No hay deudas pendientes en el sistema'}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                            {(searchTerm || estadoFiltro !== 'todos') && (
+                              <Button
+                                variant="outlined"
+                                onClick={() => {
+                                  setSearchTerm('');
+                                  setEstadoFiltro('todos');
+                                }}
+                              >
+                                Limpiar Filtros
+                              </Button>
+                            )}
+                            <Button
+                              variant="outlined"
+                              startIcon={<RefreshIcon />}
+                              onClick={loadData}
+                            >
+                              Actualizar
+                            </Button>
+                          </Box>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -319,6 +349,8 @@ const CuentasPorCobrarPage: React.FC = () => {
                                 color="primary"
                                 onClick={() => handleOpenPaymentDialog(cuenta)}
                                 data-testid={`registrar-pago-${cuenta.id}`}
+                                aria-label="Registrar pago de cuenta por cobrar"
+                                title="Registrar pago de cuenta por cobrar"
                               >
                                 <PaymentIcon />
                               </IconButton>

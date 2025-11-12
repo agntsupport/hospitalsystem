@@ -33,15 +33,15 @@ async function calcularTotalesCuenta(cuenta, prismaInstance = prisma) {
   // Cuenta ABIERTA: recalcular desde transacciones reales
   const [servicios, productos, anticipos, pagosParciales] = await Promise.all([
     prismaInstance.transaccionCuenta.aggregate({
-      where: { cuentaPacienteId: cuenta.id, tipo: 'servicio' },
+      where: { cuentaId: cuenta.id, tipo: 'servicio' },
       _sum: { subtotal: true }
     }),
     prismaInstance.transaccionCuenta.aggregate({
-      where: { cuentaPacienteId: cuenta.id, tipo: 'producto' },
+      where: { cuentaId: cuenta.id, tipo: 'producto' },
       _sum: { subtotal: true }
     }),
     prismaInstance.transaccionCuenta.aggregate({
-      where: { cuentaPacienteId: cuenta.id, tipo: 'anticipo' },
+      where: { cuentaId: cuenta.id, tipo: 'anticipo' },
       _sum: { subtotal: true }
     }),
     prismaInstance.pago.aggregate({

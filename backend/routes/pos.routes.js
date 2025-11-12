@@ -1274,7 +1274,7 @@ router.get('/cuentas-por-cobrar', authenticateToken, async (req, res) => {
             id: true,
             username: true,
             nombre: true,
-            apellidoPaterno: true
+            apellidos: true
           }
         }
       },
@@ -1586,7 +1586,7 @@ router.get('/cuentas-por-cobrar/estadisticas', authenticateToken, async (req, re
           montoTotalRecuperado,
           porcentajeRecuperacion: parseFloat(porcentajeRecuperacion)
         },
-        distribucion: distribucionFormateadas,
+        distribucion: distribucionFormateada,
         topDeudores: deudoresFormateados
       }
     });

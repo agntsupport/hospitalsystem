@@ -226,13 +226,20 @@ router.get('/managerial/executive-summary', authenticateToken, authorizeRoles(['
 
     // Obtener datos reales de la base de datos
     const [ingresosTotales, pacientesAtendidos, habitacionesStats] = await Promise.all([
-      // Ingresos totales (solo ventas rápidas - no hay modelo factura)
+      // Ingresos totales (ventas rápidas + transacciones de cuentas)
       Promise.all([
-        // Simular facturas con 0 por ahora
-        Promise.resolve({ _sum: { total: 0 } }),
+        // Ventas rápidas
         prisma.ventaRapida.aggregate({
           where: { createdAt: { gte: startDate, lte: endDate } },
           _sum: { total: true }
+        }),
+        // Transacciones de cuentas (servicios + productos, excluyendo anticipos)
+        prisma.transaccionCuenta.aggregate({
+          where: {
+            fechaTransaccion: { gte: startDate, lte: endDate },
+            tipo: { in: ['servicio', 'producto'] }
+          },
+          _sum: { subtotal: true }
         })
       ]),
       // Pacientes atendidos
@@ -246,10 +253,10 @@ router.get('/managerial/executive-summary', authenticateToken, authorizeRoles(['
       ])
     ]);
 
-    const [facturas, ventas] = ingresosTotales;
+    const [ventas, transacciones] = ingresosTotales;
     const [totalHabitaciones, habitacionesOcupadas] = habitacionesStats;
-    
-    const ingresosTotalesCalc = parseFloat(facturas._sum.total?.toString() || '0') + parseFloat(ventas._sum.total?.toString() || '0');
+
+    const ingresosTotalesCalc = parseFloat(ventas._sum.total?.toString() || '0') + parseFloat(transacciones._sum.subtotal?.toString() || '0');
     const ocupacionPromedio = totalHabitaciones > 0 ? (habitacionesOcupadas / totalHabitaciones) * 100 : 0;
 
     const utilidadNetaCalc = isNaN(ingresosTotalesCalc) ? 0 : ingresosTotalesCalc * 0.25;

@@ -284,7 +284,9 @@ const Dashboard: React.FC = () => {
                 icon={<TrendingUp />}
                 color="#2196f3"
                 format="currency"
-                subtitle={executiveSummary ? `${((executiveSummary.utilidadNeta / executiveSummary.ingresosTotales) * 100).toFixed(1)}% margen` : 'Margen de utilidad'}
+                subtitle={executiveSummary && executiveSummary.ingresosTotales > 0
+                  ? `${((executiveSummary.utilidadNeta / executiveSummary.ingresosTotales) * 100).toFixed(1)}% margen`
+                  : 'Margen de utilidad'}
                 trend={{ value: 8.3, isPositive: true }}
               />
             </Grid>

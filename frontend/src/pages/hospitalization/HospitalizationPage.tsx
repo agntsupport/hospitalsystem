@@ -505,11 +505,11 @@ const HospitalizationPage: React.FC = () => {
                     <TableCell>Paciente</TableCell>
                     <TableCell>Espacio Asignado</TableCell>
                     <TableCell>Diagnóstico</TableCell>
-                    <TableCell>Médico Tratante</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>Médico Tratante</TableCell>
                     <TableCell>Ingreso</TableCell>
                     <TableCell>Estancia</TableCell>
                     <TableCell>Estado</TableCell>
-                    <TableCell>Estado General</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>Estado General</TableCell>
                     <TableCell align="center">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
@@ -526,12 +526,24 @@ const HospitalizationPage: React.FC = () => {
                         detalles: `${admission.habitacion.tipo}${admission.habitacion.piso ? ` • Piso ${admission.habitacion.piso}` : ''}`
                       };
                     } else if (admission.consultorio) {
-                      espacioInfo = {
-                        numero: admission.consultorio.numero,
-                        tipo: 'Consultorio',
-                        icono: '🏥',
-                        detalles: `${admission.consultorio.tipo}${admission.consultorio.especialidad ? ` • ${admission.consultorio.especialidad}` : ''}`
-                      };
+                      // Simplificar texto para consultorios - detectar si es consultorio general
+                      const isConsultorioGeneral = admission.consultorio.tipo?.toLowerCase().includes('consulta_general') ||
+                                                   admission.consultorio.tipo?.toLowerCase().includes('general');
+                      if (isConsultorioGeneral) {
+                        espacioInfo = {
+                          numero: admission.consultorio.numero,
+                          tipo: 'Consultorio General',
+                          icono: '🏥',
+                          detalles: ''
+                        };
+                      } else {
+                        espacioInfo = {
+                          numero: admission.consultorio.numero,
+                          tipo: 'Consultorio',
+                          icono: '🏥',
+                          detalles: `${admission.consultorio.especialidad || admission.consultorio.tipo || ''}`
+                        };
+                      }
                     } else if (admission.quirofano) {
                       espacioInfo = {
                         numero: admission.quirofano.numero,
@@ -562,7 +574,7 @@ const HospitalizationPage: React.FC = () => {
                                 {espacioInfo.numero}
                               </Typography>
                               <Typography variant="caption" color="textSecondary">
-                                {espacioInfo.tipo} • {espacioInfo.detalles}
+                                {espacioInfo.detalles ? `${espacioInfo.tipo} • ${espacioInfo.detalles}` : espacioInfo.tipo}
                               </Typography>
                             </Box>
                           </Box>
@@ -577,7 +589,7 @@ const HospitalizationPage: React.FC = () => {
                         </Typography>
                       </TableCell>
 
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         <Typography variant="body2" fontWeight="medium">
                           {admission.medicoTratante.nombre}
                         </Typography>
@@ -597,7 +609,7 @@ const HospitalizationPage: React.FC = () => {
 
                       <TableCell>
                         <Typography variant="body2" fontWeight="medium">
-                          {admission.diasEstancia} días
+                          {admission.diasEstancia === 0 ? '< 1 día' : `${admission.diasEstancia} día${admission.diasEstancia > 1 ? 's' : ''}`}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
                           {hospitalizationService.formatAdmissionType(admission.tipoHospitalizacion)}
@@ -608,7 +620,7 @@ const HospitalizationPage: React.FC = () => {
                         {getStatusChip(admission.estado)}
                       </TableCell>
 
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                         {getGeneralStatusChip(admission.estadoGeneral)}
                       </TableCell>
 
@@ -618,17 +630,21 @@ const HospitalizationPage: React.FC = () => {
                             <IconButton
                               size="small"
                               onClick={() => handleViewDetails(admission)}
+                              aria-label="Ver detalle de hospitalización"
+                              title="Ver detalle de hospitalización"
                             >
                               <VisibilityIcon />
                             </IconButton>
                           </Tooltip>
-                          
+
                           {puedeVerNotasSoap ? (
                             <Tooltip title="Notas Médicas SOAP">
                               <IconButton
                                 size="small"
                                 onClick={() => handleOpenMedicalNotes(admission)}
                                 color="primary"
+                                aria-label="Ver notas médicas SOAP"
+                                title="Ver notas médicas SOAP"
                               >
                                 <AssignmentIcon />
                               </IconButton>
@@ -639,16 +655,22 @@ const HospitalizationPage: React.FC = () => {
                                 size="small"
                                 onClick={() => handleViewPatientStatus(admission)}
                                 color="info"
+                                aria-label="Ver estado del paciente"
+                                title="Ver estado del paciente"
                               >
                                 <AssignmentIcon />
                               </IconButton>
                             </Tooltip>
                           ) : null}
-                          
+
                           {!admission.fechaAlta && (
                             <>
                               <Tooltip title="Editar">
-                                <IconButton size="small">
+                                <IconButton
+                                  size="small"
+                                  aria-label="Editar hospitalización"
+                                  title="Editar hospitalización"
+                                >
                                   <EditIcon />
                                 </IconButton>
                               </Tooltip>
@@ -659,6 +681,8 @@ const HospitalizationPage: React.FC = () => {
                                     size="small"
                                     color="error"
                                     onClick={() => handleOpenDischarge(admission)}
+                                    aria-label="Dar de alta al paciente"
+                                    title="Dar de alta al paciente"
                                   >
                                     <ExitToAppIcon />
                                   </IconButton>
@@ -669,6 +693,8 @@ const HospitalizationPage: React.FC = () => {
                                     <IconButton
                                       size="small"
                                       disabled
+                                      aria-label="Dar de alta (requiere permisos)"
+                                      title="Dar de alta (requiere permisos)"
                                     >
                                       <ExitToAppIcon />
                                     </IconButton>
@@ -677,12 +703,14 @@ const HospitalizationPage: React.FC = () => {
                               )}
                             </>
                           )}
-                          
+
                           <Tooltip title="Historial de cambios">
                             <IconButton
                               size="small"
                               color="info"
                               onClick={() => handleOpenAuditTrail(admission)}
+                              aria-label="Ver historial de cambios"
+                              title="Ver historial de cambios"
                             >
                               <HistoryIcon />
                             </IconButton>
