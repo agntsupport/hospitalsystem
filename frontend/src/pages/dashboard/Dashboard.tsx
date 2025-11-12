@@ -5,14 +5,9 @@ import {
   Grid,
   Paper,
   Typography,
-  Card,
-  CardContent,
-  Avatar,
   Chip,
   LinearProgress,
   IconButton,
-  Button,
-  Divider,
   Tooltip,
   Alert,
 } from '@mui/material';
@@ -20,12 +15,12 @@ import {
   People,
   LocalHospital,
   TrendingUp,
-  TrendingDown,
   Hotel,
   Refresh,
   AttachMoney,
   Assessment,
   Business,
+  Assignment,
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import { useDispatch, useSelector } from 'react-redux';
@@ -33,20 +28,8 @@ import { RootState } from '@/store/store';
 import { fetchPatientsStats } from '@/store/slices/patientsSlice';
 import { ROLE_LABELS } from '@/utils/constants';
 import reportsService from '@/services/reportsService';
-import { OcupacionTable } from '@/components/dashboard';
-
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  icon: React.ReactElement;
-  color: string;
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
-  subtitle?: string;
-  format?: 'currency' | 'percentage' | 'number';
-}
+import { OcupacionTable, MetricCard } from '@/components/dashboard';
+import { formatMarginPercentage } from '@/utils/formatters';
 
 interface ExecutiveSummary {
   ingresosTotales: number;
@@ -55,113 +38,6 @@ interface ExecutiveSummary {
   ocupacionPromedio: number;
   satisfaccionGeneral: number;
 }
-
-
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend, subtitle, format = 'number' }) => {
-  const formatValue = (val: number | string) => {
-    if (typeof val === 'string') return val;
-    const numValue = Number(val) || 0;
-    
-    switch (format) {
-      case 'currency':
-        return reportsService.formatCurrency(numValue);
-      case 'percentage':
-        return `${numValue.toFixed(1)}%`;
-      default:
-        return numValue.toLocaleString();
-    }
-  };
-
-  const displayValue = formatValue(value);
-  
-  return (
-    <Card elevation={2} sx={{ height: '100%' }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography 
-              color="textSecondary" 
-              gutterBottom 
-              variant="h6"
-              sx={{ 
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {title}
-            </Typography>
-            <Typography 
-              variant="h4" 
-              component="div" 
-              sx={{ 
-                fontWeight: 'bold',
-                fontSize: { xs: '1.5rem', sm: '2rem' },
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {displayValue}
-            </Typography>
-            {subtitle && (
-              <Typography 
-                variant="body2" 
-                color="text.secondary"
-                sx={{ 
-                  mt: 0.5,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {subtitle}
-              </Typography>
-            )}
-            {trend && trend.value !== undefined && (
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                {trend.isPositive ? (
-                  <TrendingUp color="success" fontSize="small" />
-                ) : (
-                  <TrendingDown color="error" fontSize="small" />
-                )}
-                <Typography
-                  variant="body2"
-                  color={trend.isPositive ? 'success.main' : 'error.main'}
-                  sx={{ 
-                    ml: 0.5,
-                    fontSize: '0.75rem',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                >
-                  {Math.abs(trend.value).toFixed(1)}%
-                </Typography>
-              </Box>
-            )}
-          </Box>
-          <Avatar
-            sx={{
-              bgcolor: color,
-              width: { xs: 40, sm: 56 },
-              height: { xs: 40, sm: 56 },
-              flexShrink: 0,
-              ml: 1
-            }}
-          >
-            {React.cloneElement(icon, { 
-              sx: { 
-                fontSize: { xs: '1.2rem', sm: '1.5rem' } 
-              } 
-            })}
-          </Avatar>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -267,48 +143,54 @@ const Dashboard: React.FC = () => {
 
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Ingresos Totales"
                 value={executiveSummary?.ingresosTotales || 0}
                 icon={<AttachMoney />}
                 color="#4caf50"
                 format="currency"
                 subtitle="Ventas + Servicios"
-                trend={{ value: 12.5, isPositive: true }}
+                trend={{ value: 12.5, isPositive: true, label: 'vs mes anterior' }}
+                tooltipInfo={executiveSummary
+                  ? `Total acumulado del mes: ${reportsService.formatCurrency(executiveSummary.ingresosTotales)}`
+                  : undefined}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Utilidad Neta"
                 value={executiveSummary?.utilidadNeta || 0}
                 icon={<TrendingUp />}
                 color="#2196f3"
                 format="currency"
-                subtitle={executiveSummary && executiveSummary.ingresosTotales > 0
-                  ? `${((executiveSummary.utilidadNeta / executiveSummary.ingresosTotales) * 100).toFixed(1)}% margen`
+                subtitle={executiveSummary
+                  ? formatMarginPercentage(executiveSummary.utilidadNeta, executiveSummary.ingresosTotales)
                   : 'Margen de utilidad'}
-                trend={{ value: 8.3, isPositive: true }}
+                trend={{ value: 8.3, isPositive: true, label: 'vs mes anterior' }}
+                tooltipInfo={executiveSummary
+                  ? `Utilidad neta del mes: ${reportsService.formatCurrency(executiveSummary.utilidadNeta)}`
+                  : undefined}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Pacientes Atendidos"
                 value={executiveSummary?.pacientesAtendidos || stats?.totalPacientes || 0}
                 icon={<People />}
                 color="#9c27b0"
                 subtitle="Consultas y servicios"
-                trend={{ value: 15.7, isPositive: true }}
+                trend={{ value: 15.7, isPositive: true, label: 'vs mes anterior' }}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Ocupación Promedio"
                 value={executiveSummary?.ocupacionPromedio || 0}
                 icon={<Hotel />}
                 color="#ff9800"
                 format="percentage"
                 subtitle="Habitaciones ocupadas"
-                trend={{ value: 2.1, isPositive: true }}
+                trend={{ value: 2.1, isPositive: true, label: 'vs mes anterior' }}
               />
             </Grid>
           </Grid>
@@ -324,7 +206,7 @@ const Dashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom>Estadísticas Operativas</Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Total Pacientes"
                 value={stats?.totalPacientes || 0}
                 icon={<People />}
@@ -333,7 +215,7 @@ const Dashboard: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Cuentas Hospitalización"
                 value={stats?.pacientesHospitalizados || 0}
                 icon={<LocalHospital />}
@@ -342,7 +224,7 @@ const Dashboard: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Cuentas Abiertas"
                 value={stats?.pacientesConCuentaAbierta || 0}
                 icon={<Assignment />}
@@ -351,7 +233,7 @@ const Dashboard: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <StatCard
+              <MetricCard
                 title="Estadística Adicional"
                 value={stats?.pacientesAdultos || 0}
                 icon={<Assessment />}
