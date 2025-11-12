@@ -24,8 +24,7 @@ import {
 } from '@mui/icons-material';
 
 import { posService } from '@/services/posService';
-import { POSStats, PatientAccount } from '@/types/pos.types';
-import POSStatsCards from '@/components/pos/POSStatsCards';
+import { PatientAccount } from '@/types/pos.types';
 import NewAccountDialog from '@/components/pos/NewAccountDialog';
 import OpenAccountsList from '@/components/pos/OpenAccountsList';
 import POSTransactionDialog from '@/components/pos/POSTransactionDialog';
@@ -36,7 +35,6 @@ import AccountDetailDialog from '@/components/pos/AccountDetailDialog';
 import PartialPaymentDialog from '@/components/pos/PartialPaymentDialog';
 
 const POSPage: React.FC = () => {
-  const [stats, setStats] = useState<POSStats | null>(null);
   const [openAccounts, setOpenAccounts] = useState<PatientAccount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,27 +60,13 @@ const POSPage: React.FC = () => {
   const loadInitialData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      await Promise.all([
-        loadStats(),
-        loadOpenAccounts()
-      ]);
+      await loadOpenAccounts();
     } catch (error: any) {
       setError(error.message || 'Error al cargar datos');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const response = await posService.getStats();
-      if (response.success && response.data) {
-        setStats(response.data.stats);
-      }
-    } catch (error) {
-      console.error('Error loading POS stats:', error);
     }
   };
 
@@ -103,7 +87,6 @@ const POSPage: React.FC = () => {
 
   const handleAccountCreated = () => {
     setNewAccountOpen(false);
-    loadStats();
     loadOpenAccounts();
   };
 
@@ -115,7 +98,6 @@ const POSPage: React.FC = () => {
   const handleTransactionAdded = () => {
     setTransactionDialogOpen(false);
     setSelectedAccount(null);
-    loadStats();
     loadOpenAccounts();
   };
 
@@ -132,7 +114,6 @@ const POSPage: React.FC = () => {
   const handleClosureSuccess = () => {
     setClosureDialogOpen(false);
     setAccountToClose(null);
-    loadStats();
     loadOpenAccounts();
   };
 
@@ -144,7 +125,6 @@ const POSPage: React.FC = () => {
   const handlePartialPaymentRegistered = () => {
     setPartialPaymentDialogOpen(false);
     setAccountForPartialPayment(null);
-    loadStats();
     loadOpenAccounts();
   };
 
@@ -172,17 +152,6 @@ const POSPage: React.FC = () => {
           {error}
         </Alert>
       )}
-
-      {/* Estadísticas */}
-      {stats && <POSStatsCards stats={stats} />}
-
-      {/* Integración con Inventario */}
-      <Alert severity="info" sx={{ mt: 2, mb: 1 }} icon={<CartIcon />}>
-        <Typography variant="body2" component="span">
-          <strong>Sistema Integrado:</strong> Los productos mostrados provienen del módulo de inventario en tiempo real. 
-          Las ventas actualizan automáticamente el stock y generan movimientos de inventario.
-        </Typography>
-      </Alert>
 
       {/* Tabs */}
       <Card sx={{ mt: 3 }}>
