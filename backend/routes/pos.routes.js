@@ -1011,7 +1011,7 @@ router.post('/cuenta/:id/transacciones', authenticateToken, auditMiddleware('pos
       });
     }
 
-    if (!cantidad || cantidad < 1) {
+    if (cantidad === undefined || cantidad === null || cantidad < 1) {
       return res.status(400).json({
         success: false,
         message: 'La cantidad debe ser mayor a 0'
