@@ -696,7 +696,7 @@ describe('POS Routes Tests', () => {
           cajeroAperturaId: testUser.id,
           cajeroCierreId: testUser.id,
           estado: 'cerrada',
-          anticipo: 10000.00,
+          anticipo: 0.00, // Sin anticipo automático
           totalServicios: 3000.00,
           totalProductos: 2000.00,
           totalCuenta: 5000.00,
@@ -743,7 +743,7 @@ describe('POS Routes Tests', () => {
           tipoAtencion: 'hospitalizacion',
           cajeroAperturaId: testUser.id,
           estado: 'abierta',
-          anticipo: 10000.00,
+          anticipo: 0.00, // Sin anticipo automático
           totalServicios: 0.00,
           totalProductos: 0.00,
           totalCuenta: 0.00,

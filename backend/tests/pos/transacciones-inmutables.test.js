@@ -109,10 +109,10 @@ describe('Sistema de Integridad de Transacciones - Tests Completos', () => {
       }
     });
 
-    // Crear cuenta de prueba
+    // Crear cuenta de prueba (sin anticipo automático)
     const cuentaResult = await createTestCuentaPaciente({
       pacienteId: testPatient.id,
-      anticipo: 10000.00,
+      anticipo: 0.00, // Sin anticipo automático
       estado: 'abierta'
     });
     testCuenta = cuentaResult.cuenta;

@@ -72,11 +72,11 @@ describe('Hospitalization Module - Critical Tests', () => {
       tipoEmpleado: 'medico_especialista'
     });
 
-    // Crear cuenta paciente de prueba
+    // Crear cuenta paciente de prueba (sin anticipo automático)
     const { cuenta } = await testHelpers.createTestCuentaPaciente({
       paciente: testPatient,
       cajeroAperturaId: adminUser.id,
-      anticipo: 10000
+      anticipo: 0 // $0.00 - Anticipo ya no es automático
     });
     testCuentaPaciente = cuenta;
   });
@@ -116,7 +116,7 @@ describe('Hospitalization Module - Critical Tests', () => {
   });
 
   describe('POST /api/hospitalization/admissions - Create Admission', () => {
-    it('should create admission with automatic $10,000 MXN advance payment for HABITACION', async () => {
+    it('should create admission with $0.00 initial balance (no automatic advance)', async () => {
       const response = await request(app)
         .post('/api/hospitalization/admissions')
         .set('Authorization', `Bearer ${adminToken}`)
@@ -137,7 +137,7 @@ describe('Hospitalization Module - Critical Tests', () => {
 
       const hospitalizacionId = response.body.data.admission.id;
 
-      // Verificar que se creó la cuenta del paciente con anticipo
+      // Verificar que se creó la cuenta del paciente SIN anticipo automático
       const hospitalizacion = await prisma.hospitalizacion.findUnique({
         where: { id: hospitalizacionId },
         include: { cuentaPaciente: true }
@@ -145,7 +145,7 @@ describe('Hospitalization Module - Critical Tests', () => {
       const cuenta = hospitalizacion.cuentaPaciente;
 
       expect(cuenta).toBeTruthy();
-      expect(parseFloat(cuenta.anticipo)).toBe(10000); // $10,000 MXN
+      expect(parseFloat(cuenta.anticipo)).toBe(0); // $0.00 - Sin anticipo automático
       expect(cuenta.estado).toBe('abierta');
 
       // Limpiar (orden correcto para FK constraints)
@@ -205,13 +205,13 @@ describe('Hospitalization Module - Critical Tests', () => {
       await prisma.consultorio.delete({ where: { id: testConsultorio.id } });
     });
 
-    it('should create admission with automatic $10,000 MXN advance payment for QUIROFANO', async () => {
+    it('should create admission with $0.00 initial balance for QUIROFANO (no automatic advance)', async () => {
       // Crear quirófano de prueba
       const timestamp = Date.now();
       const testQuirofano = await prisma.quirofano.create({
         data: {
           numero: `TEST-QUIR-${timestamp}`,
-          tipo: 'cirugia_mayor',
+          tipo: 'cirugia_general',
           estado: 'disponible',
           especialidad: 'cirugia_general'
         }
@@ -237,7 +237,7 @@ describe('Hospitalization Module - Critical Tests', () => {
 
       const hospitalizacionId = response.body.data.admission.id;
 
-      // Verificar que se creó la cuenta del paciente con anticipo
+      // Verificar que se creó la cuenta del paciente SIN anticipo automático
       const hospitalizacion = await prisma.hospitalizacion.findUnique({
         where: { id: hospitalizacionId },
         include: { cuentaPaciente: true }
@@ -245,7 +245,7 @@ describe('Hospitalization Module - Critical Tests', () => {
       const cuenta = hospitalizacion.cuentaPaciente;
 
       expect(cuenta).toBeTruthy();
-      expect(parseFloat(cuenta.anticipo)).toBe(10000); // $10,000 MXN
+      expect(parseFloat(cuenta.anticipo)).toBe(0); // $0.00 - Sin anticipo automático
       expect(cuenta.estado).toBe('abierta');
 
       // Limpiar (orden correcto para FK constraints)
@@ -1374,13 +1374,13 @@ describe('Hospitalization Module - Critical Tests', () => {
       await prisma.hospitalizacion.delete({ where: { id: admission.id } });
     });
 
-    it('should warn when anticipo is insufficient', async () => {
-      // Crear cuenta con anticipo bajo
+    it('should handle accounts without advance payment (saldo negativo expected)', async () => {
+      // Crear cuenta SIN anticipo (nuevo flujo - anticipo ya no es automático)
       const timestamp = Date.now();
-      const lowAnticipoCuenta = await prisma.cuentaPaciente.create({
+      const noAnticipoCuenta = await prisma.cuentaPaciente.create({
         data: {
           pacienteId: testPatient.id,
-          anticipo: 1000, // Solo $1,000 MXN (bajo)
+          anticipo: 0, // $0.00 - Sin anticipo (nuevo estándar)
           cajeroAperturaId: adminUser.id,
           tipoAtencion: 'hospitalizacion',
           estado: 'abierta'
@@ -1391,10 +1391,10 @@ describe('Hospitalization Module - Critical Tests', () => {
         data: {
           habitacionId: testRoom.id,
           fechaIngreso: new Date(),
-          motivoHospitalizacion: 'Low anticipo test',
+          motivoHospitalizacion: 'No anticipo test',
           diagnosticoIngreso: 'Test',
           medicoEspecialistaId: testMedico.id,
-          cuentaPacienteId: lowAnticipoCuenta.id
+          cuentaPacienteId: noAnticipoCuenta.id
         }
       });
 
@@ -1405,34 +1405,24 @@ describe('Hospitalization Module - Critical Tests', () => {
 
       // Recalcular balance
       await request(app)
-        .post(`/api/hospitalization/accounts/${lowAnticipoCuenta.id}/recalculate-totals`)
+        .post(`/api/hospitalization/accounts/${noAnticipoCuenta.id}/recalculate-totals`)
         .set('Authorization', `Bearer ${adminToken}`);
 
       const cuenta = await prisma.cuentaPaciente.findUnique({
-        where: { id: lowAnticipoCuenta.id }
+        where: { id: noAnticipoCuenta.id }
       });
 
       expect(cuenta).toBeDefined();
 
-      // Saldo debe ser negativo (anticipo insuficiente)
-      // Si saldoTotal no está calculado, verificar anticipo vs cargos esperados
-      if (cuenta.saldoTotal !== null && cuenta.saldoTotal !== undefined) {
-        const saldoTotal = parseFloat(cuenta.saldoTotal.toString());
-        expect(saldoTotal).toBeLessThan(0);
-      } else {
-        // Si no hay saldoTotal calculado, validar que el anticipo fue consumido o es bajo
-        // Prisma retorna anticipo como Decimal object, convertir a number
-        const anticipoActual = parseFloat(cuenta.anticipo.toString());
-
-        // Anticipo consumido (menor o igual al inicial de 1000)
-        expect(anticipoActual).toBeLessThanOrEqual(1000);
-        expect(anticipoActual).toBeLessThan(10000); // Claramente menor que anticipo estándar
-      }
+      // Saldo debe ser negativo ya que NO hay anticipo y SÍ hay cargos
+      // Verificar anticipo permanece en $0.00
+      const anticipoActual = parseFloat(cuenta.anticipo.toString());
+      expect(anticipoActual).toBe(0); // Debe permanecer en $0.00
 
       // Limpiar
-      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: lowAnticipoCuenta.id } });
+      await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: noAnticipoCuenta.id } });
       await prisma.hospitalizacion.delete({ where: { id: admission.id } });
-      await prisma.cuentaPaciente.delete({ where: { id: lowAnticipoCuenta.id } });
+      await prisma.cuentaPaciente.delete({ where: { id: noAnticipoCuenta.id } });
     });
   });
 });

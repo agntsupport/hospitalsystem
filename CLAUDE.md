@@ -101,10 +101,11 @@ VITE_API_URL=http://localhost:3001
 **⚠️ IMPORTANTE:** El sistema tiene 3 flujos de trabajo imprescindibles que DEBEN estar implementados y funcionales.
 
 ### Flujo 1: CAJERO - Gestión de Pacientes y Cuentas
-El cajero registra/busca paciente → abre cuenta POS → asigna médico → hospitaliza en Consultorio General (sin cargo) → enfermeros/médicos agregan productos/servicios → cambios de habitación/quirófano generan cargos automáticos → cajero cobra y cierra cuenta o deja en cuentas por cobrar (con autorización admin).
+El cajero registra/busca paciente → abre cuenta POS → asigna médico → hospitaliza en Consultorio General (sin cargo) → enfermeros/médicos agregan productos/servicios → cambios de habitación/quirófano generan cargos automáticos → **cajero puede registrar anticipos manualmente** vía POS (servicio SERV006) → cajero cobra y cierra cuenta o deja en cuentas por cobrar (con autorización admin).
 
 **Clave:**
-- ✅ Anticipo automático: **$10,000 MXN** al crear hospitalización
+- ✅ **Anticipo manual**: Registro opcional desde POS usando servicio "Anticipo" (SERV006) con monto variable
+- ✅ **Cuenta inicia en $0.00**: NO hay anticipo automático (cambio Nov 2025)
 - ✅ Consultorio General: **NO genera cargo** por habitación
 - ✅ Habitaciones estándar/premium: **Cargo automático diario**
 - ✅ Quirófanos: **Cargo automático** al completar cirugía
@@ -309,7 +310,7 @@ npm run dev
 - **HTTPS forzado**: Redirección automática + HSTS headers (1 año)
 - **JWT Blacklist**: Revocación de tokens con PostgreSQL + limpieza automática
 - **Connection pool fix**: Singleton Prisma + global teardown
-- **Tests hospitalization**: 20+ tests críticos (anticipo $10K, alta, notas)
+- **Tests hospitalization**: 20+ tests críticos (cuentas $0.00, alta, notas)
 - **Tests concurrencia**: 15+ tests race conditions (quirófanos, inventario, habitaciones)
 - **Mocks frontend**: CirugiaFormDialog 45 tests desbloqueados
 - **Total mejoras**: 0 vulnerabilidades P0, +70 tests, +18% pass rate
@@ -429,7 +430,8 @@ npm run dev
 
 ### Backend
 - ✅ Error 500 quirófanos/cirugías solucionado
-- ✅ Sistema de hospitalización con anticipo automático ($10,000 MXN)
+- ✅ Sistema de hospitalización con **cuentas iniciando en $0.00** (anticipo manual opcional vía POS)
+- ✅ Servicio "Anticipo" (SERV006) disponible en inventario para registro manual
 - ✅ Cargos automáticos de habitaciones y quirófanos
 - ✅ Winston Logger con sanitización PII/PHI (HIPAA)
 - ✅ Middleware de auditoría automático

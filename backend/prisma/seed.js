@@ -430,6 +430,14 @@ async function main() {
         tipo: 'hospitalizacion',
         precio: 1500.00,
         activo: true
+      },
+      {
+        codigo: 'SERV006',
+        nombre: 'Anticipo',
+        descripcion: 'Anticipo en efectivo o tarjeta - Registro manual desde POS (monto variable)',
+        tipo: 'anticipo',
+        precio: 0.00, // Precio variable - El cajero lo modifica al agregarlo
+        activo: true
       }
     ];
 
@@ -497,31 +505,19 @@ async function main() {
         pacienteId: paciente1.id,
         tipoAtencion: 'hospitalizacion',
         estado: 'abierta',
-        anticipo: 10000.00,
+        anticipo: 0.00, // Sin anticipo automático (nuevo flujo)
         totalServicios: 3000.00,
         totalProductos: 150.00,
         totalCuenta: 3150.00,
-        saldoPendiente: 6850.00,
+        saldoPendiente: 3150.00, // Positivo = Paciente DEBE al hospital
         cajeroAperturaId: cajero.id,
-        observaciones: 'Cuenta de ejemplo con hospitalización activa'
+        observaciones: 'Cuenta de ejemplo con hospitalización activa (sin anticipo automático)'
       }
     });
 
     // Transacciones para cuenta 1
     await Promise.all([
-      // Anticipo
-      prisma.transaccionCuenta.create({
-        data: {
-          cuentaId: cuenta1.id,
-          tipo: 'anticipo',
-          concepto: 'Anticipo por hospitalización',
-          cantidad: 1,
-          precioUnitario: 10000.00,
-          subtotal: 10000.00,
-          empleadoCargoId: cajero.id,
-          observaciones: 'Anticipo automático por ingreso hospitalario'
-        }
-      }),
+      // [ELIMINADO] Anticipo automático - Ahora se registra manualmente vía POS
       // Servicio - Habitación estándar (3 días)
       prisma.transaccionCuenta.create({
         data: {
@@ -591,34 +587,21 @@ async function main() {
         pacienteId: pacienteMenor.id,
         tipoAtencion: 'hospitalizacion',
         estado: 'cerrada',
-        anticipo: 10000.00,
+        anticipo: 0.00, // Sin anticipo automático (nuevo flujo)
         totalServicios: 1500.00,
         totalProductos: 36.50,
         totalCuenta: 1536.50,
-        saldoPendiente: 8463.50,
+        saldoPendiente: 1536.50, // Positivo = Paciente DEBE al hospital
         cajeroAperturaId: cajero.id,
         cajeroCierreId: cajero.id,
         fechaCierre: new Date('2025-01-05T14:30:00'),
-        observaciones: 'Cuenta cerrada de ejemplo - Paciente dado de alta'
+        observaciones: 'Cuenta cerrada de ejemplo (sin anticipo automático)'
       }
     });
 
     // Transacciones para cuenta 2 (cerrada)
     await Promise.all([
-      // Anticipo
-      prisma.transaccionCuenta.create({
-        data: {
-          cuentaId: cuenta2.id,
-          tipo: 'anticipo',
-          concepto: 'Anticipo por hospitalización',
-          cantidad: 1,
-          precioUnitario: 10000.00,
-          subtotal: 10000.00,
-          empleadoCargoId: cajero.id,
-          observaciones: 'Anticipo automático por ingreso hospitalario',
-          fechaTransaccion: new Date('2025-01-03T08:00:00')
-        }
-      }),
+      // [ELIMINADO] Anticipo automático - Ahora se registra manualmente vía POS
       // Servicio - Consultorio General (no genera cargo)
       prisma.transaccionCuenta.create({
         data: {

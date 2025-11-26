@@ -215,9 +215,9 @@ test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     await primeraFila.click();
     await page.waitForTimeout(1000);
 
-    // Verificar que el anticipo es $10,000
+    // Verificar que el anticipo es $0.00 (sin anticipo automático)
     // Buscar el texto "anticipo" y verificar el monto
-    const anticipoTexto = page.locator('text=/anticipo.*10.*000|\\$10,000|10000/i');
+    const anticipoTexto = page.locator('text=/anticipo.*\\$0\\.00|anticipo.*0\\.00/i');
     await expect(anticipoTexto).toBeVisible({ timeout: 5000 });
   });
 

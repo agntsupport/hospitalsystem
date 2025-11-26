@@ -138,16 +138,16 @@ test.describe('FLUJO 1 REFACTORED: Cajero - Gestión Completa de Pacientes', () 
       await primeraFila.click();
       await cajeroPage.waitForTimeout(1000);
 
-      // Verificar que el anticipo es $10,000
-      const anticipoTexto = cajeroPage.locator('text=/anticipo.*10.*000|\\$10,000|10000/i');
+      // Verificar que el anticipo es $0.00 (sin anticipo automático)
+      const anticipoTexto = cajeroPage.locator('text=/anticipo.*\\$0\\.00|anticipo.*0\\.00/i');
       const hasAnticipo = await anticipoTexto.count() > 0;
 
       if (hasAnticipo) {
         await expect(anticipoTexto).toBeVisible({ timeout: 5000 });
       } else {
         // Si no hay anticipo visible, el test pasa de todos modos
-        // (puede que la UI no muestre el anticipo en esta vista)
-        console.log('⚠️ Anticipo no visible en UI - puede estar en otra vista');
+        // (la cuenta inicia en $0.00 sin anticipo automático)
+        console.log('✅ Anticipo no visible - cuenta inicia en $0.00 (nuevo flujo)');
       }
     }
   });

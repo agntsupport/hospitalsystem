@@ -498,22 +498,9 @@ router.post('/admissions', authenticateToken, authorizeRoles(['administrador', '
         });
       }
 
-      // 3. Crear transacción de anticipo automático de $10,000 MXN
-      // SOLO para habitaciones y quirófanos, NO para consultorios (Flujo #1)
-      if (habitacionId || quirofanoId) {
-        await tx.transaccionCuenta.create({
-          data: {
-            cuentaId: cuentaPaciente.id,
-            tipo: 'anticipo',
-            concepto: 'Anticipo por hospitalización',
-            cantidad: 1,
-            precioUnitario: 10000.00,
-            subtotal: 10000.00,
-            empleadoCargoId: req.user.id,
-            observaciones: 'Anticipo automático por ingreso hospitalario'
-          }
-        });
-      }
+      // 3. [ELIMINADO] Anticipo automático - Ahora se registra manualmente vía POS
+      // El anticipo ya no se crea automáticamente.
+      // Los cajeros deben agregarlo manualmente como servicio desde el módulo POS.
 
       // 4. Generar cargo inicial SOLO si es habitación (consultorios y quirófanos no generan cargo automático)
       if (habitacionId) {

@@ -31,11 +31,11 @@ const mockAccount: PatientAccount = {
   pacienteId: 123,
   tipoAtencion: 'hospitalizacion',
   estado: 'abierta',
-  anticipo: 10000,
+  anticipo: 0, // Sin anticipo automático (nuevo flujo)
   totalServicios: 2500,
   totalProductos: 1500,
   totalCuenta: 4000,
-  saldoPendiente: 6000,
+  saldoPendiente: 4000, // Positivo = Paciente DEBE $4000 al hospital
   cajeroAperturaId: 1,
   fechaApertura: '2025-01-01T10:00:00Z',
   transacciones: [],
