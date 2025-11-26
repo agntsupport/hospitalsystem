@@ -258,13 +258,16 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
                   <Box>
                     <Autocomplete
                       options={patients}
-                      getOptionLabel={(option) => 
+                      getOptionLabel={(option) =>
                         `${option.nombre} ${option.apellidoPaterno} ${option.apellidoMaterno || ''}`
                       }
                       value={selectedPatient}
                       onChange={(_, newValue) => handlePatientSelect(newValue)}
-                      onInputChange={(_, newInputValue) => {
-                        searchPatients(newInputValue);
+                      onInputChange={(_, newInputValue, reason) => {
+                        // Solo buscar cuando el usuario está escribiendo, no al seleccionar
+                        if (reason === 'input') {
+                          searchPatients(newInputValue);
+                        }
                       }}
                       loading={searchLoading}
                       renderInput={(params) => (
@@ -366,13 +369,16 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
                 <Box>
                   <Autocomplete
                     options={doctors}
-                    getOptionLabel={(option) => 
+                    getOptionLabel={(option) =>
                       `Dr(a). ${option.nombre} ${option.apellidoPaterno} - ${option.especialidad || 'Sin especialidad'}`
                     }
                     value={selectedDoctor}
                     onChange={(_, newValue) => handleDoctorSelect(newValue)}
-                    onInputChange={(_, newInputValue) => {
-                      searchDoctors(newInputValue);
+                    onInputChange={(_, newInputValue, reason) => {
+                      // Solo buscar cuando el usuario está escribiendo, no al seleccionar
+                      if (reason === 'input') {
+                        searchDoctors(newInputValue);
+                      }
                     }}
                     renderInput={(params) => (
                       <TextField

@@ -60,10 +60,22 @@ export const employeeService = {
 
   // Buscar empleados
   async searchEmployees(query: string, limit?: number): Promise<ApiResponse<{ employees: Employee[] }>> {
-    const params = new URLSearchParams({ q: query });
+    const params = new URLSearchParams({ search: query });
     if (limit) params.append('limit', limit.toString());
-    
-    return api.get(`${API_ROUTES.EMPLOYEES.SEARCH}?${params.toString()}`);
+
+    const response = await api.get(`${API_ROUTES.EMPLOYEES.BASE}?${params.toString()}`);
+
+    // Transform response to match expected structure
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: {
+          employees: response.data.items || []
+        }
+      };
+    }
+
+    return response;
   },
 
   // Obtener empleado por ID
