@@ -141,9 +141,9 @@ export const API_ROUTES = {
     SEARCH: '/products/search'
   },
   PATIENT_ACCOUNTS: {
-    BASE: '/patient-accounts',
-    BY_ID: (id: number | string) => `/patient-accounts/${id}`,
-    TRANSACTIONS: (id: number | string) => `/patient-accounts/${id}/transactions`,
+    BASE: '/pos/cuentas',
+    BY_ID: (id: number | string) => `/pos/cuenta/${id}`,
+    TRANSACTIONS: (id: number | string) => `/pos/cuenta/${id}/transacciones`,
     // MIGRADO A ENDPOINT MODULAR: /pos/cuentas/:id/close (con validación de nota de alta)
     CLOSE: (id: number | string) => `/pos/cuentas/${id}/close`
   }

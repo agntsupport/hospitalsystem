@@ -466,6 +466,154 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// POST /cuentas - Crear nueva cuenta de paciente (sin hospitalización)
+router.post('/cuentas', authenticateToken, auditMiddleware('pos'), async (req, res) => {
+  try {
+    const { pacienteId, tipoAtencion, anticipo, medicoTratanteId, observaciones } = req.body;
+
+    // Validaciones requeridas
+    if (!pacienteId) {
+      return res.status(400).json({
+        success: false,
+        message: 'El ID del paciente es requerido'
+      });
+    }
+
+    if (!tipoAtencion) {
+      return res.status(400).json({
+        success: false,
+        message: 'El tipo de atención es requerido'
+      });
+    }
+
+    // Validar que el tipo de atención sea válido
+    const tiposValidos = ['consulta_general', 'urgencia', 'hospitalizacion'];
+    if (!tiposValidos.includes(tipoAtencion)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de atención inválido'
+      });
+    }
+
+    // Verificar que el paciente existe
+    const paciente = await prisma.paciente.findUnique({
+      where: { id: parseInt(pacienteId) }
+    });
+
+    if (!paciente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Paciente no encontrado'
+      });
+    }
+
+    // Si se proporciona médico tratante, verificar que existe
+    if (medicoTratanteId) {
+      const medico = await prisma.empleado.findUnique({
+        where: { id: parseInt(medicoTratanteId) }
+      });
+
+      if (!medico) {
+        return res.status(404).json({
+          success: false,
+          message: 'Médico tratante no encontrado'
+        });
+      }
+
+      // Verificar que es médico
+      if (!medico.tipoEmpleado.includes('medico')) {
+        return res.status(400).json({
+          success: false,
+          message: 'El empleado seleccionado no es médico'
+        });
+      }
+    }
+
+    // Obtener cajero del token JWT
+    const cajeroAperturaId = req.user.id;
+
+    // Crear cuenta de paciente
+    const nuevaCuenta = await prisma.cuentaPaciente.create({
+      data: {
+        pacienteId: parseInt(pacienteId),
+        tipoAtencion,
+        anticipo: anticipo ? parseFloat(anticipo) : 0,
+        medicoTratanteId: medicoTratanteId ? parseInt(medicoTratanteId) : null,
+        cajeroAperturaId,
+        observaciones: observaciones || null,
+        // Valores por defecto
+        estado: 'abierta',
+        totalServicios: 0,
+        totalProductos: 0,
+        totalCuenta: 0,
+        saldoPendiente: anticipo ? parseFloat(anticipo) : 0
+      },
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            numeroExpediente: true,
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            telefono: true,
+            email: true
+          }
+        },
+        medicoTratante: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            especialidad: true
+          }
+        },
+        cajeroApertura: {
+          select: {
+            id: true,
+            username: true
+          }
+        }
+      }
+    });
+
+    // Formatear respuesta
+    const cuentaFormatted = {
+      id: nuevaCuenta.id,
+      pacienteId: nuevaCuenta.pacienteId,
+      tipoAtencion: nuevaCuenta.tipoAtencion,
+      estado: nuevaCuenta.estado,
+      anticipo: parseFloat(nuevaCuenta.anticipo.toString()),
+      totalServicios: parseFloat(nuevaCuenta.totalServicios.toString()),
+      totalProductos: parseFloat(nuevaCuenta.totalProductos.toString()),
+      totalCuenta: parseFloat(nuevaCuenta.totalCuenta.toString()),
+      saldoPendiente: parseFloat(nuevaCuenta.saldoPendiente.toString()),
+      fechaApertura: nuevaCuenta.fechaApertura,
+      observaciones: nuevaCuenta.observaciones,
+      paciente: nuevaCuenta.paciente,
+      medicoTratante: nuevaCuenta.medicoTratante,
+      cajeroApertura: nuevaCuenta.cajeroApertura
+    };
+
+    logger.info(`Cuenta POS creada - ID: ${nuevaCuenta.id}, Paciente: ${paciente.nombre} ${paciente.apellidoPaterno}, Cajero: ${req.user.username}`);
+
+    res.status(201).json({
+      success: true,
+      data: { account: cuentaFormatted },
+      message: 'Cuenta de paciente creada exitosamente'
+    });
+
+  } catch (error) {
+    logger.logError('CREATE_PATIENT_ACCOUNT', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear cuenta de paciente',
+      error: error.message
+    });
+  }
+});
+
 // GET /cuentas - Obtener listado de cuentas de pacientes
 router.get('/cuentas', authenticateToken, async (req, res) => {
   try {
