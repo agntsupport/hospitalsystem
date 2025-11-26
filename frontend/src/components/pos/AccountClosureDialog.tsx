@@ -44,6 +44,7 @@ import {
 import { toast } from 'react-toastify';
 import posService from '@/services/posService';
 import { useAuth } from '@/hooks/useAuth';
+import PaymentSuccessDialog from './PaymentSuccessDialog';
 
 interface AccountClosureDialogProps {
   open: boolean;
@@ -75,6 +76,10 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   // Estados para CPC (Cuenta Por Cobrar)
   const [authorizeCPC, setAuthorizeCPC] = useState(false);
   const [motivoCPC, setMotivoCPC] = useState('');
+
+  // Estados para el diálogo de resumen de transacción
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [transactionData, setTransactionData] = useState<any>(null);
 
   // Cálculos de saldo
   const [totalServices, setTotalServices] = useState(0);
@@ -265,32 +270,36 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
       const response = await posService.closeAccount(account.id, closeData);
 
       if (response.success) {
-        // Mensaje de éxito según el escenario
+        // Determinar tipo de transacción
+        let tipoTransaccion: 'cobro' | 'devolucion' | 'cpc' = 'cobro';
         if (authorizeCPC) {
-          toast.success(`Cuenta cerrada con autorización CPC. Saldo por cobrar: $${Math.abs(finalBalance).toFixed(2)}`, {
-            autoClose: 8000
-          });
-        } else if (finalBalance < 0) {
-          toast.success('Cuenta cerrada exitosamente. Pago recibido.');
+          tipoTransaccion = 'cpc';
         } else if (finalBalance > 0) {
-          toast.warning(`Cuenta cerrada. Devolver al paciente: $${Math.abs(finalBalance).toFixed(2)}`, {
-            autoClose: 10000,
-            closeButton: true
-          });
-        } else {
-          toast.success('Cuenta cerrada exitosamente');
+          tipoTransaccion = 'devolucion';
         }
 
-        // Si hay cambio, mostrarlo
-        if (changeAmount > 0 && !authorizeCPC) {
-          toast.info(`Cambio a entregar: $${changeAmount.toFixed(2)}`, {
-            autoClose: 10000,
-            closeButton: true
-          });
-        }
+        // Preparar datos de la transacción para el resumen
+        const transactionInfo = {
+          paciente: {
+            nombre: patient?.nombre || '',
+            apellidoPaterno: patient?.apellidoPaterno || '',
+            apellidoMaterno: patient?.apellidoMaterno || ''
+          },
+          cuentaId: account.id,
+          totalCargos: totalCharges,
+          totalAdeudado: Math.abs(finalBalance),
+          montoRecibido: finalAmount,
+          cambio: changeAmount,
+          metodoPago: paymentMethod,
+          cajero: user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : 'Sistema',
+          fecha: new Date(),
+          tipoTransaccion,
+          motivoCPC: authorizeCPC ? motivoCPC : undefined
+        };
 
-        onSuccess();
-        onClose();
+        // Guardar datos y mostrar diálogo de resumen
+        setTransactionData(transactionInfo);
+        setShowSuccessDialog(true);
       } else {
         toast.error(response.message || 'Error al cerrar la cuenta');
       }
@@ -328,6 +337,13 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
     }
   };
 
+  const handleSuccessDialogClose = () => {
+    setShowSuccessDialog(false);
+    setTransactionData(null);
+    onSuccess(); // Actualizar lista de cuentas
+    onClose(); // Cerrar diálogo principal
+  };
+
   if (!account) {
     return null;
   }
@@ -337,6 +353,7 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
   const isRefund = finalBalance > 0;
 
   return (
+    <>
     <Dialog 
       open={open} 
       onClose={onClose}
@@ -796,6 +813,16 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
         </Button>
       </DialogActions>
     </Dialog>
+
+    {/* Diálogo de resumen de transacción exitosa */}
+    {showSuccessDialog && transactionData && (
+      <PaymentSuccessDialog
+        open={showSuccessDialog}
+        onClose={handleSuccessDialogClose}
+        transactionData={transactionData}
+      />
+    )}
+    </>
   );
 };
 
