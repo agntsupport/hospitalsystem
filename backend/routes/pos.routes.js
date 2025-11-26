@@ -997,6 +997,212 @@ router.get('/cuenta/:id/transacciones', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /cuenta/:id/transacciones - Agregar servicio o producto a una cuenta
+router.post('/cuenta/:id/transacciones', authenticateToken, auditMiddleware('pos'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo, cantidad, servicioId, productoId } = req.body;
+
+    // Validaciones básicas
+    if (!tipo || !['servicio', 'producto'].includes(tipo)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de transacción inválido. Debe ser "servicio" o "producto"'
+      });
+    }
+
+    if (!cantidad || cantidad < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'La cantidad debe ser mayor a 0'
+      });
+    }
+
+    if (tipo === 'servicio' && !servicioId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere servicioId para transacciones de tipo servicio'
+      });
+    }
+
+    if (tipo === 'producto' && !productoId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere productoId para transacciones de tipo producto'
+      });
+    }
+
+    // Usar transacción para mantener consistencia
+    const result = await prisma.$transaction(async (tx) => {
+      // Verificar que la cuenta existe y está abierta
+      const cuenta = await tx.cuentaPaciente.findUnique({
+        where: { id: parseInt(id) }
+      });
+
+      if (!cuenta) {
+        throw new Error('Cuenta de paciente no encontrada');
+      }
+
+      if (cuenta.estado === 'cerrada') {
+        throw new Error('No se pueden agregar transacciones a una cuenta cerrada');
+      }
+
+      let concepto, precioUnitario, subtotal;
+
+      if (tipo === 'servicio') {
+        // Obtener información del servicio
+        const servicio = await tx.servicio.findUnique({
+          where: { id: parseInt(servicioId) }
+        });
+
+        if (!servicio) {
+          throw new Error('Servicio no encontrado');
+        }
+
+        if (!servicio.activo) {
+          throw new Error('El servicio no está activo');
+        }
+
+        concepto = `${servicio.nombre}`;
+        precioUnitario = parseFloat(servicio.precio.toString());
+        subtotal = precioUnitario * cantidad;
+
+      } else if (tipo === 'producto') {
+        // Obtener información del producto y verificar stock
+        const producto = await tx.producto.findUnique({
+          where: { id: parseInt(productoId) }
+        });
+
+        if (!producto) {
+          throw new Error('Producto no encontrado');
+        }
+
+        if (!producto.activo) {
+          throw new Error('El producto no está activo');
+        }
+
+        if (producto.stock < cantidad) {
+          throw new Error(`Stock insuficiente. Disponible: ${producto.stock}, Solicitado: ${cantidad}`);
+        }
+
+        concepto = `${producto.nombre}`;
+        precioUnitario = parseFloat(producto.precioVenta.toString());
+        subtotal = precioUnitario * cantidad;
+
+        // Decrementar stock del producto (atomic operation)
+        await tx.producto.update({
+          where: { id: parseInt(productoId) },
+          data: {
+            stock: {
+              decrement: cantidad
+            }
+          }
+        });
+
+        // Registrar movimiento de inventario
+        await tx.movimientoInventario.create({
+          data: {
+            productoId: parseInt(productoId),
+            tipo: 'salida',
+            cantidad,
+            precioUnitario,
+            descripcion: `Venta a cuenta #${cuenta.numeroExpediente}`,
+            empleadoId: req.user.id
+          }
+        });
+      }
+
+      // Crear la transacción
+      const transaccion = await tx.transaccionCuenta.create({
+        data: {
+          cuentaId: parseInt(id),
+          tipo,
+          concepto,
+          cantidad,
+          precioUnitario,
+          subtotal,
+          servicioId: tipo === 'servicio' ? parseInt(servicioId) : null,
+          productoId: tipo === 'producto' ? parseInt(productoId) : null,
+          empleadoCargoId: req.user.id
+        },
+        include: {
+          producto: {
+            select: {
+              codigo: true,
+              nombre: true,
+              unidadMedida: true
+            }
+          },
+          servicio: {
+            select: {
+              codigo: true,
+              nombre: true,
+              tipo: true
+            }
+          }
+        }
+      });
+
+      // Recalcular totales de la cuenta
+      const totales = await calcularTotalesCuenta(cuenta, tx);
+
+      return { transaccion, totales };
+    }, {
+      maxWait: 5000,
+      timeout: 10000
+    });
+
+    // Formatear respuesta
+    const transaccionFormatted = {
+      id: result.transaccion.id,
+      tipo: result.transaccion.tipo,
+      concepto: result.transaccion.concepto,
+      cantidad: result.transaccion.cantidad,
+      precioUnitario: parseFloat(result.transaccion.precioUnitario.toString()),
+      subtotal: parseFloat(result.transaccion.subtotal.toString()),
+      fecha: result.transaccion.fechaTransaccion,
+      producto: result.transaccion.producto,
+      servicio: result.transaccion.servicio
+    };
+
+    res.json({
+      success: true,
+      data: {
+        transaction: transaccionFormatted,
+        account: {
+          id: parseInt(id),
+          ...result.totales
+        }
+      },
+      message: `${tipo === 'servicio' ? 'Servicio' : 'Producto'} agregado exitosamente`
+    });
+
+  } catch (error) {
+    logger.logError('ADD_ACCOUNT_TRANSACTION', error, {
+      cuentaId: req.params.id,
+      tipo: req.body.tipo
+    });
+
+    // Determinar código de status apropiado
+    let statusCode = 500;
+    if (error.message && error.message.includes('no encontrad')) {
+      statusCode = 404;
+    } else if (error.message && (
+      error.message.includes('inválido') ||
+      error.message.includes('insuficiente') ||
+      error.message.includes('cerrada') ||
+      error.message.includes('requiere')
+    )) {
+      statusCode = 400;
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      message: error.message || 'Error agregando transacción a cuenta'
+    });
+  }
+});
+
 // POST /recalcular-cuentas - Recalcular totales de todas las cuentas abiertas (solo administradores)
 router.post('/recalcular-cuentas', authenticateToken, async (req, res) => {
   try {
