@@ -133,8 +133,8 @@ export const API_ROUTES = {
     STATS: '/pos/stats'
   },
   SERVICES: {
-    BASE: '/services',
-    SEARCH: '/services/search'
+    BASE: '/pos/services',
+    SEARCH: '/pos/services/search'
   },
   PRODUCTS: {
     BASE: '/products',

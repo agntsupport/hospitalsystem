@@ -13,8 +13,29 @@ const { calcularTotalesCuenta, formatearTotales } = require('../utils/posCalcula
 // GET /services - Obtener servicios disponibles para POS
 router.get('/services', authenticateToken, async (req, res) => {
   try {
+    const { search, activo } = req.query;
+
+    // Construir filtros dinámicos
+    const where = {};
+
+    // Filtrar por activo (por defecto solo activos)
+    if (activo === 'false') {
+      where.activo = false;
+    } else if (activo === undefined || activo === 'true') {
+      where.activo = true;
+    }
+
+    // Filtrar por búsqueda (nombre, código, descripción)
+    if (search) {
+      where.OR = [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { codigo: { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
     const servicios = await prisma.servicio.findMany({
-      where: { activo: true },
+      where,
       orderBy: [
         { tipo: 'asc' },
         { nombre: 'asc' }
@@ -33,8 +54,8 @@ router.get('/services', authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      data: { 
-        items: serviciosFormatted,
+      data: {
+        services: serviciosFormatted,
         total: serviciosFormatted.length
       },
       message: 'Servicios obtenidos correctamente'
