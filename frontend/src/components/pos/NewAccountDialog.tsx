@@ -75,25 +75,32 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     { value: 'hospitalizacion', label: 'Hospitalización' },
   ];
 
-  // Load initial patients when dialog opens
+  // Load initial patients and doctors when dialog opens
   useEffect(() => {
-    const loadInitialPatients = async () => {
+    const loadInitialData = async () => {
       if (open) {
         setSearchLoading(true);
         try {
-          const response = await patientsService.getPatients({ page: 1, limit: 10 });
-          if (response.success && response.data) {
-            setPatients(response.data.items || []);
+          // Load initial patients
+          const patientsResponse = await patientsService.getPatients({ page: 1, limit: 10 });
+          if (patientsResponse.success && patientsResponse.data) {
+            setPatients(patientsResponse.data.items || []);
+          }
+
+          // Load initial doctors
+          const doctorsResponse = await employeeService.getDoctors({ page: 1, limit: 10 });
+          if (doctorsResponse.success && doctorsResponse.data) {
+            setDoctors(doctorsResponse.data || []);
           }
         } catch (error) {
-          console.error('Error loading initial patients:', error);
+          console.error('Error loading initial data:', error);
         } finally {
           setSearchLoading(false);
         }
       }
     };
 
-    loadInitialPatients();
+    loadInitialData();
   }, [open]);
 
   const searchPatients = async (query: string) => {
@@ -130,8 +137,22 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
   };
 
   const searchDoctors = async (query: string) => {
+    // Si el query está vacío, cargar lista inicial de médicos
+    if (query.length === 0) {
+      try {
+        const response = await employeeService.getDoctors({ page: 1, limit: 10 });
+        if (response.success && response.data) {
+          setDoctors(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading initial doctors:', error);
+      }
+      return;
+    }
+
+    // Buscar solo si hay al menos 2 caracteres
     if (query.length < 2) return;
-    
+
     try {
       const response = await employeeService.searchEmployees(query, 10);
       if (response.success && response.data) {
