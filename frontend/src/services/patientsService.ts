@@ -105,7 +105,7 @@ export const patientsService = {
 
   // Patient search
   async searchPatients(query: string, limit: number = 10): Promise<PatientsResponse> {
-    return api.get(`/patients/search?q=${encodeURIComponent(query)}&limit=${limit}`) as Promise<PatientsResponse>;
+    return api.get(`/patients?search=${encodeURIComponent(query)}&limit=${limit}`) as Promise<PatientsResponse>;
   },
 
   // Patient responsibles management
