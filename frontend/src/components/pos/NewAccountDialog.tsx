@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
@@ -59,12 +59,12 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
       observaciones: '',
     },
   });
-  
+
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Employee[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Employee | null>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -75,9 +75,47 @@ const NewAccountDialog: React.FC<NewAccountDialogProps> = ({
     { value: 'hospitalizacion', label: 'Hospitalización' },
   ];
 
+  // Load initial patients when dialog opens
+  useEffect(() => {
+    const loadInitialPatients = async () => {
+      if (open) {
+        setSearchLoading(true);
+        try {
+          const response = await patientsService.getPatients({ page: 1, limit: 10 });
+          if (response.success && response.data) {
+            setPatients(response.data.items || []);
+          }
+        } catch (error) {
+          console.error('Error loading initial patients:', error);
+        } finally {
+          setSearchLoading(false);
+        }
+      }
+    };
+
+    loadInitialPatients();
+  }, [open]);
+
   const searchPatients = async (query: string) => {
+    // Si el query está vacío, cargar lista inicial
+    if (query.length === 0) {
+      setSearchLoading(true);
+      try {
+        const response = await patientsService.getPatients({ page: 1, limit: 10 });
+        if (response.success && response.data) {
+          setPatients(response.data.items || []);
+        }
+      } catch (error) {
+        console.error('Error loading initial patients:', error);
+      } finally {
+        setSearchLoading(false);
+      }
+      return;
+    }
+
+    // Buscar solo si hay al menos 2 caracteres
     if (query.length < 2) return;
-    
+
     setSearchLoading(true);
     try {
       const response = await patientsService.searchPatients(query, 10);
