@@ -165,6 +165,128 @@ router.put('/:id/assign', authenticateToken, auditMiddleware('habitaciones'), ca
   }
 });
 
+// PUT /:id/release - Liberar habitación
+router.put('/:id/release', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { observaciones } = req.body;
+    const habitacionId = parseInt(id);
+
+    // Verificar que la habitación existe
+    const habitacion = await prisma.habitacion.findUnique({
+      where: { id: habitacionId }
+    });
+
+    if (!habitacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habitación no encontrada'
+      });
+    }
+
+    // Verificar que no hay hospitalizaciones activas en esta habitación
+    const hospitalizacionActiva = await prisma.hospitalizacion.findFirst({
+      where: {
+        habitacionId: habitacionId,
+        fechaAlta: null
+      },
+      include: {
+        paciente: true
+      }
+    });
+
+    if (hospitalizacionActiva) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede liberar la habitación. Hay un paciente hospitalizado: ${hospitalizacionActiva.paciente.nombre} ${hospitalizacionActiva.paciente.apellidos}. Primero debe dar de alta al paciente.`
+      });
+    }
+
+    // Liberar la habitación
+    const habitacionActualizada = await prisma.habitacion.update({
+      where: { id: habitacionId },
+      data: { estado: 'disponible' }
+    });
+
+    logger.logAction('RELEASE_ROOM', req.user?.username, {
+      roomId: habitacionId,
+      roomNumber: habitacion.numero,
+      observaciones
+    });
+
+    res.json({
+      success: true,
+      data: { habitacion: habitacionActualizada },
+      message: 'Habitación liberada correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('RELEASE_ROOM', error, { roomId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
+// PUT /:id/maintenance - Poner habitación en mantenimiento
+router.put('/:id/maintenance', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { observaciones } = req.body;
+    const habitacionId = parseInt(id);
+
+    // Verificar que la habitación existe
+    const habitacion = await prisma.habitacion.findUnique({
+      where: { id: habitacionId }
+    });
+
+    if (!habitacion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habitación no encontrada'
+      });
+    }
+
+    // Verificar que no hay hospitalizaciones activas
+    const hospitalizacionActiva = await prisma.hospitalizacion.findFirst({
+      where: {
+        habitacionId: habitacionId,
+        fechaAlta: null
+      },
+      include: {
+        paciente: true
+      }
+    });
+
+    if (hospitalizacionActiva) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede poner en mantenimiento. Hay un paciente hospitalizado: ${hospitalizacionActiva.paciente.nombre} ${hospitalizacionActiva.paciente.apellidos}`
+      });
+    }
+
+    // Poner en mantenimiento
+    const habitacionActualizada = await prisma.habitacion.update({
+      where: { id: habitacionId },
+      data: { estado: 'mantenimiento' }
+    });
+
+    logger.logAction('MAINTENANCE_ROOM', req.user?.username, {
+      roomId: habitacionId,
+      roomNumber: habitacion.numero,
+      observaciones
+    });
+
+    res.json({
+      success: true,
+      data: { habitacion: habitacionActualizada },
+      message: 'Habitación puesta en mantenimiento correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('MAINTENANCE_ROOM', error, { roomId: req.params.id });
+    handlePrismaError(error, res);
+  }
+});
+
 // PUT /:id - Actualizar habitación
 router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOriginalData('habitacion'), validateRequired(['numero', 'tipo', 'precioPorDia']), async (req, res) => {
   try {
