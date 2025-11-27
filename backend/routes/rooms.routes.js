@@ -312,22 +312,81 @@ router.put('/:id', authenticateToken, auditMiddleware('habitaciones'), captureOr
 
     const { id } = req.params;
     const { numero, tipo, precioPorDia, descripcion, estado } = req.body;
+    const habitacionId = parseInt(id);
 
-    const habitacion = await prisma.habitacion.update({
-      where: { id: parseInt(id) },
-      data: {
-        numero,
-        tipo,
-        precioPorDia: parseFloat(precioPorDia),
-        descripcion,
-        estado: estado || 'disponible'
+    // Obtener habitación actual para conocer el número anterior
+    const habitacionActual = await prisma.habitacion.findUnique({
+      where: { id: habitacionId }
+    });
+
+    if (!habitacionActual) {
+      return res.status(404).json({
+        success: false,
+        message: 'Habitación no encontrada'
+      });
+    }
+
+    // Actualizar habitación y servicio asociado en transacción
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Actualizar habitación
+      const habitacion = await tx.habitacion.update({
+        where: { id: habitacionId },
+        data: {
+          numero,
+          tipo,
+          precioPorDia: parseFloat(precioPorDia),
+          descripcion,
+          estado: estado || 'disponible'
+        }
+      });
+
+      // 2. Actualizar o crear servicio asociado
+      const codigoServicioAnterior = `HAB-${habitacionActual.numero}`;
+      const codigoServicioNuevo = `HAB-${numero}`;
+      const nombreServicio = `Habitación ${numero} - ${tipo} (por día)`;
+      const descripcionServicio = `Cargo por uso de habitación ${numero} tipo ${tipo}. Tarifa diaria.`;
+
+      // Verificar si existe el servicio con el código anterior
+      const servicioExistente = await tx.servicio.findUnique({
+        where: { codigo: codigoServicioAnterior }
+      });
+
+      if (servicioExistente) {
+        // Actualizar servicio existente
+        await tx.servicio.update({
+          where: { codigo: codigoServicioAnterior },
+          data: {
+            codigo: codigoServicioNuevo,
+            nombre: nombreServicio,
+            descripcion: descripcionServicio,
+            precio: parseFloat(precioPorDia),
+            activo: estado !== 'mantenimiento'
+          }
+        });
+      } else {
+        // Crear servicio si no existe
+        await tx.servicio.create({
+          data: {
+            codigo: codigoServicioNuevo,
+            nombre: nombreServicio,
+            descripcion: descripcionServicio,
+            tipo: 'hospitalizacion',
+            precio: parseFloat(precioPorDia),
+            activo: estado !== 'mantenimiento'
+          }
+        });
       }
+
+      return habitacion;
+    }, {
+      maxWait: 5000,
+      timeout: 10000
     });
 
     res.json({
       success: true,
-      data: { habitacion },
-      message: 'Habitación actualizada correctamente'
+      data: { habitacion: result },
+      message: 'Habitación y servicio asociado actualizados correctamente'
     });
 
   } catch (error) {
@@ -447,6 +506,116 @@ router.get('/available-numbers', async (req, res) => {
       success: false,
       message: 'Error interno del servidor'
     });
+  }
+});
+
+// POST /sync-services - Sincronizar habitaciones con servicios
+router.post('/sync-services', authenticateToken, auditMiddleware('habitaciones'), async (req, res) => {
+  try {
+    // Verificar permisos - solo administradores
+    if (req.user.rol !== 'administrador') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo los administradores pueden sincronizar servicios de habitaciones'
+      });
+    }
+
+    // Obtener todas las habitaciones
+    const habitaciones = await prisma.habitacion.findMany({
+      orderBy: { numero: 'asc' }
+    });
+
+    const resultados = {
+      creados: [],
+      actualizados: [],
+      sinCambios: [],
+      errores: []
+    };
+
+    // Procesar cada habitación
+    for (const habitacion of habitaciones) {
+      try {
+        const codigoServicio = `HAB-${habitacion.numero}`;
+        const nombreServicio = `Habitación ${habitacion.numero} - ${habitacion.tipo} (por día)`;
+        const descripcionServicio = `Cargo por uso de habitación ${habitacion.numero} tipo ${habitacion.tipo}. Tarifa diaria.`;
+
+        // Verificar si ya existe el servicio
+        const servicioExistente = await prisma.servicio.findUnique({
+          where: { codigo: codigoServicio }
+        });
+
+        if (servicioExistente) {
+          // Verificar si necesita actualización (precio diferente)
+          if (parseFloat(servicioExistente.precio) !== parseFloat(habitacion.precioPorDia)) {
+            await prisma.servicio.update({
+              where: { codigo: codigoServicio },
+              data: {
+                nombre: nombreServicio,
+                descripcion: descripcionServicio,
+                precio: parseFloat(habitacion.precioPorDia),
+                activo: habitacion.estado !== 'mantenimiento'
+              }
+            });
+            resultados.actualizados.push({
+              habitacion: habitacion.numero,
+              precioAnterior: parseFloat(servicioExistente.precio),
+              precioNuevo: parseFloat(habitacion.precioPorDia)
+            });
+          } else {
+            resultados.sinCambios.push(habitacion.numero);
+          }
+        } else {
+          // Crear nuevo servicio
+          await prisma.servicio.create({
+            data: {
+              codigo: codigoServicio,
+              nombre: nombreServicio,
+              descripcion: descripcionServicio,
+              tipo: 'hospitalizacion',
+              precio: parseFloat(habitacion.precioPorDia),
+              activo: habitacion.estado !== 'mantenimiento'
+            }
+          });
+          resultados.creados.push({
+            habitacion: habitacion.numero,
+            codigo: codigoServicio,
+            precio: parseFloat(habitacion.precioPorDia)
+          });
+        }
+      } catch (err) {
+        resultados.errores.push({
+          habitacion: habitacion.numero,
+          error: err.message
+        });
+      }
+    }
+
+    logger.logOperation('SYNC_ROOM_SERVICES', {
+      user: req.user?.username,
+      totalHabitaciones: habitaciones.length,
+      creados: resultados.creados.length,
+      actualizados: resultados.actualizados.length,
+      errores: resultados.errores.length
+    });
+
+    res.json({
+      success: true,
+      data: {
+        resumen: {
+          totalHabitaciones: habitaciones.length,
+          serviciosCreados: resultados.creados.length,
+          serviciosActualizados: resultados.actualizados.length,
+          sinCambios: resultados.sinCambios.length,
+          errores: resultados.errores.length
+        },
+        detalles: resultados
+      },
+      message: `Sincronización completada: ${resultados.creados.length} servicios creados, ${resultados.actualizados.length} actualizados`
+    });
+
+  } catch (error) {
+    logger.logError('SYNC_ROOM_SERVICES', error);
+    handlePrismaError(error, res);
   }
 });
 
