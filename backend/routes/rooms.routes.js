@@ -191,14 +191,20 @@ router.put('/:id/release', authenticateToken, auditMiddleware('habitaciones'), c
         fechaAlta: null
       },
       include: {
-        paciente: true
+        cuentaPaciente: {
+          include: {
+            paciente: true
+          }
+        }
       }
     });
 
     if (hospitalizacionActiva) {
+      const paciente = hospitalizacionActiva.cuentaPaciente?.paciente;
+      const nombrePaciente = paciente ? `${paciente.nombre} ${paciente.apellidos}` : 'Paciente desconocido';
       return res.status(400).json({
         success: false,
-        message: `No se puede liberar la habitación. Hay un paciente hospitalizado: ${hospitalizacionActiva.paciente.nombre} ${hospitalizacionActiva.paciente.apellidos}. Primero debe dar de alta al paciente.`
+        message: `No se puede liberar la habitación. Hay un paciente hospitalizado: ${nombrePaciente}. Primero debe dar de alta al paciente.`
       });
     }
 
@@ -252,14 +258,20 @@ router.put('/:id/maintenance', authenticateToken, auditMiddleware('habitaciones'
         fechaAlta: null
       },
       include: {
-        paciente: true
+        cuentaPaciente: {
+          include: {
+            paciente: true
+          }
+        }
       }
     });
 
     if (hospitalizacionActiva) {
+      const paciente = hospitalizacionActiva.cuentaPaciente?.paciente;
+      const nombrePaciente = paciente ? `${paciente.nombre} ${paciente.apellidos}` : 'Paciente desconocido';
       return res.status(400).json({
         success: false,
-        message: `No se puede poner en mantenimiento. Hay un paciente hospitalizado: ${hospitalizacionActiva.paciente.nombre} ${hospitalizacionActiva.paciente.apellidos}`
+        message: `No se puede poner en mantenimiento. Hay un paciente hospitalizado: ${nombrePaciente}`
       });
     }
 
