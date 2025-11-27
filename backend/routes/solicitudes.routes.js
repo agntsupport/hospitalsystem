@@ -487,9 +487,9 @@ router.put('/:id/asignar',
         data: {
           solicitudId: solicitud.id,
           usuarioId: solicitud.solicitanteId,
-          tipo: 'PRODUCTOS_LISTOS',
-          titulo: 'Solicitud Asignada',
-          mensaje: `Su solicitud #${solicitud.numero} ha sido asignada y está en preparación`,
+          tipo: 'SOLICITUD_ASIGNADA',
+          titulo: 'Solicitud en Preparación',
+          mensaje: `Su solicitud #${solicitud.numero} ha sido asignada a un almacenista y está en preparación`,
           leida: false
         }
       });
@@ -510,6 +510,117 @@ router.put('/:id/asignar',
       res.status(500).json({ 
         error: 'Error al asignar solicitud',
         details: error.message 
+      });
+    }
+  }
+);
+
+// PUT /api/solicitudes/:id/listo - Marcar como listo para entrega (notifica al enfermero)
+router.put('/:id/listo',
+  authenticateToken,
+  authorizeRoles(['almacenista']),
+  auditMiddleware('solicitudes_productos', 'listo'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const solicitud = await prisma.solicitudProductos.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          paciente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidoPaterno: true,
+              apellidoMaterno: true
+            }
+          },
+          solicitante: {
+            select: {
+              id: true,
+              username: true,
+              nombre: true,
+              apellidos: true
+            }
+          }
+        }
+      });
+
+      if (!solicitud) {
+        return res.status(404).json({ error: 'Solicitud no encontrada' });
+      }
+
+      if (solicitud.almacenistaId !== req.user.id) {
+        return res.status(403).json({ error: 'Solo el almacenista asignado puede marcar la solicitud como lista' });
+      }
+
+      if (solicitud.estado !== 'PREPARANDO') {
+        return res.status(400).json({ error: 'Solo se pueden marcar como listas las solicitudes en preparación' });
+      }
+
+      // Actualizar solicitud a estado LISTO_ENTREGA
+      const solicitudActualizada = await prisma.solicitudProductos.update({
+        where: { id: parseInt(id) },
+        data: {
+          estado: 'LISTO_ENTREGA',
+          fechaPreparacion: new Date(),
+          historial: {
+            create: {
+              estadoAnterior: 'PREPARANDO',
+              estadoNuevo: 'LISTO_ENTREGA',
+              usuarioId: req.user.id,
+              observaciones: 'Productos preparados y listos para entrega'
+            }
+          }
+        },
+        include: {
+          paciente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidoPaterno: true,
+              apellidoMaterno: true
+            }
+          },
+          solicitante: {
+            select: {
+              id: true,
+              username: true,
+              nombre: true,
+              apellidos: true
+            }
+          }
+        }
+      });
+
+      // Crear notificación para el solicitante (enfermero/médico) - PRODUCTOS_LISTOS
+      await prisma.notificacionSolicitud.create({
+        data: {
+          solicitudId: solicitud.id,
+          usuarioId: solicitud.solicitanteId,
+          tipo: 'PRODUCTOS_LISTOS',
+          titulo: 'Pedido Listo para Recoger',
+          mensaje: `Su solicitud #${solicitud.numero} está lista. Por favor pase a almacén a recoger los productos para el paciente ${solicitud.paciente.nombre} ${solicitud.paciente.apellidoPaterno}`,
+          leida: false
+        }
+      });
+
+      // Registrar en auditoría
+      req.auditData = {
+        entidadId: parseInt(id),
+        datosAnteriores: { estado: solicitud.estado },
+        datosNuevos: { estado: 'LISTO_ENTREGA', fechaPreparacion: new Date() }
+      };
+
+      res.json({
+        message: 'Solicitud marcada como lista para entrega. Se ha notificado al solicitante.',
+        solicitud: solicitudActualizada
+      });
+    } catch (error) {
+      logger.logError('READY_REQUEST', error, { requestId: req.params.id });
+      res.status(500).json({
+        error: 'Error al marcar solicitud como lista',
+        details: error.message
       });
     }
   }
@@ -544,8 +655,8 @@ router.put('/:id/entregar',
         return res.status(403).json({ error: 'Solo el almacenista asignado puede entregar la solicitud' });
       }
 
-      if (solicitud.estado !== 'PREPARANDO') {
-        return res.status(400).json({ error: 'Solo se pueden entregar solicitudes en preparación' });
+      if (!['PREPARANDO', 'LISTO_ENTREGA'].includes(solicitud.estado)) {
+        return res.status(400).json({ error: 'Solo se pueden entregar solicitudes en preparación o listas para entrega' });
       }
 
       // Verificar stock disponible
@@ -582,7 +693,7 @@ router.put('/:id/entregar',
             fechaEntrega: new Date(),
             historial: {
               create: {
-                estadoAnterior: 'PREPARANDO',
+                estadoAnterior: solicitud.estado,
                 estadoNuevo: 'ENTREGADO',
                 usuarioId: req.user.id,
                 observaciones: observaciones || 'Productos entregados'
@@ -845,7 +956,7 @@ router.put('/:id/cancelar',
           data: {
             solicitudId: solicitud.id,
             usuarioId: solicitud.almacenistaId,
-            tipo: 'NUEVA_SOLICITUD',
+            tipo: 'SOLICITUD_CANCELADA',
             titulo: 'Solicitud Cancelada',
             mensaje: `La solicitud #${solicitud.numero} ha sido cancelada. Motivo: ${motivo || 'No especificado'}`,
             leida: false

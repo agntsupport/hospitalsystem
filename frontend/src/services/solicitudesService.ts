@@ -148,6 +148,13 @@ class SolicitudesService {
     return response as unknown as { message: string; solicitud: SolicitudProducto };
   }
 
+  // Marcar solicitud como lista para entrega (solo almacenistas)
+  // Esto notifica al enfermero/médico que puede pasar a recoger
+  async marcarListo(id: number): Promise<{ message: string; solicitud: SolicitudProducto }> {
+    const response = await api.put(`/solicitudes/${id}/listo`);
+    return response as unknown as { message: string; solicitud: SolicitudProducto };
+  }
+
   // Marcar solicitud como entregada (solo almacenistas)
   async entregarSolicitud(id: number, observaciones?: string): Promise<{ message: string }> {
     const response = await api.put(`/solicitudes/${id}/entregar`, { observaciones });
@@ -284,8 +291,12 @@ class SolicitudesService {
       if (solicitud.estado === 'SOLICITADO' && !solicitud.almacenistaId) {
         acciones.push('asignar');
       }
-      // Puede entregar solicitudes que está preparando
+      // Puede marcar como listo solicitudes que está preparando
       if (solicitud.estado === 'PREPARANDO' && solicitud.almacenistaId === userId) {
+        acciones.push('listo');
+      }
+      // Puede entregar solicitudes que están listas o en preparación
+      if (['PREPARANDO', 'LISTO_ENTREGA'].includes(solicitud.estado) && solicitud.almacenistaId === userId) {
         acciones.push('entregar');
       }
     } else if (['enfermero', 'medico_especialista', 'medico_residente'].includes(userRole)) {

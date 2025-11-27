@@ -4,12 +4,16 @@ import { api } from '@/utils/api';
 // TIPOS E INTERFACES
 // ==============================================
 
-export type TipoNotificacion = 
-  | 'NUEVA_SOLICITUD' 
-  | 'SOLICITUD_ASIGNADA' 
-  | 'SOLICITUD_ENTREGADA' 
-  | 'SOLICITUD_COMPLETADA' 
-  | 'SOLICITUD_CANCELADA' 
+export type TipoNotificacion =
+  | 'NUEVA_SOLICITUD'       // Para almacenista - cuando se crea una nueva solicitud
+  | 'SOLICITUD_ASIGNADA'    // Para médico/enfermero - cuando almacenista toma la solicitud
+  | 'PRODUCTOS_LISTOS'      // Para médico/enfermero - cuando productos están listos para recoger
+  | 'ENTREGA_CONFIRMADA'    // Para médico/enfermero - cuando almacenista entrega físicamente
+  | 'SOLICITUD_CANCELADA'   // Para todos los involucrados - cuando se cancela
+  | 'PRODUCTOS_APLICADOS'   // Para almacenista - cuando médico/enfermero confirma recepción
+  // Legacy types (mantener compatibilidad)
+  | 'SOLICITUD_ENTREGADA'
+  | 'SOLICITUD_COMPLETADA'
   | 'STOCK_BAJO';
 
 export interface Notificacion {
@@ -146,36 +150,48 @@ class NotificacionesService {
 
   // Helpers para labels y colores
   getTipoLabel(tipo: TipoNotificacion): string {
-    const labels: Record<TipoNotificacion, string> = {
+    const labels: Record<string, string> = {
       NUEVA_SOLICITUD: 'Nueva Solicitud',
-      SOLICITUD_ASIGNADA: 'Solicitud Asignada',
+      SOLICITUD_ASIGNADA: 'Solicitud en Preparación',
+      PRODUCTOS_LISTOS: 'Pedido Listo para Recoger',
+      ENTREGA_CONFIRMADA: 'Productos Entregados',
+      SOLICITUD_CANCELADA: 'Solicitud Cancelada',
+      PRODUCTOS_APLICADOS: 'Recepción Confirmada',
+      // Legacy types
       SOLICITUD_ENTREGADA: 'Solicitud Entregada',
       SOLICITUD_COMPLETADA: 'Solicitud Completada',
-      SOLICITUD_CANCELADA: 'Solicitud Cancelada',
       STOCK_BAJO: 'Stock Bajo'
     };
     return labels[tipo] || tipo;
   }
 
   getTipoColor(tipo: TipoNotificacion): string {
-    const colors: Record<TipoNotificacion, string> = {
-      NUEVA_SOLICITUD: '#2196f3',      // Blue
-      SOLICITUD_ASIGNADA: '#ff9800',   // Orange
-      SOLICITUD_ENTREGADA: '#4caf50',  // Green
-      SOLICITUD_COMPLETADA: '#8bc34a', // Light Green
-      SOLICITUD_CANCELADA: '#f44336',  // Red
-      STOCK_BAJO: '#ff5722'            // Deep Orange
+    const colors: Record<string, string> = {
+      NUEVA_SOLICITUD: '#2196f3',      // Blue - nueva solicitud
+      SOLICITUD_ASIGNADA: '#ff9800',   // Orange - en preparación
+      PRODUCTOS_LISTOS: '#4caf50',     // Green - listo para recoger
+      ENTREGA_CONFIRMADA: '#8bc34a',   // Light Green - entregado
+      SOLICITUD_CANCELADA: '#f44336',  // Red - cancelada
+      PRODUCTOS_APLICADOS: '#9c27b0',  // Purple - recibido/completado
+      // Legacy types
+      SOLICITUD_ENTREGADA: '#4caf50',
+      SOLICITUD_COMPLETADA: '#8bc34a',
+      STOCK_BAJO: '#ff5722'
     };
     return colors[tipo] || '#757575';
   }
 
   getTipoIcon(tipo: TipoNotificacion): string {
-    const icons: Record<TipoNotificacion, string> = {
+    const icons: Record<string, string> = {
       NUEVA_SOLICITUD: 'add_circle',
       SOLICITUD_ASIGNADA: 'assignment_ind',
+      PRODUCTOS_LISTOS: 'check_circle',
+      ENTREGA_CONFIRMADA: 'local_shipping',
+      SOLICITUD_CANCELADA: 'cancel',
+      PRODUCTOS_APLICADOS: 'verified',
+      // Legacy types
       SOLICITUD_ENTREGADA: 'local_shipping',
       SOLICITUD_COMPLETADA: 'check_circle',
-      SOLICITUD_CANCELADA: 'cancel',
       STOCK_BAJO: 'warning'
     };
     return icons[tipo] || 'notifications';

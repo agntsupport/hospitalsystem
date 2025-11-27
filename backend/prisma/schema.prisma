@@ -1313,11 +1313,12 @@ enum PrioridadSolicitud {
 }
 
 enum TipoNotificacion {
-  NUEVA_SOLICITUD     // Para almacenista
-  PRODUCTOS_LISTOS    // Para médico/enfermero
-  ENTREGA_CONFIRMADA  // Para médico/enfermero
-  SOLICITUD_CANCELADA // Para todos los involucrados
-  PRODUCTOS_APLICADOS // Para almacenista (cierre del ciclo)
+  NUEVA_SOLICITUD     // Para almacenista - cuando se crea una nueva solicitud
+  SOLICITUD_ASIGNADA  // Para médico/enfermero - cuando almacenista toma la solicitud
+  PRODUCTOS_LISTOS    // Para médico/enfermero - cuando productos están listos para recoger
+  ENTREGA_CONFIRMADA  // Para médico/enfermero - cuando almacenista entrega físicamente
+  SOLICITUD_CANCELADA // Para todos los involucrados - cuando se cancela
+  PRODUCTOS_APLICADOS // Para almacenista - cuando médico/enfermero confirma recepción
 }
 
 // ==============================================

@@ -168,6 +168,19 @@ const SolicitudesPage: React.FC = () => {
     handleCloseMenu();
   };
 
+  const handleMarcarListo = async (solicitud: SolicitudProducto) => {
+    try {
+      await solicitudesService.marcarListo(solicitud.id);
+      showNotification('Pedido marcado como listo. Se ha notificado al solicitante.', 'success');
+      loadSolicitudes();
+      loadStats();
+    } catch (error) {
+      console.error('Error marcando como listo:', error);
+      showNotification('Error al marcar como listo', 'error');
+    }
+    handleCloseMenu();
+  };
+
   const handleEntregarSolicitud = async (solicitud: SolicitudProducto) => {
     try {
       await solicitudesService.entregarSolicitud(solicitud.id);
@@ -524,6 +537,12 @@ const SolicitudesPage: React.FC = () => {
           <MenuItem onClick={() => menuSolicitud && handleAsignarSolicitud(menuSolicitud)}>
             <AssignmentIcon fontSize="small" sx={{ mr: 1 }} />
             Asignar a Mí
+          </MenuItem>
+        )}
+        {menuSolicitud && getAccionesDisponibles(menuSolicitud).includes('listo') && (
+          <MenuItem onClick={() => menuSolicitud && handleMarcarListo(menuSolicitud)}>
+            <CheckIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />
+            Marcar como Listo
           </MenuItem>
         )}
         {menuSolicitud && getAccionesDisponibles(menuSolicitud).includes('entregar') && (
