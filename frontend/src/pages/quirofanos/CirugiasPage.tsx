@@ -252,8 +252,9 @@ const CirugiasPage: React.FC = () => {
     }
   };
 
-  const canManage = ['administrador', 'medico_especialista'].includes(user?.rol || '');
-  const canUpdateStatus = ['administrador', 'medico_especialista', 'enfermero'].includes(user?.rol || '');
+  // Roles que pueden programar/gestionar cirugías (debe coincidir con backend)
+  const canManage = ['administrador', 'medico_especialista', 'medico_residente', 'enfermero', 'cajero'].includes(user?.rol || '');
+  const canUpdateStatus = ['administrador', 'medico_especialista', 'medico_residente', 'enfermero', 'cajero'].includes(user?.rol || '');
 
   if (loading && cirugias.length === 0) {
     return (
