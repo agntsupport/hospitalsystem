@@ -60,7 +60,7 @@ const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    content: () => receiptRef.current,
+    contentRef: receiptRef,
     documentTitle: `Ticket_Cuenta_${transactionData.cuentaId}_${new Date().getTime()}`,
     pageStyle: `
       @page {

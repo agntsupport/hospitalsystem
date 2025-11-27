@@ -182,7 +182,10 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
       totalReceived = parseFloat(amountReceived || '0');
     }
 
-    const change = totalReceived - Math.max(0, finalBalance);
+    // Calcular cambio correctamente:
+    // Si finalBalance es negativo (debe dinero), Math.abs lo convierte a positivo
+    // Si finalBalance es positivo (devolver dinero), no hay cambio porque no se recibe pago
+    const change = finalBalance < 0 ? totalReceived - Math.abs(finalBalance) : 0;
     setChangeAmount(Math.max(0, change));
   };
 
