@@ -114,7 +114,9 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
       setLoadingData(true);
       
       const [quirofanosRes, pacientesRes, empleadosRes] = await Promise.all([
-        quirofanosService.getQuirofanos({ estado: 'disponible', limit: 100 }),
+        // Cargar todos los quirófanos activos (no solo "disponible")
+        // La disponibilidad para cirugías futuras se valida por conflictos de horario
+        quirofanosService.getQuirofanos({ limit: 100 }),
         patientsService.getPatients({ limit: 100 }),
         employeeService.getEmployees({ limit: 100 })
       ]);
@@ -329,6 +331,14 @@ const CirugiaFormDialog: React.FC<CirugiaFormDialogProps> = ({
                 {quirofanos.map((quirofano) => (
                   <MenuItem key={quirofano.id} value={quirofano.id}>
                     Quirófano {quirofano.numero} - {quirofano.tipo}
+                    {quirofano.estado !== 'disponible' && (
+                      <Chip
+                        label={quirofano.estado}
+                        size="small"
+                        color={quirofano.estado === 'ocupado' ? 'warning' : 'default'}
+                        sx={{ ml: 1 }}
+                      />
+                    )}
                   </MenuItem>
                 ))}
               </Select>
