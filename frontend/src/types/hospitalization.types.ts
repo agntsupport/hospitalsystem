@@ -34,14 +34,34 @@ export interface HospitalAdmission extends BaseHospitalizationEntity {
   fechaIngreso: string;
   horaIngreso: string;
   
-  // Habitación asignada
-  habitacionId: number;
-  habitacion: {
+  // Espacio asignado (uno de los tres)
+  habitacionId?: number;
+  habitacion?: {
     id: number;
     numero: string;
     tipo: string;
-    piso: number;
+    piso?: number;
+    precioPorDia?: number;
     estado: 'ocupada' | 'disponible' | 'mantenimiento' | 'limpieza';
+  };
+
+  consultorioId?: number;
+  consultorio?: {
+    id: number;
+    numero: string;
+    tipo: string;
+    especialidad?: string;
+    estado: 'ocupado' | 'disponible' | 'mantenimiento';
+  };
+
+  quirofanoId?: number;
+  quirofano?: {
+    id: number;
+    numero: string;
+    tipo: string;
+    especialidad?: string;
+    precioHora?: number;
+    estado: 'ocupado' | 'disponible' | 'mantenimiento' | 'en_cirugia';
   };
 
   // Información médica

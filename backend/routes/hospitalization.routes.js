@@ -1333,6 +1333,333 @@ router.post('/admissions/:id/update-charges', authenticateToken, authorizeRoles(
   }
 });
 
+// ==============================================
+// ENDPOINT PARA TRASLADO DE UBICACIÓN
+// ==============================================
+
+/**
+ * PUT /admissions/:id/transfer-location - Trasladar paciente a nueva ubicación
+ * Permite cambiar de Consultorio General → Habitación, Habitación → Quirófano, etc.
+ * Genera cargos automáticos según el tipo de espacio destino.
+ */
+router.put('/admissions/:id/transfer-location', authenticateToken, authorizeRoles(['administrador', 'cajero', 'enfermero', 'medico_residente', 'medico_especialista']), auditMiddleware('hospitalizacion'), criticalOperationAudit, captureOriginalData('hospitalizacion'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      habitacionId,
+      consultorioId,
+      quirofanoId,
+      motivo
+    } = req.body;
+
+    // Validar que se proporcione exactamente un destino
+    const destinosProporcionados = [habitacionId, consultorioId, quirofanoId].filter(Boolean).length;
+
+    if (destinosProporcionados === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe proporcionar habitacionId, consultorioId o quirofanoId como destino del traslado'
+      });
+    }
+
+    if (destinosProporcionados > 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo puede proporcionar un destino: habitacionId, consultorioId o quirofanoId'
+      });
+    }
+
+    logger.logOperation('TRANSFER_PATIENT_LOCATION', {
+      hospitalizacionId: id,
+      destinoHabitacionId: habitacionId,
+      destinoConsultorioId: consultorioId,
+      destinoQuirofanoId: quirofanoId,
+      motivo,
+      usuarioId: req.user.id
+    });
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Obtener hospitalización actual
+      const hospitalizacion = await tx.hospitalizacion.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          cuentaPaciente: true,
+          habitacion: true,
+          consultorio: true,
+          quirofano: true
+        }
+      });
+
+      if (!hospitalizacion) {
+        throw new Error('Hospitalización no encontrada');
+      }
+
+      if (['alta_medica', 'alta_voluntaria'].includes(hospitalizacion.estado)) {
+        throw new Error('No se puede trasladar un paciente que ya fue dado de alta');
+      }
+
+      // Verificar que la cuenta esté abierta
+      if (hospitalizacion.cuentaPaciente.estado === 'cerrada') {
+        throw new Error('No se puede trasladar un paciente con cuenta cerrada');
+      }
+
+      // 2. Identificar ubicación actual
+      let ubicacionAnterior = null;
+      let tipoAnterior = null;
+
+      if (hospitalizacion.habitacionId) {
+        ubicacionAnterior = hospitalizacion.habitacion;
+        tipoAnterior = 'habitacion';
+      } else if (hospitalizacion.consultorioId) {
+        ubicacionAnterior = hospitalizacion.consultorio;
+        tipoAnterior = 'consultorio';
+      } else if (hospitalizacion.quirofanoId) {
+        ubicacionAnterior = hospitalizacion.quirofano;
+        tipoAnterior = 'quirofano';
+      }
+
+      // 3. Validar y obtener nuevo espacio
+      let nuevoEspacio = null;
+      let tipoNuevo = null;
+
+      if (habitacionId) {
+        nuevoEspacio = await tx.habitacion.findUnique({
+          where: { id: parseInt(habitacionId) }
+        });
+        tipoNuevo = 'habitacion';
+
+        if (!nuevoEspacio) {
+          throw new Error('Habitación destino no encontrada');
+        }
+        if (nuevoEspacio.estado !== 'disponible') {
+          throw new Error(`La habitación ${nuevoEspacio.numero} no está disponible (estado: ${nuevoEspacio.estado})`);
+        }
+      } else if (consultorioId) {
+        nuevoEspacio = await tx.consultorio.findUnique({
+          where: { id: parseInt(consultorioId) }
+        });
+        tipoNuevo = 'consultorio';
+
+        if (!nuevoEspacio) {
+          throw new Error('Consultorio destino no encontrado');
+        }
+        if (nuevoEspacio.estado !== 'disponible') {
+          throw new Error(`El consultorio ${nuevoEspacio.numero} no está disponible (estado: ${nuevoEspacio.estado})`);
+        }
+      } else if (quirofanoId) {
+        nuevoEspacio = await tx.quirofano.findUnique({
+          where: { id: parseInt(quirofanoId) }
+        });
+        tipoNuevo = 'quirofano';
+
+        if (!nuevoEspacio) {
+          throw new Error('Quirófano destino no encontrado');
+        }
+        if (nuevoEspacio.estado !== 'disponible') {
+          throw new Error(`El quirófano ${nuevoEspacio.numero} no está disponible (estado: ${nuevoEspacio.estado})`);
+        }
+      }
+
+      // Evitar traslado al mismo lugar
+      if (tipoAnterior === tipoNuevo && ubicacionAnterior?.id === nuevoEspacio.id) {
+        throw new Error('El paciente ya se encuentra en esta ubicación');
+      }
+
+      // 4. Liberar espacio anterior
+      if (tipoAnterior === 'habitacion' && hospitalizacion.habitacionId) {
+        await tx.habitacion.update({
+          where: { id: hospitalizacion.habitacionId },
+          data: { estado: 'disponible' }
+        });
+      } else if (tipoAnterior === 'consultorio' && hospitalizacion.consultorioId) {
+        await tx.consultorio.update({
+          where: { id: hospitalizacion.consultorioId },
+          data: { estado: 'disponible' }
+        });
+      } else if (tipoAnterior === 'quirofano' && hospitalizacion.quirofanoId) {
+        await tx.quirofano.update({
+          where: { id: hospitalizacion.quirofanoId },
+          data: { estado: 'disponible' }
+        });
+      }
+
+      // 5. Ocupar nuevo espacio
+      if (tipoNuevo === 'habitacion') {
+        await tx.habitacion.update({
+          where: { id: parseInt(habitacionId) },
+          data: { estado: 'ocupada' }
+        });
+      } else if (tipoNuevo === 'consultorio') {
+        await tx.consultorio.update({
+          where: { id: parseInt(consultorioId) },
+          data: { estado: 'ocupado' }
+        });
+      } else if (tipoNuevo === 'quirofano') {
+        await tx.quirofano.update({
+          where: { id: parseInt(quirofanoId) },
+          data: { estado: 'ocupado' }
+        });
+      }
+
+      // 6. Actualizar hospitalización
+      const hospitalizacionActualizada = await tx.hospitalizacion.update({
+        where: { id: parseInt(id) },
+        data: {
+          habitacionId: tipoNuevo === 'habitacion' ? parseInt(habitacionId) : null,
+          consultorioId: tipoNuevo === 'consultorio' ? parseInt(consultorioId) : null,
+          quirofanoId: tipoNuevo === 'quirofano' ? parseInt(quirofanoId) : null,
+          indicacionesGenerales: motivo
+            ? `${hospitalizacion.indicacionesGenerales || ''}\n[${new Date().toISOString()}] Traslado: ${motivo}`.trim()
+            : hospitalizacion.indicacionesGenerales
+        },
+        include: {
+          cuentaPaciente: {
+            include: {
+              paciente: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  apellidoPaterno: true,
+                  apellidoMaterno: true
+                }
+              }
+            }
+          },
+          habitacion: true,
+          consultorio: true,
+          quirofano: true
+        }
+      });
+
+      // 7. Generar cargo automático si el destino es una habitación con precio
+      let cargoGenerado = null;
+      if (tipoNuevo === 'habitacion' && nuevoEspacio.precioPorDia > 0) {
+        // Generar cargo del primer día en la nueva habitación
+        const cargos = await generarCargosHabitacion(
+          hospitalizacion.cuentaPacienteId,
+          parseInt(habitacionId),
+          new Date(), // Cargo desde hoy
+          req.user.id,
+          tx
+        );
+        cargoGenerado = {
+          tipo: 'habitacion',
+          diasCargados: cargos,
+          precioUnitario: parseFloat(nuevoEspacio.precioPorDia.toString())
+        };
+      }
+
+      // 8. Registrar en auditoría adicional como nota de la hospitalización
+      // Usar el médico tratante de la hospitalización como responsable de la nota
+      // (No hay relación directa Usuario-Empleado en el schema)
+      const empleadoIdParaNota = hospitalizacion.medicoEspecialistaId;
+
+      await tx.notaHospitalizacion.create({
+        data: {
+          hospitalizacionId: parseInt(id),
+          empleadoId: empleadoIdParaNota,
+          tipoNota: 'evolucion',
+          turno: obtenerTurnoActual(),
+          observaciones: `TRASLADO DE UBICACIÓN: De ${tipoAnterior} ${ubicacionAnterior?.numero || 'N/A'} a ${tipoNuevo} ${nuevoEspacio.numero}. ${motivo ? `Motivo: ${motivo}` : ''} (Realizado por: ${req.user.username})`,
+          estadoGeneral: 'Paciente trasladado'
+        }
+      });
+
+      return {
+        hospitalizacion: hospitalizacionActualizada,
+        ubicacionAnterior: {
+          tipo: tipoAnterior,
+          numero: ubicacionAnterior?.numero || 'Sin asignar',
+          id: ubicacionAnterior?.id
+        },
+        ubicacionNueva: {
+          tipo: tipoNuevo,
+          numero: nuevoEspacio.numero,
+          id: nuevoEspacio.id
+        },
+        cargoGenerado
+      };
+    }, {
+      maxWait: 5000,
+      timeout: 15000
+    });
+
+    // Formatear respuesta
+    const espacioAsignado = resultado.hospitalizacion.habitacion
+      ? { tipo: 'habitacion', ...resultado.hospitalizacion.habitacion }
+      : resultado.hospitalizacion.consultorio
+        ? { tipo: 'consultorio', ...resultado.hospitalizacion.consultorio }
+        : resultado.hospitalizacion.quirofano
+          ? { tipo: 'quirofano', ...resultado.hospitalizacion.quirofano }
+          : null;
+
+    logger.info(`✅ Traslado completado: Hospitalización ${id} de ${resultado.ubicacionAnterior.tipo} ${resultado.ubicacionAnterior.numero} a ${resultado.ubicacionNueva.tipo} ${resultado.ubicacionNueva.numero}`);
+
+    res.json({
+      success: true,
+      message: `Paciente trasladado exitosamente de ${resultado.ubicacionAnterior.tipo} ${resultado.ubicacionAnterior.numero} a ${resultado.ubicacionNueva.tipo} ${resultado.ubicacionNueva.numero}`,
+      data: {
+        hospitalizacion: {
+          id: resultado.hospitalizacion.id,
+          paciente: {
+            id: resultado.hospitalizacion.cuentaPaciente.paciente.id,
+            nombreCompleto: `${resultado.hospitalizacion.cuentaPaciente.paciente.nombre} ${resultado.hospitalizacion.cuentaPaciente.paciente.apellidoPaterno} ${resultado.hospitalizacion.cuentaPaciente.paciente.apellidoMaterno || ''}`.trim()
+          },
+          espacio: espacioAsignado,
+          estado: resultado.hospitalizacion.estado
+        },
+        traslado: {
+          desde: resultado.ubicacionAnterior,
+          hacia: resultado.ubicacionNueva,
+          cargoGenerado: resultado.cargoGenerado,
+          fechaTraslado: new Date().toISOString(),
+          realizadoPor: req.user.username
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.logError('TRANSFER_PATIENT_LOCATION', error, {
+      hospitalizacionId: req.params.id,
+      destino: req.body
+    });
+
+    // Manejar errores específicos
+    if (error.message.includes('no encontrad')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('no está disponible') ||
+        error.message.includes('ya fue dado de alta') ||
+        error.message.includes('cuenta cerrada') ||
+        error.message.includes('ya se encuentra')) {
+      return res.status(409).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error al trasladar al paciente',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Helper: Obtener turno actual según la hora
+ */
+function obtenerTurnoActual() {
+  const hora = new Date().getHours();
+  if (hora >= 6 && hora < 14) return 'matutino';
+  if (hora >= 14 && hora < 22) return 'vespertino';
+  return 'nocturno';
+}
+
 // POST /accounts/:id/recalculate-totals - Recalcular totales de una cuenta específica
 router.post('/accounts/:id/recalculate-totals', authenticateToken, authorizeRoles(['administrador', 'cajero']), async (req, res) => {
   try {

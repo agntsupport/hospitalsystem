@@ -43,13 +43,15 @@ import {
   Assignment as AssignmentIcon,
   CalendarToday as CalendarIcon,
   FilterList as FilterIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  SwapHoriz as TransferIcon
 } from '@mui/icons-material';
 
 import hospitalizationService from '@/services/hospitalizationService';
 import AdmissionFormDialog from './AdmissionFormDialog';
 import MedicalNotesDialog from './MedicalNotesDialog';
 import DischargeDialog from './DischargeDialog';
+import TransferLocationDialog from './TransferLocationDialog';
 import AuditTrail from '@/components/common/AuditTrail';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
@@ -68,9 +70,11 @@ const HospitalizationPage: React.FC = () => {
   const rolesAutorizadosParaCrear = ['administrador', 'cajero', 'medico_residente', 'medico_especialista'];
   const rolesAutorizadosParaNotasSoap = ['administrador', 'enfermero', 'medico_residente', 'medico_especialista'];
   const rolesAutorizadosParaAlta = ['administrador', 'medico_residente', 'medico_especialista'];
+  const rolesAutorizadosParaTraslado = ['administrador', 'cajero', 'enfermero', 'medico_residente', 'medico_especialista'];
   const puedeCrearIngreso = user && rolesAutorizadosParaCrear.includes(user.rol);
   const puedeVerNotasSoap = user && rolesAutorizadosParaNotasSoap.includes(user.rol);
   const puedeDarAlta = user && rolesAutorizadosParaAlta.includes(user.rol);
+  const puedeTrasladar = user && rolesAutorizadosParaTraslado.includes(user.rol);
   
   // Estados principales
   const [admissions, setAdmissions] = useState<HospitalAdmission[]>([]);
@@ -100,6 +104,8 @@ const HospitalizationPage: React.FC = () => {
   const [selectedAdmissionForNotes, setSelectedAdmissionForNotes] = useState<HospitalAdmission | null>(null);
   const [dischargeDialogOpen, setDischargeDialogOpen] = useState(false);
   const [selectedAdmissionForDischarge, setSelectedAdmissionForDischarge] = useState<HospitalAdmission | null>(null);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedAdmissionForTransfer, setSelectedAdmissionForTransfer] = useState<HospitalAdmission | null>(null);
   const [auditTrailOpen, setAuditTrailOpen] = useState(false);
   const [auditEntityId, setAuditEntityId] = useState<number>(0);
 
@@ -192,6 +198,11 @@ const HospitalizationPage: React.FC = () => {
     setSelectedAdmissionForDischarge(admission);
     setDischargeDialogOpen(true);
     console.log('DischargeDialog should open now');
+  };
+
+  const handleOpenTransfer = (admission: HospitalAdmission) => {
+    setSelectedAdmissionForTransfer(admission);
+    setTransferDialogOpen(true);
   };
 
   const handleViewPatientStatus = async (admission: HospitalAdmission) => {
@@ -665,6 +676,20 @@ const HospitalizationPage: React.FC = () => {
 
                           {!admission.fechaAlta && (
                             <>
+                              {puedeTrasladar && (
+                                <Tooltip title="Trasladar a otra ubicación">
+                                  <IconButton
+                                    size="small"
+                                    color="secondary"
+                                    onClick={() => handleOpenTransfer(admission)}
+                                    aria-label="Trasladar paciente a otra ubicación"
+                                    title="Trasladar paciente"
+                                  >
+                                    <TransferIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+
                               <Tooltip title="Editar">
                                 <IconButton
                                   size="small"
@@ -879,6 +904,21 @@ const HospitalizationPage: React.FC = () => {
           setDischargeDialogOpen(false);
           setSelectedAdmissionForDischarge(null);
           loadData(); // Recargar lista y estadísticas después del alta
+        }}
+      />
+
+      {/* Diálogo para traslado de ubicación */}
+      <TransferLocationDialog
+        open={transferDialogOpen}
+        onClose={() => {
+          setTransferDialogOpen(false);
+          setSelectedAdmissionForTransfer(null);
+        }}
+        admission={selectedAdmissionForTransfer}
+        onSuccess={() => {
+          setTransferDialogOpen(false);
+          setSelectedAdmissionForTransfer(null);
+          loadData(); // Recargar lista y estadísticas después del traslado
         }}
       />
 
