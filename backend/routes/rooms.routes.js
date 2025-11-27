@@ -208,10 +208,10 @@ router.put('/:id/release', authenticateToken, auditMiddleware('habitaciones'), c
       data: { estado: 'disponible' }
     });
 
-    logger.logAction('RELEASE_ROOM', req.user?.username, {
+    logger.logOperation('RELEASE_ROOM', {
+      user: req.user?.username,
       roomId: habitacionId,
-      roomNumber: habitacion.numero,
-      observaciones
+      roomNumber: habitacion.numero
     });
 
     res.json({
@@ -269,10 +269,10 @@ router.put('/:id/maintenance', authenticateToken, auditMiddleware('habitaciones'
       data: { estado: 'mantenimiento' }
     });
 
-    logger.logAction('MAINTENANCE_ROOM', req.user?.username, {
+    logger.logOperation('MAINTENANCE_ROOM', {
+      user: req.user?.username,
       roomId: habitacionId,
-      roomNumber: habitacion.numero,
-      observaciones
+      roomNumber: habitacion.numero
     });
 
     res.json({
