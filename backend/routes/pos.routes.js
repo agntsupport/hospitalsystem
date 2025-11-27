@@ -1081,8 +1081,8 @@ router.post('/cuenta/:id/transacciones', authenticateToken, auditMiddleware('pos
           throw new Error('El producto no está activo');
         }
 
-        if (producto.stock < cantidad) {
-          throw new Error(`Stock insuficiente. Disponible: ${producto.stock}, Solicitado: ${cantidad}`);
+        if (producto.stockActual < cantidad) {
+          throw new Error(`Stock insuficiente. Disponible: ${producto.stockActual}, Solicitado: ${cantidad}`);
         }
 
         concepto = `${producto.nombre}`;
@@ -1093,7 +1093,7 @@ router.post('/cuenta/:id/transacciones', authenticateToken, auditMiddleware('pos
         await tx.producto.update({
           where: { id: parseInt(productoId) },
           data: {
-            stock: {
+            stockActual: {
               decrement: cantidad
             }
           }
@@ -1103,11 +1103,11 @@ router.post('/cuenta/:id/transacciones', authenticateToken, auditMiddleware('pos
         await tx.movimientoInventario.create({
           data: {
             productoId: parseInt(productoId),
-            tipo: 'salida',
+            tipoMovimiento: 'salida',
             cantidad,
             precioUnitario,
-            descripcion: `Venta a cuenta #${cuenta.numeroExpediente}`,
-            empleadoId: req.user.id
+            motivo: `Venta a cuenta #${cuenta.numeroExpediente}`,
+            usuarioId: req.user.id
           }
         });
       }
