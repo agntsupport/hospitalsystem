@@ -39,7 +39,8 @@ import {
   Build as BuildIcon,
   CheckCircle as AvailableIcon,
   Cancel as OccupiedIcon,
-  Warning as MaintenanceIcon
+  Warning as MaintenanceIcon,
+  CleaningServices as CleaningIcon
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
 import quirofanosService, { Quirofano, QuirofanoStats } from '@/services/quirofanosService';
@@ -173,7 +174,17 @@ const QuirofanosPage: React.FC = () => {
   };
 
   const canEdit = user?.rol === 'administrador';
-  const canChangeStatus = ['administrador', 'enfermero', 'medico_especialista'].includes(user?.rol || '');
+  const canMarkCleaningComplete = ['administrador', 'enfermero'].includes(user?.rol || '');
+
+  const handleMarkCleaningComplete = async (quirofano: Quirofano) => {
+    try {
+      await quirofanosService.updateQuirofanoStatus(quirofano.id, 'disponible', 'Limpieza completada');
+      loadQuirofanos();
+      loadStats();
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
 
   if (loading && quirofanos.length === 0) {
     return (
@@ -401,18 +412,29 @@ const QuirofanosPage: React.FC = () => {
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title="Ver detalles">
-                      <IconButton 
-                        size="small" 
+                      <IconButton
+                        size="small"
                         color="info"
                         onClick={() => handleViewClick(quirofano)}
                       >
                         <ViewIcon />
                       </IconButton>
                     </Tooltip>
+                    {canMarkCleaningComplete && quirofano.estado === 'limpieza' && (
+                      <Tooltip title="Marcar limpieza completada">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleMarkCleaningComplete(quirofano)}
+                        >
+                          <CleaningIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     {canEdit && (
                       <Tooltip title="Editar">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           color="primary"
                           onClick={() => handleEditClick(quirofano)}
                         >
@@ -422,8 +444,8 @@ const QuirofanosPage: React.FC = () => {
                     )}
                     {canEdit && (
                       <Tooltip title="Eliminar">
-                        <IconButton 
-                          size="small" 
+                        <IconButton
+                          size="small"
                           color="error"
                           onClick={() => handleDeleteClick(quirofano)}
                         >

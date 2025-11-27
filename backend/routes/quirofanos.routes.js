@@ -1161,15 +1161,6 @@ router.put('/:id', authenticateToken, captureOriginalData('quirofano'), auditMid
 // PUT /api/quirofanos/:id/estado - Cambiar estado del quirófano
 router.put('/:id/estado', authenticateToken, auditMiddleware('quirofanos'), async (req, res) => {
   try {
-    // Verificar permisos - administradores, enfermeros y médicos especialistas
-    const allowedRoles = ['administrador', 'enfermero', 'medico_especialista'];
-    if (!allowedRoles.includes(req.user.rol)) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tiene permisos para cambiar el estado de los quirófanos'
-      });
-    }
-
     const { id } = req.params;
     const { estado, motivo } = req.body;
 
@@ -1181,7 +1172,7 @@ router.put('/:id/estado', authenticateToken, auditMiddleware('quirofanos'), asyn
     }
 
     // Estados válidos
-    const estadosValidos = ['disponible', 'ocupado', 'mantenimiento', 'reservado'];
+    const estadosValidos = ['disponible', 'ocupado', 'mantenimiento', 'reservado', 'limpieza', 'preparacion'];
     if (!estadosValidos.includes(estado)) {
       return res.status(400).json({
         success: false,
@@ -1198,6 +1189,28 @@ router.put('/:id/estado', authenticateToken, auditMiddleware('quirofanos'), asyn
         success: false,
         message: 'Quirófano no encontrado'
       });
+    }
+
+    // Verificar permisos según el cambio de estado solicitado
+    // Caso especial: Marcar limpieza completada (limpieza -> disponible)
+    // Solo administradores y enfermeros pueden hacerlo
+    if (quirofano.estado === 'limpieza' && estado === 'disponible') {
+      const rolesLimpiezaCompletada = ['administrador', 'enfermero'];
+      if (!rolesLimpiezaCompletada.includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Solo administradores y enfermeros pueden marcar la limpieza como completada'
+        });
+      }
+    } else {
+      // Para otros cambios de estado: administradores, enfermeros y médicos especialistas
+      const allowedRoles = ['administrador', 'enfermero', 'medico_especialista'];
+      if (!allowedRoles.includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tiene permisos para cambiar el estado de los quirófanos'
+        });
+      }
     }
 
     const quirofanoActualizado = await prisma.quirofano.update({
