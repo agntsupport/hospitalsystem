@@ -151,7 +151,7 @@ El administrador gestiona ingresos/egresos/cuentas por cobrar → analiza médic
 7. ✅ **Facturación** - Facturas, pagos, cuentas por cobrar
 8. ✅ **Reportes** - Financieros, operativos, ejecutivos
 9. ✅ **Hospitalización** - Ingresos, altas, notas médicas
-10. ✅ **Quirófanos** - Gestión y cirugías con cargos automáticos
+10. ✅ **Quirófanos** - Gestión, cirugías con cargos automáticos, control de limpieza
 11. ✅ **Auditoría** - Sistema completo de trazabilidad
 12. ✅ **Testing** - 1,444 tests (940 frontend + 449 backend + 55 E2E)
 13. ✅ **Cargos Automáticos** - Habitaciones y quirófanos
@@ -798,15 +798,13 @@ Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
 - E2E: 9/55 passing (16.4%) ❌
 - 🎯 Plan corrección: 3 días para 100% pass rate
 
-**🎉 FASE 13 Completada - Sistema de Notificaciones Mejorado (27 Nov 2025):**
-- ✅ **Campanita de notificaciones** en header (visible en todas las pantallas)
-- ✅ **Flujo completo de notificaciones:** solicitud → asignación → listo → entrega
-- ✅ **Nuevo endpoint** `PUT /api/solicitudes/:id/listo`
-- ✅ **Nuevo tipo** `SOLICITUD_ASIGNADA` para notificar enfermeros
-- ✅ **Polling automático** cada 30 segundos
-- ✅ **Fix error 400** al crear solicitudes (cuentaId corregido)
-- ✅ **Solicitado por** Junta Directiva
-- ✅ **3 commits realizados** (70f95d1, dc9dd7a, cb0358c)
+**🎉 FASE 14 Completada - Gestión de Limpieza de Quirófanos (27 Nov 2025):**
+- ✅ **Botón "Marcar limpieza completada"** en tabla de quirófanos
+- ✅ **Permisos específicos:** Solo `administrador` y `enfermero` pueden marcar limpieza como completada
+- ✅ **Estados de quirófano:** disponible, ocupado, mantenimiento, limpieza, preparacion, fuera_de_servicio
+- ✅ **Flujo completo:** Cirugía completada → Quirófano en limpieza → Enfermero marca limpieza → Disponible
+- ✅ **Ícono CleaningServices** (verde) visible solo cuando estado = 'limpieza'
+- ✅ **Commit:** 6edd822
 
 **📁 Ver análisis completo:** [ui_analysis.md](./.claude/doc/ui_ux_analysis/ui_analysis.md) | [HISTORIAL_FASES_2025.md](./.claude/doc/HISTORIAL_FASES_2025.md)
 

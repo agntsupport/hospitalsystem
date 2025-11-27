@@ -11,7 +11,7 @@
 
 Este documento detalla el historial completo de las fases de desarrollo del Sistema de Gestión Hospitalaria Integral desde su inicio hasta la fecha actual. Cada fase representa mejoras significativas en funcionalidad, calidad y rendimiento del sistema.
 
-**Total de Fases Completadas:** 13 (FASE 0 - FASE 13)
+**Total de Fases Completadas:** 14 (FASE 0 - FASE 14)
 **Calificación del Sistema:** 9.3/10 ⭐
 **Estado:** Listo para Presentación a Junta Directiva ✅
 
@@ -881,19 +881,86 @@ Los almacenistas no podían ver las solicitudes pendientes desde su pantalla pri
 
 ---
 
+## FASE 14 - Gestión de Limpieza de Quirófanos (27 Nov 2025)
+
+**Fecha:** 27 de noviembre de 2025
+**Objetivo:** Permitir a enfermeros y administradores marcar quirófanos como disponibles después de limpieza
+
+### Problema Identificado
+
+Cuando una cirugía se completa o cancela, el quirófano pasa automáticamente a estado `limpieza`. Sin embargo, no existía un mecanismo para que el personal pudiera marcar la limpieza como completada y liberar el quirófano.
+
+### Mejoras Implementadas
+
+#### Backend (quirofanos.routes.js)
+- ✅ **Permisos específicos** para transición `limpieza → disponible`
+- ✅ Solo `administrador` y `enfermero` pueden marcar limpieza completada
+- ✅ Otros roles mantienen permisos existentes para otros cambios de estado
+- ✅ Estados válidos ampliados: `disponible`, `ocupado`, `mantenimiento`, `limpieza`, `preparacion`, `reservado`
+
+#### Frontend (QuirofanosPage.tsx)
+- ✅ **Nuevo botón** "Marcar limpieza completada" con ícono `CleaningServices`
+- ✅ **Visibilidad condicional**: Solo aparece cuando quirófano está en estado `limpieza`
+- ✅ **Control de permisos**: Solo visible para `administrador` y `enfermero`
+- ✅ **Color verde** (success) para indicar acción positiva
+- ✅ **Tooltip descriptivo** para claridad de la acción
+
+### Estados del Quirófano (Enum `EstadoQuirofano`)
+
+| Estado | Descripción | Transiciones Permitidas |
+|--------|-------------|-------------------------|
+| `disponible` | Listo para usar | → ocupado, mantenimiento, reservado |
+| `ocupado` | Cirugía en progreso | → limpieza (automático al completar) |
+| `limpieza` | Post-cirugía, en limpieza | → disponible (solo enfermero/admin) |
+| `mantenimiento` | Mantenimiento técnico | → disponible |
+| `preparacion` | Preparando para cirugía | → ocupado |
+| `fuera_de_servicio` | Deshabilitado | (soft delete) |
+
+### Flujo Completo
+
+```
+Cirugía Programada → En Progreso → Completada/Cancelada
+                                          ↓
+                            Quirófano → Estado: limpieza
+                                          ↓
+                       Enfermero hace clic en botón verde
+                                          ↓
+                            Quirófano → Estado: disponible
+```
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `backend/routes/quirofanos.routes.js` | Lógica de permisos específica (líneas 1161-1246) |
+| `frontend/src/pages/quirofanos/QuirofanosPage.tsx` | Botón + handler + ícono |
+
+### Impacto
+
+- **UX mejorada**: Personal de enfermería puede gestionar estado de quirófanos
+- **Control de acceso**: Solo roles autorizados pueden cambiar estados críticos
+- **Visibilidad**: Botón solo aparece cuando es relevante (estado limpieza)
+- **Auditoría**: Todos los cambios de estado quedan registrados
+
+### Commits
+
+- `6edd822` - feat: Agregar botón para marcar limpieza completada en quirófanos
+
+---
+
 ## Próximas Fases Planificadas
 
-### FASE 14: Sistema de Citas Médicas
+### FASE 15: Sistema de Citas Médicas
 - Calendarios integrados
 - Notificaciones automáticas
 - Gestión de horarios médicos
 
-### FASE 15: Dashboard Tiempo Real
+### FASE 16: Dashboard Tiempo Real
 - WebSockets implementados
 - Notificaciones push
 - Métricas en vivo
 
-### FASE 16: Expediente Médico Completo
+### FASE 17: Expediente Médico Completo
 - Historia clínica digitalizada
 - Recetas electrónicas
 - Integración con laboratorios
@@ -902,7 +969,7 @@ Los almacenistas no podían ver las solicitudes pendientes desde su pantalla pri
 
 ## Conclusión
 
-El Sistema de Gestión Hospitalaria Integral ha evolucionado significativamente a través de 13 fases de desarrollo, alcanzando una calificación de **9.3/10**. El sistema está completamente preparado para ser presentado a la junta directiva con confianza, destacando:
+El Sistema de Gestión Hospitalaria Integral ha evolucionado significativamente a través de 14 fases de desarrollo, alcanzando una calificación de **9.3/10**. El sistema está completamente preparado para ser presentado a la junta directiva con confianza, destacando:
 
 ✅ **Módulos críticos funcionales** sin errores
 ✅ **Seguridad de nivel empresarial** (10/10)
@@ -913,6 +980,7 @@ El Sistema de Gestión Hospitalaria Integral ha evolucionado significativamente 
 ✅ **Responsive design optimizado**
 ✅ **POS completamente funcional** con resumen e impresión de tickets
 ✅ **Sistema de notificaciones mejorado** con campanita visible en todo momento
+✅ **Gestión de quirófanos completa** con control de limpieza por enfermeros
 
 El sistema refleja la calidad profesional esperada por una junta directiva y está listo para entornos de producción.
 
