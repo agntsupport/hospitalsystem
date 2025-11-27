@@ -35,6 +35,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar } from '@/store/slices/uiSlice';
 import { RootState } from '@/store/store';
 import Sidebar from './Sidebar';
+import NotificationBell from './NotificationBell';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -151,6 +152,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Sistema Hospitalario
           </Typography>
+
+          {/* Campanita de Notificaciones */}
+          <NotificationBell />
 
           {/* Usuario */}
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
