@@ -154,15 +154,15 @@ function App() {
             } />
             
             <Route path="/quirofanos" element={
-              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
+              <ProtectedRoute roles={['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
                 <Layout>
                   <QuirofanosPage />
                 </Layout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/cirugias" element={
-              <ProtectedRoute roles={['enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
+              <ProtectedRoute roles={['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador']}>
                 <Layout>
                   <CirugiasPage />
                 </Layout>

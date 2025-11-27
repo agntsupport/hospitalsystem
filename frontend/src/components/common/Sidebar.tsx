@@ -89,14 +89,14 @@ const menuItems: MenuItem[] = [
     text: 'Quirófanos',
     icon: <ContentCut />,
     path: '/quirofanos',
-    roles: ['enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
+    roles: ['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
   },
   {
     id: 'cirugias',
     text: 'Cirugías',
     icon: <LocalHospital />,
     path: '/cirugias',
-    roles: ['enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
+    roles: ['cajero', 'enfermero', 'medico_residente', 'medico_especialista', 'administrador'],
     divider: true,
   },
   {
