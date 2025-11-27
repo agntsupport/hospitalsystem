@@ -657,15 +657,16 @@ class HospitalizationService {
       });
 
       if (response.success && response.data?.items) {
-        // Transformar los datos para devolver solo información del paciente
-        const pacientesHospitalizados = response.data.items.map(admission => ({
+        // Transformar los datos para devolver información del paciente con cuenta real
+        const pacientesHospitalizados = response.data.items.map((admission: any) => ({
           id: admission.paciente.id,
           nombre: admission.paciente.nombre,
-          apellidoPaterno: '',
-          apellidoMaterno: '',
+          apellidoPaterno: admission.paciente.apellidoPaterno || '',
+          apellidoMaterno: admission.paciente.apellidoMaterno || '',
           numeroExpediente: admission.paciente.numeroExpediente,
           hospitalizacionId: admission.id,
-          cuentaId: admission.id, // ID de la hospitalización como referencia
+          cuentaId: admission.cuentaPacienteId, // ID real de la cuenta del paciente
+          cuentaPaciente: admission.cuentaPaciente, // Objeto completo de la cuenta
           habitacion: admission.habitacion?.numero,
           estado: admission.estado
         }));
