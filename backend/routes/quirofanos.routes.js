@@ -6,6 +6,11 @@ const { auditMiddleware, captureOriginalData } = require('../middleware/audit.mi
 const logger = require('../utils/logger');
 
 // ==============================================
+// CONSTANTE: DURACIÓN MÁXIMA DE CIRUGÍA (6 HORAS)
+// ==============================================
+const MAX_CIRUGIA_DURATION_HOURS = 6;
+
+// ==============================================
 // RUTAS DE QUIRÓFANOS
 // ==============================================
 
@@ -395,8 +400,8 @@ router.post('/', authenticateToken, auditMiddleware('quirofanos'), async (req, r
 // POST /api/quirofanos/cirugias - Programar nueva cirugía
 router.post('/cirugias', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
   try {
-    // Verificar permisos - médicos especialistas y administradores
-    const allowedRoles = ['administrador', 'medico_especialista'];
+    // Verificar permisos - cajeros, enfermeros, médicos y administradores pueden agendar cirugías
+    const allowedRoles = ['administrador', 'medico_especialista', 'medico_residente', 'enfermero', 'cajero'];
     if (!allowedRoles.includes(req.user.rol)) {
       return res.status(403).json({
         success: false,
@@ -727,8 +732,8 @@ router.put('/cirugias/:id/estado', authenticateToken, auditMiddleware('cirugias'
     const { id } = req.params;
     const { estado, observaciones, motivo } = req.body;
 
-    // Verificar permisos
-    const allowedRoles = ['administrador', 'medico_especialista', 'enfermero'];
+    // Verificar permisos - cajeros, enfermeros, médicos y administradores pueden cambiar estado
+    const allowedRoles = ['administrador', 'medico_especialista', 'medico_residente', 'enfermero', 'cajero'];
     if (!allowedRoles.includes(req.user.rol)) {
       return res.status(403).json({
         success: false,
@@ -938,8 +943,9 @@ router.delete('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), a
     const { id } = req.params;
     const { motivo } = req.body;
 
-    // Verificar permisos
-    if (req.user.rol !== 'administrador' && req.user.rol !== 'medico_especialista') {
+    // Verificar permisos - cajeros, enfermeros, médicos y administradores pueden cancelar cirugías
+    const allowedRoles = ['administrador', 'medico_especialista', 'medico_residente', 'enfermero', 'cajero'];
+    if (!allowedRoles.includes(req.user.rol)) {
       return res.status(403).json({
         success: false,
         message: 'No tiene permisos para cancelar cirugías'
@@ -1375,6 +1381,524 @@ router.get('/disponibles/horario', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     logger.logError('GET_AVAILABLE_QUIROFANOS', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/quirofanos/agenda/disponibilidad - Obtener disponibilidad de quirófanos para agenda
+// Considera quirófanos ocupados mostrando cuándo estarán disponibles (después de 6h)
+router.get('/agenda/disponibilidad', authenticateToken, async (req, res) => {
+  try {
+    const { fecha, quirofanoId } = req.query;
+
+    // Si no se proporciona fecha, usar la fecha actual
+    const fechaConsulta = fecha ? new Date(fecha) : new Date();
+    const inicioDelDia = new Date(fechaConsulta);
+    inicioDelDia.setHours(0, 0, 0, 0);
+    const finDelDia = new Date(fechaConsulta);
+    finDelDia.setHours(23, 59, 59, 999);
+
+    const whereClause = {
+      estado: { not: 'fuera_de_servicio' }
+    };
+
+    if (quirofanoId) {
+      whereClause.id = parseInt(quirofanoId);
+    }
+
+    // Obtener todos los quirófanos con sus cirugías activas
+    const quirofanos = await prisma.quirofano.findMany({
+      where: whereClause,
+      include: {
+        cirugias: {
+          where: {
+            estado: { in: ['programada', 'en_progreso'] },
+            OR: [
+              // Cirugías que empiezan en el día consultado
+              {
+                fechaInicio: {
+                  gte: inicioDelDia,
+                  lte: finDelDia
+                }
+              },
+              // Cirugías en progreso (pueden haber iniciado antes)
+              {
+                estado: 'en_progreso'
+              }
+            ]
+          },
+          orderBy: { fechaInicio: 'asc' },
+          include: {
+            paciente: {
+              select: {
+                nombre: true,
+                apellidoPaterno: true,
+                apellidoMaterno: true
+              }
+            },
+            medico: {
+              select: {
+                nombre: true,
+                apellidoPaterno: true,
+                especialidad: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const ahora = new Date();
+
+    const disponibilidad = quirofanos.map(quirofano => {
+      const cirugiasDelDia = quirofano.cirugias;
+      let estadoActual = quirofano.estado;
+      let disponibleDesde = null;
+      let cirugiaActual = null;
+      let proximasCirugias = [];
+
+      // Buscar cirugía en progreso
+      const cirugiaEnProgreso = cirugiasDelDia.find(c => c.estado === 'en_progreso');
+
+      if (cirugiaEnProgreso) {
+        cirugiaActual = cirugiaEnProgreso;
+        estadoActual = 'ocupado';
+
+        // Calcular tiempo máximo de ocupación (6 horas desde inicio)
+        const tiempoMaximoOcupacion = new Date(cirugiaEnProgreso.fechaInicio);
+        tiempoMaximoOcupacion.setHours(tiempoMaximoOcupacion.getHours() + MAX_CIRUGIA_DURATION_HOURS);
+
+        // El quirófano estará disponible después de 6h o cuando termine la cirugía programada
+        if (cirugiaEnProgreso.fechaFin) {
+          disponibleDesde = new Date(Math.min(tiempoMaximoOcupacion.getTime(), new Date(cirugiaEnProgreso.fechaFin).getTime()));
+        } else {
+          disponibleDesde = tiempoMaximoOcupacion;
+        }
+
+        // Si ya pasaron las 6 horas, marcar como disponible ahora
+        if (ahora >= tiempoMaximoOcupacion) {
+          disponibleDesde = ahora;
+        }
+
+        // Las demás cirugías programadas
+        proximasCirugias = cirugiasDelDia.filter(c => c.estado === 'programada');
+      } else if (estadoActual === 'ocupado') {
+        // Estado marcado como ocupado pero sin cirugía en progreso - disponible inmediatamente
+        disponibleDesde = ahora;
+        proximasCirugias = cirugiasDelDia.filter(c => c.estado === 'programada');
+      } else {
+        // No hay cirugía en progreso, verificar próximas programadas
+        proximasCirugias = cirugiasDelDia.filter(c => c.estado === 'programada');
+      }
+
+      // Calcular slots disponibles para el día
+      const slotsDisponibles = calcularSlotsDisponibles(
+        inicioDelDia,
+        finDelDia,
+        cirugiasDelDia,
+        disponibleDesde,
+        ahora
+      );
+
+      return {
+        id: quirofano.id,
+        numero: quirofano.numero,
+        tipo: quirofano.tipo,
+        especialidad: quirofano.especialidad,
+        estadoActual,
+        precioHora: parseFloat(quirofano.precioHora || 0),
+        cirugiaActual: cirugiaActual ? {
+          id: cirugiaActual.id,
+          tipoIntervencion: cirugiaActual.tipoIntervencion,
+          fechaInicio: cirugiaActual.fechaInicio,
+          fechaFinEstimada: cirugiaActual.fechaFin,
+          paciente: cirugiaActual.paciente,
+          medico: cirugiaActual.medico,
+          tiempoTranscurrido: Math.floor((ahora - new Date(cirugiaActual.fechaInicio)) / (1000 * 60)), // minutos
+          tiempoRestanteMaximo: Math.max(0, Math.floor((disponibleDesde - ahora) / (1000 * 60))) // minutos hasta liberación automática
+        } : null,
+        disponibleDesde: estadoActual === 'ocupado' ? disponibleDesde : (estadoActual === 'disponible' ? ahora : null),
+        proximasCirugias: proximasCirugias.map(c => ({
+          id: c.id,
+          tipoIntervencion: c.tipoIntervencion,
+          fechaInicio: c.fechaInicio,
+          fechaFin: c.fechaFin,
+          paciente: c.paciente,
+          medico: c.medico
+        })),
+        slotsDisponibles
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fecha: fechaConsulta,
+        duracionMaximaCirugiaHoras: MAX_CIRUGIA_DURATION_HOURS,
+        quirofanos: disponibilidad
+      }
+    });
+  } catch (error) {
+    logger.logError('GET_AGENDA_DISPONIBILIDAD', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// Función auxiliar para calcular slots disponibles en el día
+function calcularSlotsDisponibles(inicioDelDia, finDelDia, cirugias, disponibleDesde, ahora) {
+  const slots = [];
+  const cirugiasOrdenadas = [...cirugias]
+    .filter(c => c.estado === 'programada' || c.estado === 'en_progreso')
+    .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio));
+
+  // Punto de inicio: ahora o cuando esté disponible
+  let puntoActual = disponibleDesde ? new Date(Math.max(disponibleDesde.getTime(), ahora.getTime())) : ahora;
+
+  // Si el punto actual es antes del inicio del día, usar inicio del día
+  if (puntoActual < inicioDelDia) {
+    puntoActual = new Date(inicioDelDia);
+  }
+
+  for (const cirugia of cirugiasOrdenadas) {
+    const inicioCirugia = new Date(cirugia.fechaInicio);
+
+    // Si hay espacio antes de esta cirugía
+    if (puntoActual < inicioCirugia) {
+      const duracionMinutos = Math.floor((inicioCirugia - puntoActual) / (1000 * 60));
+      if (duracionMinutos >= 60) { // Solo slots de al menos 1 hora
+        slots.push({
+          inicio: new Date(puntoActual),
+          fin: new Date(inicioCirugia),
+          duracionMinutos
+        });
+      }
+    }
+
+    // Mover el punto actual al fin de esta cirugía (o 6h después del inicio si no tiene fin)
+    if (cirugia.fechaFin) {
+      puntoActual = new Date(cirugia.fechaFin);
+    } else {
+      const finEstimado = new Date(inicioCirugia);
+      finEstimado.setHours(finEstimado.getHours() + MAX_CIRUGIA_DURATION_HOURS);
+      puntoActual = finEstimado;
+    }
+  }
+
+  // Agregar slot final del día si hay espacio
+  if (puntoActual < finDelDia) {
+    const duracionMinutos = Math.floor((finDelDia - puntoActual) / (1000 * 60));
+    if (duracionMinutos >= 60) {
+      slots.push({
+        inicio: new Date(puntoActual),
+        fin: new Date(finDelDia),
+        duracionMinutos
+      });
+    }
+  }
+
+  return slots;
+}
+
+// POST /api/quirofanos/liberar-automatico - Liberar quirófanos con cirugías de más de 6 horas
+// Este endpoint puede ser llamado por un cron job o al cargar la página de quirófanos
+router.post('/liberar-automatico', authenticateToken, async (req, res) => {
+  try {
+    const ahora = new Date();
+    const hace6Horas = new Date(ahora.getTime() - (MAX_CIRUGIA_DURATION_HOURS * 60 * 60 * 1000));
+
+    // Buscar cirugías en progreso que hayan iniciado hace más de 6 horas
+    const cirugiasExcedidas = await prisma.cirugiaQuirofano.findMany({
+      where: {
+        estado: 'en_progreso',
+        fechaInicio: {
+          lt: hace6Horas
+        }
+      },
+      include: {
+        quirofano: true,
+        paciente: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true
+          }
+        }
+      }
+    });
+
+    const resultados = [];
+
+    for (const cirugia of cirugiasExcedidas) {
+      try {
+        // Completar la cirugía automáticamente
+        await prisma.$transaction(async (tx) => {
+          // Actualizar cirugía a completada
+          await tx.cirugiaQuirofano.update({
+            where: { id: cirugia.id },
+            data: {
+              estado: 'completada',
+              fechaFin: ahora,
+              observaciones: cirugia.observaciones
+                ? `${cirugia.observaciones}\n[LIBERACIÓN AUTOMÁTICA - ${ahora.toISOString()}]: Cirugía completada automáticamente después de ${MAX_CIRUGIA_DURATION_HOURS} horas`
+                : `[LIBERACIÓN AUTOMÁTICA - ${ahora.toISOString()}]: Cirugía completada automáticamente después de ${MAX_CIRUGIA_DURATION_HOURS} horas`
+            }
+          });
+
+          // Liberar el quirófano (poner en limpieza)
+          await tx.quirofano.update({
+            where: { id: cirugia.quirofanoId },
+            data: { estado: 'limpieza' }
+          });
+        });
+
+        const tiempoExcedido = Math.floor((ahora - new Date(cirugia.fechaInicio)) / (1000 * 60 * 60));
+
+        resultados.push({
+          cirugiaId: cirugia.id,
+          quirofanoNumero: cirugia.quirofano.numero,
+          paciente: `${cirugia.paciente.nombre} ${cirugia.paciente.apellidoPaterno}`,
+          tiempoTranscurridoHoras: tiempoExcedido,
+          liberado: true
+        });
+
+        logger.logInfo('QUIROFANO_LIBERACION_AUTOMATICA', {
+          cirugiaId: cirugia.id,
+          quirofanoId: cirugia.quirofanoId,
+          quirofanoNumero: cirugia.quirofano.numero,
+          tiempoTranscurridoHoras: tiempoExcedido,
+          fechaInicio: cirugia.fechaInicio
+        });
+      } catch (liberacionError) {
+        logger.logError('QUIROFANO_LIBERACION_ERROR', liberacionError, {
+          cirugiaId: cirugia.id
+        });
+        resultados.push({
+          cirugiaId: cirugia.id,
+          quirofanoNumero: cirugia.quirofano.numero,
+          liberado: false,
+          error: liberacionError.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        cirugiasLiberadas: resultados.filter(r => r.liberado).length,
+        cirugiasConError: resultados.filter(r => !r.liberado).length,
+        detalles: resultados,
+        duracionMaximaHoras: MAX_CIRUGIA_DURATION_HOURS
+      },
+      message: resultados.length > 0
+        ? `Se procesaron ${resultados.length} cirugías excedidas`
+        : 'No hay cirugías que hayan excedido el tiempo máximo'
+    });
+  } catch (error) {
+    logger.logError('LIBERACION_AUTOMATICA_ERROR', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// PUT /api/quirofanos/cirugias/:id - Editar/Reprogramar cirugía
+router.put('/cirugias/:id', authenticateToken, auditMiddleware('cirugias'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      quirofanoId,
+      pacienteId,
+      medicoId,
+      tipoIntervencion,
+      fechaInicio,
+      fechaFin,
+      observaciones,
+      equipoMedico
+    } = req.body;
+
+    // Verificar permisos - cajeros, enfermeros, médicos y administradores pueden editar cirugías
+    const allowedRoles = ['administrador', 'medico_especialista', 'medico_residente', 'enfermero', 'cajero'];
+    if (!allowedRoles.includes(req.user.rol)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tiene permisos para editar cirugías'
+      });
+    }
+
+    // Verificar que la cirugía existe
+    const cirugiaExistente = await prisma.cirugiaQuirofano.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!cirugiaExistente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cirugía no encontrada'
+      });
+    }
+
+    // No se puede editar una cirugía completada o cancelada
+    if (['completada', 'cancelada'].includes(cirugiaExistente.estado)) {
+      return res.status(400).json({
+        success: false,
+        message: `No se puede editar una cirugía ${cirugiaExistente.estado}`
+      });
+    }
+
+    // Preparar datos de actualización
+    const datosActualizacion = {};
+
+    // Validar y actualizar campos si se proporcionan
+    if (tipoIntervencion) datosActualizacion.tipoIntervencion = tipoIntervencion;
+    if (observaciones !== undefined) datosActualizacion.observaciones = observaciones;
+    if (equipoMedico) datosActualizacion.equipoMedico = equipoMedico;
+
+    // Validar paciente si se proporciona
+    if (pacienteId && pacienteId !== cirugiaExistente.pacienteId) {
+      const paciente = await prisma.paciente.findUnique({
+        where: { id: parseInt(pacienteId) }
+      });
+      if (!paciente) {
+        return res.status(404).json({
+          success: false,
+          message: 'Paciente no encontrado'
+        });
+      }
+      datosActualizacion.pacienteId = parseInt(pacienteId);
+    }
+
+    // Validar médico si se proporciona
+    if (medicoId && medicoId !== cirugiaExistente.medicoId) {
+      const medico = await prisma.empleado.findUnique({
+        where: { id: parseInt(medicoId) }
+      });
+      if (!medico) {
+        return res.status(404).json({
+          success: false,
+          message: 'Médico no encontrado'
+        });
+      }
+      datosActualizacion.medicoId = parseInt(medicoId);
+    }
+
+    // Validar fechas y quirófano si se proporcionan (reprogramación)
+    const nuevoQuirofanoId = quirofanoId ? parseInt(quirofanoId) : cirugiaExistente.quirofanoId;
+    const nuevaFechaInicio = fechaInicio ? new Date(fechaInicio) : cirugiaExistente.fechaInicio;
+    const nuevaFechaFin = fechaFin ? new Date(fechaFin) : cirugiaExistente.fechaFin;
+
+    // Si se cambió el quirófano, validar que existe
+    if (quirofanoId && quirofanoId !== cirugiaExistente.quirofanoId) {
+      const quirofano = await prisma.quirofano.findUnique({
+        where: { id: nuevoQuirofanoId }
+      });
+      if (!quirofano) {
+        return res.status(404).json({
+          success: false,
+          message: 'Quirófano no encontrado'
+        });
+      }
+      datosActualizacion.quirofanoId = nuevoQuirofanoId;
+    }
+
+    // Validar fechas si se proporcionan
+    if (fechaInicio || fechaFin) {
+      // Solo validar fechas futuras si la cirugía no está en progreso
+      if (cirugiaExistente.estado !== 'en_progreso') {
+        const ahora = new Date();
+        if (nuevaFechaInicio < ahora) {
+          return res.status(400).json({
+            success: false,
+            message: 'La fecha de inicio no puede ser una fecha pasada'
+          });
+        }
+      }
+
+      if (nuevaFechaFin <= nuevaFechaInicio) {
+        return res.status(400).json({
+          success: false,
+          message: 'La fecha de fin debe ser posterior a la fecha de inicio'
+        });
+      }
+
+      // Verificar conflictos con otras cirugías (excluyendo la actual)
+      const conflictos = await prisma.cirugiaQuirofano.findMany({
+        where: {
+          id: { not: parseInt(id) },
+          quirofanoId: nuevoQuirofanoId,
+          estado: { in: ['programada', 'en_progreso'] },
+          OR: [
+            {
+              fechaInicio: { lt: nuevaFechaFin, gte: nuevaFechaInicio }
+            },
+            {
+              fechaFin: { gt: nuevaFechaInicio, lte: nuevaFechaFin }
+            },
+            {
+              AND: [
+                { fechaInicio: { lte: nuevaFechaInicio } },
+                { fechaFin: { gte: nuevaFechaFin } }
+              ]
+            }
+          ]
+        }
+      });
+
+      if (conflictos.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'El quirófano ya está reservado para ese horario'
+        });
+      }
+
+      if (fechaInicio) datosActualizacion.fechaInicio = nuevaFechaInicio;
+      if (fechaFin) datosActualizacion.fechaFin = nuevaFechaFin;
+    }
+
+    // Si se reprogramó fecha o quirófano, cambiar estado a 'reprogramada' (si estaba programada)
+    if ((fechaInicio || fechaFin || quirofanoId) && cirugiaExistente.estado === 'programada') {
+      datosActualizacion.estado = 'reprogramada';
+    }
+
+    // Actualizar la cirugía
+    const cirugiaActualizada = await prisma.cirugiaQuirofano.update({
+      where: { id: parseInt(id) },
+      data: datosActualizacion,
+      include: {
+        quirofano: true,
+        paciente: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true
+          }
+        },
+        medico: {
+          select: {
+            nombre: true,
+            apellidoPaterno: true,
+            apellidoMaterno: true,
+            especialidad: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: cirugiaActualizada,
+      message: 'Cirugía actualizada exitosamente'
+    });
+  } catch (error) {
+    logger.logError('UPDATE_SURGERY', error, { cirugiaId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
