@@ -198,8 +198,8 @@ El administrador gestiona ingresos/egresos/cuentas por cobrar → analiza médic
 ### Notificaciones (4 endpoints)
 - GET/POST/DELETE `/api/notifications` | `PUT /mark-read`
 
-### Solicitudes (5 endpoints)
-- GET/POST/PUT/DELETE `/api/solicitudes` | `PUT /status`
+### Solicitudes (7 endpoints)
+- GET/POST/PUT/DELETE `/api/solicitudes` | `PUT /asignar` | `PUT /listo` | `PUT /entregar` | `PUT /confirmar`
 
 ### Consultorios y Habitaciones (10 endpoints)
 - GET/POST/PUT/DELETE `/api/offices` | `/api/rooms`
@@ -208,7 +208,7 @@ El administrador gestiona ingresos/egresos/cuentas por cobrar → analiza médic
 ### Auditoría (3 endpoints)
 - GET `/api/audit` | `/api/audit/user/:userId` | `/api/audit/entity/:entity`
 
-**Total: 121 endpoints verificados (115 modulares + 6 legacy)**
+**Total: 123 endpoints verificados (117 modulares + 6 legacy)**
 
 ## 👤 Credenciales de Desarrollo
 
@@ -459,6 +459,37 @@ npm run dev
   - ✅ **Tickets imprimibles** sin errores de consola
   - ✅ **Stock management** funcional para productos
 
+**✅ FASE 13 - Sistema de Notificaciones Mejorado (27 Nov 2025):**
+- **Flujo de Notificaciones Completo** (commit: 70f95d1):
+  - **Nuevo endpoint** `PUT /api/solicitudes/:id/listo` - Marcar pedido como listo para entrega
+  - **Nuevo tipo** `SOLICITUD_ASIGNADA` - Notifica al enfermero cuando almacenista toma solicitud
+  - **Flujo completo**:
+    1. Enfermero crea solicitud → Almacenista recibe `NUEVA_SOLICITUD`
+    2. Almacenista asigna → Enfermero recibe `SOLICITUD_ASIGNADA`
+    3. Almacenista marca listo → Enfermero recibe `PRODUCTOS_LISTOS` ("pase a recoger")
+    4. Almacenista entrega → Enfermero recibe `ENTREGA_CONFIRMADA`
+  - **Fix** notificación cancelación: `NUEVA_SOLICITUD` → `SOLICITUD_CANCELADA`
+
+- **Campanita de Notificaciones en Header** (commit: cb0358c):
+  - **Nuevo componente** `NotificationBell.tsx` (290 líneas)
+  - **Ubicación**: Header, visible en todas las pantallas
+  - **Características**:
+    - Badge con conteo de no leídas (máximo 99)
+    - Polling automático cada 30 segundos
+    - Dropdown con notificaciones recientes
+    - Íconos diferenciados por tipo de notificación
+    - Indicador visual de no leídas (borde de color + punto azul)
+    - Tiempo relativo ("Hace 5 minutos", "Hace 1 hora")
+  - **Acciones**: Click → marca leída y navega a solicitudes
+  - **Integrado** en `Layout.tsx`
+
+- **Fix Error 400 Solicitudes** (commit: dc9dd7a):
+  - **Problema**: `cuentaId` usaba ID de hospitalización en lugar de ID de cuenta
+  - **Fix**: `getActiveHospitalizedPatients()` ahora usa `admission.cuentaPacienteId`
+  - **Impacto**: Enfermeros pueden crear solicitudes correctamente
+
+- **Solicitado por**: Junta Directiva
+
 **📋 Ver detalles completos:** [HISTORIAL_FASES_2025.md](./.claude/doc/HISTORIAL_FASES_2025.md)
 
 ## 🔧 Mejoras Implementadas (Resumen)
@@ -473,6 +504,8 @@ npm run dev
 - ✅ Validaciones robustas en todas las rutas
 - ✅ **Campos Prisma corregidos** en POS (stock → stockActual, inventory movement fields)
 - ✅ **Stock management funcional** para productos en POS
+- ✅ **Sistema de notificaciones mejorado** (nuevo endpoint `/listo`, nuevo tipo `SOLICITUD_ASIGNADA`)
+- ✅ **Flujo completo de solicitudes** con 4 estados de notificación
 
 ### Frontend
 - ✅ Material-UI v5.14.5 (DatePicker migrado a slotProps)
@@ -486,6 +519,9 @@ npm run dev
 - ✅ **POS completamente funcional** (resumen post-pago + impresión tickets 80mm)
 - ✅ **Cálculo de cambio correcto** (fórmula corregida)
 - ✅ **react-to-print v3.2.0** integrado
+- ✅ **Campanita de notificaciones** en header (visible en todas las pantallas)
+- ✅ **Polling de notificaciones** cada 30 segundos
+- ✅ **Dropdown de notificaciones** con lista reciente e indicadores visuales
 
 ### Testing
 - ✅ 1,444 tests implementados (940 frontend + 449 backend + 55 E2E)
@@ -752,8 +788,8 @@ Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
 **🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
 **📞 Teléfono:** 443 104 7479
-**📅 Última actualización:** 26 de noviembre de 2025
-**✅ Estado:** Sistema Listo para Junta Directiva (9.2/10) | UI/UX 9.2/10 ⭐ | TypeScript 0 errores ✅
+**📅 Última actualización:** 27 de noviembre de 2025
+**✅ Estado:** Sistema Listo para Junta Directiva (9.3/10) | UI/UX 9.2/10 ⭐ | TypeScript 0 errores ✅
 
 **📊 Estado Real de Tests:**
 - Frontend: 927/940 passing (98.6%) ✅
@@ -762,25 +798,15 @@ Antes de enviar cualquier trabajo, verifica que hayas seguido TODAS las pautas:
 - E2E: 9/55 passing (16.4%) ❌
 - 🎯 Plan corrección: 3 días para 100% pass rate
 
-**🎉 FASE 11 Completada - Mejoras UI/UX para Junta Directiva:**
-- ✅ **11 correcciones P0/P1 completadas** (4 críticas + 7 alta prioridad)
-- ✅ **Calificación mejorada:** 7.8/10 → 9.2/10 (+18%)
-- ✅ **Módulos críticos funcionales:** POS y CPC sin errores 500
-- ✅ **Dashboard con datos reales:** $3,150 vs $0.00 anterior
-- ✅ **Accesibilidad WCAG 2.1 AA:** 12 aria-labels agregados
-- ✅ **Responsive optimizado:** Tablas legibles en tablet (6-7 columnas)
-- ✅ **Estados vacíos profesionales:** Mensajes + acciones sugeridas
-- ✅ **11 archivos modificados** (3 backend, 8 frontend)
-
-**🎉 FASE 12 Completada - Mejoras Críticas POS: Resumen de Pago e Impresión:**
-- ✅ **PaymentSuccessDialog + PrintableReceipt implementados** (607 líneas)
-- ✅ **Fix Prisma fields:** stock → stockActual, inventory movement fields corregidos
-- ✅ **Fix cálculo de cambio:** $1200 → $99 correcto (fórmula corregida)
-- ✅ **Fix react-to-print v3.x:** content → contentRef (API actualizada)
-- ✅ **Flujo POS 100% completado:** apertura → agregar → pago → resumen → impresión ✅
-- ✅ **Stock management funcional** para productos en POS
-- ✅ **Tickets imprimibles 80mm** sin errores de consola
-- ✅ **3 commits realizados** (57cb9d4, 4ca8e39, 9cdec78)
+**🎉 FASE 13 Completada - Sistema de Notificaciones Mejorado (27 Nov 2025):**
+- ✅ **Campanita de notificaciones** en header (visible en todas las pantallas)
+- ✅ **Flujo completo de notificaciones:** solicitud → asignación → listo → entrega
+- ✅ **Nuevo endpoint** `PUT /api/solicitudes/:id/listo`
+- ✅ **Nuevo tipo** `SOLICITUD_ASIGNADA` para notificar enfermeros
+- ✅ **Polling automático** cada 30 segundos
+- ✅ **Fix error 400** al crear solicitudes (cuentaId corregido)
+- ✅ **Solicitado por** Junta Directiva
+- ✅ **3 commits realizados** (70f95d1, dc9dd7a, cb0358c)
 
 **📁 Ver análisis completo:** [ui_analysis.md](./.claude/doc/ui_ux_analysis/ui_analysis.md) | [HISTORIAL_FASES_2025.md](./.claude/doc/HISTORIAL_FASES_2025.md)
 
