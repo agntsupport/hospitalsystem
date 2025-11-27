@@ -3,7 +3,7 @@
 
 **Desarrollado por:** Alfredo Manuel Reyes
 **Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
-**Última actualización:** 12 de noviembre de 2025
+**Última actualización:** 26 de noviembre de 2025
 
 ---
 
@@ -11,7 +11,7 @@
 
 Este documento detalla el historial completo de las fases de desarrollo del Sistema de Gestión Hospitalaria Integral desde su inicio hasta la fecha actual. Cada fase representa mejoras significativas en funcionalidad, calidad y rendimiento del sistema.
 
-**Total de Fases Completadas:** 11 (FASE 0 - FASE 11)
+**Total de Fases Completadas:** 12 (FASE 0 - FASE 12)
 **Calificación del Sistema:** 9.2/10 ⭐
 **Estado:** Listo para Presentación a Junta Directiva ✅
 
@@ -522,6 +522,258 @@ Este documento detalla el historial completo de las fases de desarrollo del Sist
 
 ---
 
+## FASE 12 - Mejoras Críticas POS: Resumen de Pago e Impresión de Tickets (26 Nov 2025)
+
+**Fecha:** 26 de noviembre de 2025
+**Objetivo:** Completar flujo de cierre de cuentas POS con resumen de transacción e impresión de tickets
+**Commits:** 3 (57cb9d4, 4ca8e39, 9cdec78)
+
+### Contexto Inicial
+
+El módulo POS tenía dos problemas críticos:
+1. **Falta de resumen post-pago:** Al cerrar cuenta, no mostraba resumen de transacción ni cambio
+2. **Imposibilidad de agregar productos:** Error 400 Bad Request al intentar agregar productos a cuentas
+
+### Mejoras Implementadas
+
+#### 1. Componentes de Resumen de Transacción (Commit 57cb9d4)
+
+##### PaymentSuccessDialog.tsx (350 líneas)
+- ✅ Diálogo completo post-pago con resumen de transacción
+- ✅ Muestra información del paciente y cuenta
+- ✅ Resumen financiero completo (cargos, adeudo, recibido, **cambio**)
+- ✅ Soporte para 3 tipos de transacción:
+  - **Cobro:** Muestra cambio destacado (H5, color primario)
+  - **Devolución:** Muestra monto a devolver (color warning)
+  - **CPC:** Muestra saldo por cobrar + motivo (color info)
+- ✅ Detalles de pago (método, fecha/hora, cajero)
+- ✅ Botón "Imprimir Ticket" integrado
+- ✅ Iconografía Material-UI contextual
+
+##### PrintableReceipt.tsx (257 líneas)
+- ✅ Componente de recibo imprimible formato térmico 80mm
+- ✅ Diseño optimizado para impresoras POS
+- ✅ Estilos inline con monospace font
+- ✅ Estructura de ticket profesional:
+  - Encabezado (Hospital + AGNT)
+  - Tipo de transacción (banner destacado)
+  - Información de cuenta y paciente
+  - Resumen financiero con cambio
+  - Forma de pago y cajero
+  - Footer con mensaje de agradecimiento
+  - Código de barras simulado
+- ✅ Formato de impresión con `@page` size 80mm
+- ✅ Soporte para react-to-print
+
+##### Integración en AccountClosureDialog.tsx
+- ✅ Agregado estado para PaymentSuccessDialog
+- ✅ Preparación de transactionData post-cierre exitoso
+- ✅ Renderizado condicional del diálogo de resumen
+- ✅ Handler para cerrar ambos diálogos y refrescar lista
+
+**Archivos creados:** 2
+**Líneas de código:** 607
+**Dependencia agregada:** react-to-print@3.2.0
+
+#### 2. Fix Crítico: Campos Prisma en Transacciones POS (Commit 4ca8e39)
+
+##### Problema 1: Stock Field Name Mismatch
+- **Error:** `PrismaClientValidationError: Unknown argument 'stock'`
+- **Causa:** Código usaba `stock` pero schema Prisma define `stockActual`
+- **Archivos:** `backend/routes/pos.routes.js` (líneas 1084, 1085, 1096)
+
+**Correcciones:**
+```javascript
+// ANTES (INCORRECTO):
+if (producto.stock < cantidad) {
+  throw new Error(`Stock insuficiente. Disponible: ${producto.stock}`);
+}
+await tx.producto.update({
+  data: { stock: { decrement: cantidad } }
+});
+
+// DESPUÉS (CORRECTO):
+if (producto.stockActual < cantidad) {
+  throw new Error(`Stock insuficiente. Disponible: ${producto.stockActual}`);
+}
+await tx.producto.update({
+  data: { stockActual: { decrement: cantidad } }
+});
+```
+
+##### Problema 2: Inventory Movement Field Names
+- **Error:** `Argument 'tipoMovimiento' is missing`
+- **Causa:** Campos no coincidían con schema MovimientoInventario
+- **Archivo:** `backend/routes/pos.routes.js` (líneas 1103-1112)
+
+**Correcciones:**
+```javascript
+// ANTES (INCORRECTO):
+await tx.movimientoInventario.create({
+  data: {
+    productoId: parseInt(productoId),
+    tipo: 'salida',                    // ❌ Campo incorrecto
+    descripcion: `Venta a cuenta...`,  // ❌ Campo incorrecto
+    empleadoId: req.user.id            // ❌ Campo incorrecto
+  }
+});
+
+// DESPUÉS (CORRECTO):
+await tx.movimientoInventario.create({
+  data: {
+    productoId: parseInt(productoId),
+    tipoMovimiento: 'salida',          // ✅ Enum TipoMovimiento
+    motivo: `Venta a cuenta...`,       // ✅ Campo correcto
+    usuarioId: req.user.id             // ✅ Campo correcto
+  }
+});
+```
+
+**Impacto:**
+- ✅ Productos ahora se agregan correctamente a cuentas POS
+- ✅ Stock se decrementa automáticamente
+- ✅ Movimientos de inventario se registran sin errores
+
+#### 3. Fix Crítico: Cálculo de Cambio y React-to-Print v3.x (Commit 9cdec78)
+
+##### Problema 1: Cambio Mal Calculado
+- **Error visual:** Cambio mostraba $1200 cuando debía ser $99
+- **Causa:** Fórmula incorrecta con `Math.max(0, finalBalance)`
+- **Archivo:** `frontend/src/components/pos/AccountClosureDialog.tsx` (línea 185-189)
+
+**Ejemplo del error:**
+```
+Total Adeudado: $1101.00 (debe dinero, finalBalance = -$1101)
+Monto Recibido: $1200.00
+Cambio mostrado: $1200.00 ❌ (debería ser $99.00)
+```
+
+**Corrección:**
+```javascript
+// ANTES (INCORRECTO):
+const change = totalReceived - Math.max(0, finalBalance);
+// Cuando finalBalance = -$1101:
+// change = $1200 - Math.max(0, -$1101) = $1200 - 0 = $1200 ❌
+
+// DESPUÉS (CORRECTO):
+const change = finalBalance < 0 ? totalReceived - Math.abs(finalBalance) : 0;
+// Ahora cuando finalBalance = -$1101:
+// change = $1200 - Math.abs(-$1101) = $1200 - $1101 = $99 ✅
+```
+
+##### Problema 2: Error Impresión de Tickets
+- **Error consola:** `"react-to-print" did not receive a contentRef`
+- **Causa:** Versión instalada 3.2.0 usa API diferente a v2.x
+- **Archivo:** `frontend/src/components/pos/PaymentSuccessDialog.tsx` (línea 62-77)
+
+**Corrección:**
+```javascript
+// ANTES (API v2.x - INCORRECTO):
+const handlePrint = useReactToPrint({
+  content: () => receiptRef.current,  // ❌ API v2.x
+  ...
+});
+
+// DESPUÉS (API v3.x - CORRECTO):
+const handlePrint = useReactToPrint({
+  contentRef: receiptRef,  // ✅ API v3.x
+  ...
+});
+```
+
+**Impacto:**
+- ✅ Cambio calculado correctamente ($99 vs $1200)
+- ✅ Impresión de tickets funcional sin errores
+
+### Testing Realizado
+
+#### Test Manual con Playwright
+- ✅ Navegación a POS module
+- ✅ Apertura de cuenta #4 (Sofía López Torres)
+- ✅ Agregado Paracetamol 500mg ($1.00)
+- ✅ Verificación de total actualizado: $700 → $701
+- ✅ Confirmación de stock decrementado en BD
+- ✅ Simulación de cierre de cuenta con cambio
+
+#### Escenarios Validados
+1. **Producto agregado exitosamente:**
+   - Total cuenta: $701.00 ✅
+   - Breakdown: S: $700.00 | P: $1.00 ✅
+   - Balance: -$701.00 DEBE ✅
+
+2. **Cálculo de cambio correcto:**
+   - Adeudado: $1101.00
+   - Recibido: $1200.00
+   - Cambio: $99.00 ✅ (antes mostraba $1200 ❌)
+
+3. **Impresión de ticket:**
+   - Sin errores de consola ✅
+   - Formato 80mm correcto ✅
+   - Información completa ✅
+
+### Archivos Modificados (5 total)
+
+#### Frontend (3 archivos)
+1. `src/components/pos/PaymentSuccessDialog.tsx` - **NUEVO** (350 líneas)
+2. `src/components/pos/PrintableReceipt.tsx` - **NUEVO** (257 líneas)
+3. `src/components/pos/AccountClosureDialog.tsx` - Integración + fix cambio
+
+#### Backend (1 archivo)
+4. `backend/routes/pos.routes.js` - Fix stock + inventory movement fields
+
+#### Configuración (1 archivo)
+5. `frontend/package.json` - Agregado react-to-print@3.2.0
+
+### Commits Realizados
+
+1. **57cb9d4** - `feat: Implementar resumen de pago y ticket imprimible en POS`
+   - PaymentSuccessDialog.tsx
+   - PrintableReceipt.tsx
+   - Integración en AccountClosureDialog
+   - Instalación react-to-print
+
+2. **4ca8e39** - `fix: Corregir campos Prisma en transacciones POS para productos`
+   - stock → stockActual (3 ubicaciones)
+   - tipo → tipoMovimiento
+   - descripcion → motivo
+   - empleadoId → usuarioId
+
+3. **9cdec78** - `fix: Corregir cálculo de cambio y compatibilidad react-to-print v3.x`
+   - Fórmula de cambio corregida
+   - content → contentRef (API v3.x)
+
+### Impacto Final
+
+#### Flujo de Trabajo POS Completado
+- ✅ **Apertura de cuenta** - Funcional
+- ✅ **Agregar servicios** - Funcional
+- ✅ **Agregar productos** - Ahora funcional ✅
+- ✅ **Pagos parciales** - Funcional
+- ✅ **Cierre de cuenta** - Con resumen completo ✅
+- ✅ **Impresión de tickets** - Funcional ✅
+
+#### Mejoras de UX
+- ✅ Cambio calculado y mostrado correctamente
+- ✅ Resumen completo post-transacción
+- ✅ Opción de imprimir ticket de compra
+- ✅ Información clara del paciente y transacción
+- ✅ Diferenciación visual por tipo de transacción
+
+#### Estabilidad Backend
+- ✅ Campos Prisma correctos en todas las transacciones
+- ✅ Stock de productos se decrementa automáticamente
+- ✅ Movimientos de inventario registrados correctamente
+- ✅ Sin errores 400 Bad Request en productos
+
+### Lecciones Aprendidas
+
+1. **Validación de campos Prisma:** Siempre verificar nombres exactos en schema
+2. **Versionado de dependencias:** Revisar breaking changes en major versions
+3. **Testing de flujos completos:** Validar toda la cadena de transacciones
+4. **Fórmulas de cálculo:** Documentar lógica con comentarios claros
+
+---
+
 ## Resumen de Todas las Fases
 
 ### Métricas Globales
@@ -560,17 +812,17 @@ Este documento detalla el historial completo de las fases de desarrollo del Sist
 
 ## Próximas Fases Planificadas
 
-### FASE 12: Sistema de Citas Médicas
+### FASE 13: Sistema de Citas Médicas
 - Calendarios integrados
 - Notificaciones automáticas
 - Gestión de horarios médicos
 
-### FASE 13: Dashboard Tiempo Real
+### FASE 14: Dashboard Tiempo Real
 - WebSockets implementados
 - Notificaciones push
 - Métricas en vivo
 
-### FASE 14: Expediente Médico Completo
+### FASE 15: Expediente Médico Completo
 - Historia clínica digitalizada
 - Recetas electrónicas
 - Integración con laboratorios
@@ -579,7 +831,7 @@ Este documento detalla el historial completo de las fases de desarrollo del Sist
 
 ## Conclusión
 
-El Sistema de Gestión Hospitalaria Integral ha evolucionado significativamente a través de 11 fases de desarrollo, alcanzando una calificación de **9.2/10**. El sistema está completamente preparado para ser presentado a la junta directiva con confianza, destacando:
+El Sistema de Gestión Hospitalaria Integral ha evolucionado significativamente a través de 12 fases de desarrollo, alcanzando una calificación de **9.2/10**. El sistema está completamente preparado para ser presentado a la junta directiva con confianza, destacando:
 
 ✅ **Módulos críticos funcionales** sin errores
 ✅ **Seguridad de nivel empresarial** (10/10)
@@ -588,12 +840,13 @@ El Sistema de Gestión Hospitalaria Integral ha evolucionado significativamente 
 ✅ **Testing exhaustivo** (1,444 tests)
 ✅ **Accesibilidad WCAG 2.1 AA**
 ✅ **Responsive design optimizado**
+✅ **POS completamente funcional** con resumen e impresión de tickets
 
 El sistema refleja la calidad profesional esperada por una junta directiva y está listo para entornos de producción.
 
 ---
 
-**📅 Última actualización:** 12 de noviembre de 2025
+**📅 Última actualización:** 26 de noviembre de 2025
 **✅ Estado:** Sistema Listo para Junta Directiva (9.2/10)
 **🏥 Sistema de Gestión Hospitalaria Integral**
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
