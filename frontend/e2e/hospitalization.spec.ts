@@ -199,9 +199,14 @@ test.describe('Módulo de Hospitalización', () => {
     const newAdmissionBtn = page.locator('button:has-text("Nuevo Ingreso")').first();
     await expect(newAdmissionBtn).toBeVisible({ timeout: 10000 });
 
-    // Hacer logout usando el botón de cerrar sesión
-    const logoutButton = page.getByRole('button', { name: /Cerrar Sesión/i });
-    await logoutButton.click();
+    // Hacer logout - primero abrir el menú de usuario
+    const userMenuButton = page.getByRole('button', { name: /account of current user/i });
+    await userMenuButton.waitFor({ state: 'visible' });
+    await userMenuButton.click();
+
+    const logoutMenuItem = page.getByRole('menuitem', { name: /Cerrar Sesión/i });
+    await logoutMenuItem.waitFor({ state: 'visible' });
+    await logoutMenuItem.click();
     await page.waitForURL('**/login', { timeout: 10000 });
 
     // Login como enfermero (solo consulta)
