@@ -1,17 +1,132 @@
 # 🚀 GUÍA DE DEPLOYMENT EN EASYPANEL
 ## Sistema de Gestión Hospitalaria Integral
 
-**Última actualización:** 7 de Noviembre 2025
+**Última actualización:** 28 de Noviembre 2025
 **Desarrollado por:** Alfredo Manuel Reyes - AGNT
+
+---
+
+## 🖥️ INFRAESTRUCTURA DE PRODUCCIÓN
+
+Este sistema está diseñado para ejecutarse en un **VPS (Virtual Private Server)** con **EasyPanel** como plataforma de gestión de contenedores Docker.
+
+### Arquitectura de Infraestructura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    VPS (Servidor Virtual)                    │
+│              (Hetzner, DigitalOcean, Linode, etc.)          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │                    EasyPanel                            │ │
+│  │         (Plataforma de Gestión de Contenedores)        │ │
+│  ├────────────────────────────────────────────────────────┤ │
+│  │                                                         │ │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │ │
+│  │  │  Frontend   │  │   Backend   │  │ PostgreSQL  │    │ │
+│  │  │   (Nginx)   │  │  (Node.js)  │  │  (Database) │    │ │
+│  │  │   :80/443   │  │   :3001     │  │   :5432     │    │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘    │ │
+│  │                                                         │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Especificaciones Recomendadas del VPS
+
+| Recurso | Mínimo | Recomendado | Producción Alta |
+|---------|--------|-------------|-----------------|
+| **CPU** | 2 vCPU | 4 vCPU | 8 vCPU |
+| **RAM** | 4 GB | 8 GB | 16 GB |
+| **Disco** | 40 GB SSD | 80 GB SSD | 160 GB SSD |
+| **Ancho de Banda** | 1 TB | 2 TB | Ilimitado |
+| **Sistema Operativo** | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+
+### Proveedores de VPS Recomendados
+
+| Proveedor | Plan Recomendado | Precio Aprox. | Notas |
+|-----------|------------------|---------------|-------|
+| **Hetzner** | CX31 (4 vCPU, 8GB RAM) | ~€15/mes | Mejor relación precio/rendimiento |
+| **DigitalOcean** | Droplet 4GB | ~$24/mes | Fácil de usar, buena documentación |
+| **Linode** | Linode 4GB | ~$24/mes | Buen rendimiento |
+| **Vultr** | High Frequency 4GB | ~$24/mes | Alta disponibilidad |
+| **Contabo** | VPS M (6 vCPU, 16GB) | ~€10/mes | Económico, recursos generosos |
 
 ---
 
 ## 📋 PRE-REQUISITOS
 
-✅ Cuenta en EasyPanel: https://easypanel.io
+### Para VPS Propio (Recomendado)
+✅ VPS con Ubuntu 22.04 LTS (mínimo 4GB RAM, 2 vCPU)
+✅ Acceso SSH al servidor (root o usuario con sudo)
+✅ Dominio apuntando al VPS (opcional pero recomendado)
 ✅ Repositorio GitHub con el código
 ✅ Archivos Docker preparados (✅ completados)
-✅ Variables de entorno configuradas
+
+### Para EasyPanel Cloud (Alternativa)
+✅ Cuenta en EasyPanel Cloud: https://easypanel.io
+✅ Repositorio GitHub con el código
+✅ Archivos Docker preparados (✅ completados)
+
+---
+
+## 🔧 PASO 0: INSTALAR EASYPANEL EN VPS (Solo para VPS Propio)
+
+### 0.1 Conectar al VPS por SSH
+
+```bash
+ssh root@tu-ip-del-vps
+# O si usas usuario no-root:
+ssh usuario@tu-ip-del-vps
+```
+
+### 0.2 Actualizar el Sistema
+
+```bash
+apt update && apt upgrade -y
+```
+
+### 0.3 Instalar EasyPanel (Un solo comando)
+
+```bash
+curl -sSL https://get.easypanel.io | sh
+```
+
+Este comando:
+- Instala Docker si no está instalado
+- Configura Docker Swarm
+- Descarga e instala EasyPanel
+- Configura SSL automático con Let's Encrypt
+
+### 0.4 Acceder a EasyPanel
+
+Una vez instalado, accede a:
+```
+https://tu-ip-del-vps:3000
+```
+
+**Primera vez:**
+1. Crea tu cuenta de administrador
+2. Configura tu email para notificaciones
+3. (Opcional) Configura dominio personalizado para EasyPanel
+
+### 0.5 Configurar Dominio (Recomendado)
+
+Si tienes un dominio, configura estos registros DNS:
+
+```
+Tipo    Nombre              Valor
+A       @                   [IP-DEL-VPS]
+A       *.apps              [IP-DEL-VPS]
+CNAME   hospital            apps.tudominio.com
+CNAME   hospital-api        apps.tudominio.com
+```
+
+Esto permitirá:
+- `hospital.tudominio.com` → Frontend
+- `hospital-api.tudominio.com` → Backend
 
 ---
 

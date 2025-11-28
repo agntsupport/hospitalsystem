@@ -583,14 +583,35 @@ npm install -g @playwright/mcp
 
 **Nota:** Requiere reiniciar Claude Code después de agregar la configuración.
 
+## 🖥️ Infraestructura de Producción
+
+### Ambiente de Producción
+El sistema se ejecuta en un **VPS (Virtual Private Server)** con **EasyPanel** como plataforma de gestión de contenedores Docker.
+
+**Especificaciones Recomendadas:**
+- **CPU:** 4 vCPU (mínimo 2)
+- **RAM:** 8 GB (mínimo 4 GB)
+- **Disco:** 80 GB SSD
+- **OS:** Ubuntu 22.04 LTS
+
+**Proveedores Recomendados:** Hetzner (mejor precio/rendimiento), DigitalOcean, Linode, Vultr
+
+**URLs de Producción Actuales:**
+- Frontend: `https://hospital-management-system-frontend.1nse3e.easypanel.host`
+- Backend: `https://hospital-management-system-backend-jgqx.1nse3e.easypanel.host`
+
+📖 **Guía completa de deployment:** [docs/DEPLOYMENT_EASYPANEL.md](./docs/DEPLOYMENT_EASYPANEL.md)
+
+---
+
 ## 🎯 Próximos Desarrollos
 
 ### Roadmap Futuro
 1. **Sistema de Citas Médicas** - Calendarios integrados, notificaciones automáticas
 2. **Dashboard Tiempo Real** - WebSockets, notificaciones push, métricas en vivo
 3. **Expediente Médico Completo** - Historia clínica digitalizada, recetas electrónicas
-4. **Production Ready** - Health checks avanzados, monitoring Prometheus/Grafana
-5. **Containerización** - Docker containers, Nginx proxy, SSL Let's Encrypt
+4. **Monitoring Avanzado** - Prometheus/Grafana, alertas automáticas
+5. **Dominio Personalizado** - SSL con certificado propio, DNS configurado
 
 ## 🔧 Solución de Problemas Comunes
 
