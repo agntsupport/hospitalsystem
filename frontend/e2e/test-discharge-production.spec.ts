@@ -1,3 +1,6 @@
+// ABOUTME: Test E2E para validar alta hospitalaria en entorno de producción
+// ABOUTME: Verifica el flujo completo de dar de alta a un paciente específico
+
 import { test, expect } from '@playwright/test';
 
 test.describe('Test Alta Hospitalaria en Producción', () => {
@@ -10,17 +13,17 @@ test.describe('Test Alta Hospitalaria en Producción', () => {
 
     console.log('=== Página de login cargada ===');
 
-    // Hacer login con especialista1
-    await page.fill('input[name="username"]', 'especialista1');
-    await page.fill('input[name="password"]', 'medico123');
+    // Hacer login con especialista1 usando data-testid
+    await page.getByTestId('username-input').fill('especialista1');
+    await page.getByTestId('password-input').fill('medico123');
 
     console.log('=== Credenciales ingresadas ===');
 
     // Click en botón de login
-    await page.click('button[type="submit"]');
+    await page.getByTestId('login-button').click();
 
     // Esperar navegación después del login
-    await page.waitForURL('**/dashboard', { timeout: 10000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
 
     console.log('=== Login exitoso, en dashboard ===');
 

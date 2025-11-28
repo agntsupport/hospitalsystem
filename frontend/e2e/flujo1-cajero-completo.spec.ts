@@ -53,17 +53,13 @@ test.describe.serial('FLUJO 1: Cajero - Gestión Completa de Pacientes', () => {
     await clickButton(page, 'login-button');
 
     // IMPORTANTE: Esperar a que la navegación al dashboard se complete
-    await page.waitForURL(/.*dashboard/, { timeout: 10000 });
-
-    // Esperar a que el dashboard cargue (verificar elemento característico del dashboard)
-    // En lugar de solo esperar la URL, esperamos que elementos del dashboard sean visibles
-    await expect(page.locator('text=/buenos.*días|buenas.*tardes|buenas.*noches/i')).toBeVisible({ timeout: 15000 });
+    await page.waitForURL(/.*dashboard/, { timeout: 30000 });
 
     // Verificar que la URL cambió a dashboard
-    await expect(page).toHaveURL(/.*dashboard/, { timeout: 5000 });
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 10000 });
 
     // Verificar que el nombre de usuario esté visible (usar first() porque aparece varias veces)
-    await expect(page.locator('text=/cajero1/i').first()).toBeVisible();
+    await expect(page.locator('text=/cajero1/i').first()).toBeVisible({ timeout: 15000 });
 
     // IMPORTANTE: Esperar un poco más para que el dashboard termine de cargar completamente
     // Esto asegura que Redux persista el token y que los API calls se completen

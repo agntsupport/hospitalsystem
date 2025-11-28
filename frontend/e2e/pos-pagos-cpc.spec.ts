@@ -161,8 +161,8 @@ test.describe('Sistema de Cobros Parciales y Cuentas por Cobrar', () => {
       await primeraFila.locator('[aria-label="Acciones"]').click();
 
       // Verificar que opción "Pago Parcial" no está disponible o está deshabilitada
-      const pagoParc ialOption = page.locator('text=Pago Parcial');
-      await expect(pagoParc ialOption).toHaveAttribute('aria-disabled', 'true');
+      const pagoParcialOption = page.locator('text=Pago Parcial');
+      await expect(pagoParcialOption).toHaveAttribute('aria-disabled', 'true');
     });
   });
 

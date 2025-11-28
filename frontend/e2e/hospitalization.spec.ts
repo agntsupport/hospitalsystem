@@ -1,26 +1,21 @@
+// ABOUTME: Tests E2E para Módulo de Hospitalización del Sistema Hospitalario
+// ABOUTME: Valida ingresos, notas médicas, altas, historial y permisos por rol
+
 import { test, expect } from '@playwright/test';
 
-/**
- * E2E Tests: Módulo de Hospitalización
- * Sistema de Gestión Hospitalaria Integral
- *
- * Valida:
- * - Crear nuevo ingreso hospitalario con anticipo automático
- * - Visualizar lista de ingresos activos
- * - Agregar notas médicas a un ingreso
- * - Dar de alta a un paciente
- * - Visualizar historial de hospitalizaciones
- * - Control de permisos por rol (médicos, enfermeros)
- */
+// Helper para realizar login
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
 
 test.describe('Módulo de Hospitalización', () => {
   test.beforeEach(async ({ page }) => {
     // Login como médico residente (puede crear ingresos y notas)
-    await page.goto('/login');
-    await page.fill('input[name="username"]', 'residente1');
-    await page.fill('input[name="password"]', 'medico123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await performLogin(page, 'residente1', 'medico123');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
 
     // Navegar a hospitalización
     await page.goto('/hospitalization');
@@ -204,20 +199,14 @@ test.describe('Módulo de Hospitalización', () => {
     const newAdmissionBtn = page.locator('button:has-text("Nuevo Ingreso")').first();
     await expect(newAdmissionBtn).toBeVisible({ timeout: 10000 });
 
-    // Hacer logout
-    const userMenuButton = page.locator('button[aria-label*="cuenta"], button[aria-label*="perfil"]').first();
-    await userMenuButton.click();
-    await page.waitForTimeout(500);
-
-    const logoutButton = page.locator('text=/Cerrar.*Sesión|Logout/i').first();
+    // Hacer logout usando el botón de cerrar sesión
+    const logoutButton = page.getByRole('button', { name: /Cerrar Sesión/i });
     await logoutButton.click();
-    await page.waitForURL('/login');
+    await page.waitForURL('**/login', { timeout: 10000 });
 
     // Login como enfermero (solo consulta)
-    await page.fill('input[name="username"]', 'enfermero1');
-    await page.fill('input[name="password"]', 'enfermero123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await performLogin(page, 'enfermero1', 'enfermero123');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
 
     // Navegar a hospitalización
     await page.goto('/hospitalization');

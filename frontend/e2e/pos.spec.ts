@@ -1,27 +1,21 @@
+// ABOUTME: Tests E2E para Módulo POS del Sistema Hospitalario
+// ABOUTME: Valida apertura/cierre de cuentas, productos, pagos y permisos
+
 import { test, expect } from '@playwright/test';
 
-/**
- * E2E Tests: Módulo POS (Punto de Venta)
- * Sistema de Gestión Hospitalaria Integral
- *
- * Valida:
- * - Apertura de caja (cuenta de POS)
- * - Agregar productos/servicios al carrito
- * - Aplicar descuentos
- * - Procesar pagos
- * - Cerrar cuenta
- * - Consultar historial de cuentas
- * - Validación de permisos por rol
- */
+// Helper para realizar login
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
 
 test.describe('Módulo POS - Punto de Venta', () => {
   test.beforeEach(async ({ page }) => {
     // Login como cajero (rol con permisos de POS)
-    await page.goto('/login');
-    await page.fill('input[name="username"]', 'cajero1');
-    await page.fill('input[name="password"]', 'cajero123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await performLogin(page, 'cajero1', 'cajero123');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
 
     // Navegar a POS
     await page.goto('/pos');

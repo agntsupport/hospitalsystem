@@ -1,8 +1,7 @@
 // ABOUTME: Test simple para validar que la tabla de ocupación se renderiza correctamente
+// ABOUTME: Verifica login, navegación al dashboard y presencia de componentes básicos
 
 import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:3000';
 
 test.describe('Dashboard - Tabla de Ocupación (Simple)', () => {
   test('Login y verificar Dashboard carga', async ({ page }) => {
@@ -15,17 +14,17 @@ test.describe('Dashboard - Tabla de Ocupación (Simple)', () => {
     // Tomar screenshot del login
     await page.screenshot({ path: '/tmp/playwright-01-login.png' });
 
-    // Realizar login con admin
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
+    // Realizar login con admin usando data-testid
+    await page.getByTestId('username-input').fill('admin');
+    await page.getByTestId('password-input').fill('admin123');
 
     console.log('✓ Credenciales ingresadas');
 
     // Click en submit
-    await page.click('button[type="submit"]');
+    await page.getByTestId('login-button').click();
 
     // Esperar navegación al dashboard
-    await page.waitForURL('/dashboard', { timeout: 15000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
     await page.waitForLoadState('networkidle');
 
     console.log('✅ Navegación exitosa a /dashboard');

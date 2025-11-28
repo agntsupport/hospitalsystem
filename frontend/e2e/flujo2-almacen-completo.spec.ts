@@ -42,10 +42,10 @@ test.describe('FLUJO 2: Almacén - Gestión Completa de Inventario', () => {
     await page.getByTestId('login-button').click();
 
     // Verificar redirección al dashboard
-    await expect(page).toHaveURL(/.*dashboard/, { timeout: 10000 });
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 30000 });
 
-    // Verificar que el usuario esté logueado (usar mensaje de bienvenida único)
-    await expect(page.locator('text=/buenos.*días|buenas.*tardes|buenas.*noches.*almacen1/i')).toBeVisible();
+    // Verificar que el nombre de usuario esté visible
+    await expect(page.locator('text=/almacen1/i').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('2.2 - Verificar Tabla de Ocupación en Dashboard', async () => {

@@ -186,14 +186,19 @@ e2e/
 ```typescript
 import { test, expect } from '@playwright/test';
 
+// Helper para realizar login con data-testid selectors
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
+
 test.describe('Nombre del módulo', () => {
   test.beforeEach(async ({ page }) => {
-    // Login y setup
-    await page.goto('/login');
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    // Login usando helper function
+    await performLogin(page, 'admin', 'admin123');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('debe hacer X', async ({ page }) => {
@@ -206,11 +211,14 @@ test.describe('Nombre del módulo', () => {
 
 ### Buenas Prácticas
 
-1. **Usar selectores semánticos:** Preferir `text=`, `role=`, `aria-label`
-2. **Esperar elementos:** Usar `waitForLoadState`, `waitForURL`
-3. **Assertions explícitas:** `toBeVisible()`, `toHaveText()`, `toBeEnabled()`
-4. **Cleanup:** Usar `beforeEach` para estado limpio
-5. **Screenshots en fallos:** Automático, revisar `test-results/`
+1. **Usar data-testid para formularios:** Preferir `getByTestId()` para inputs críticos como login
+2. **Usar selectores semánticos:** Para otros elementos usar `text=`, `role=`, `aria-label`
+3. **Esperar elementos:** Usar `waitForLoadState`, `waitForURL` con pattern `**/route`
+4. **Timeouts apropiados:** Usar 30000ms para navegación, 15000ms para acciones
+5. **Assertions explícitas:** `toBeVisible()`, `toHaveText()`, `toBeEnabled()`
+6. **Helper functions:** Reutilizar funciones como `performLogin()` en cada archivo
+7. **Cleanup:** Usar `beforeEach` para estado limpio
+8. **Screenshots en fallos:** Automático, revisar `test-results/`
 
 ---
 

@@ -1,27 +1,23 @@
+// ABOUTME: Tests E2E para validación de formulario de pacientes (ITEM 3)
+// ABOUTME: Verifica que el formulario NO permita submit sin validación completa
+
 import { test, expect } from '@playwright/test';
 
-/**
- * ITEM 3: Validación de Formulario de Pacientes
- *
- * Valida que el formulario de pacientes NO permita submit sin validación
- * Fix aplicado en: frontend/src/pages/patients/PatientFormDialog.tsx
- *
- * Escenarios a probar:
- * 1. Submit sin campos requeridos debe mostrar errores
- * 2. Submit con datos inválidos debe mostrar errores
- * 3. Submit con datos válidos debe permitir crear paciente
- */
+// Helper para realizar login
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
 
 test.describe('ITEM 3: Patient Form Validation', () => {
   test.beforeEach(async ({ page }) => {
     // Login como admin
-    await page.goto('/login');
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
+    await performLogin(page, 'admin', 'admin123');
 
     // Esperar redirección al dashboard
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
 
     // Navegar a pacientes
     await page.goto('/patients');

@@ -1,30 +1,23 @@
+// ABOUTME: Tests E2E para Skip Links WCAG 2.1 AA (ITEM 4)
+// ABOUTME: Verifica accesibilidad de skip links según estándares WCAG
+
 import { test, expect } from '@playwright/test';
 
-/**
- * ITEM 4: Skip Links WCAG 2.1 AA Compliance
- *
- * Valida que los Skip Links estén implementados correctamente según WCAG 2.1 AA
- * Fix aplicado en:
- * - frontend/src/components/common/Layout.tsx
- * - frontend/src/components/common/Sidebar.tsx
- *
- * Criterios WCAG 2.1 AA:
- * - 2.4.1 Bypass Blocks (Level A)
- * - Skip links deben ser el primer elemento focusable
- * - Deben ser visibles cuando reciben foco
- * - Deben funcionar correctamente (saltar al contenido/navegación)
- */
+// Helper para realizar login
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
 
 test.describe('ITEM 4: Skip Links WCAG 2.1 AA', () => {
   test.beforeEach(async ({ page }) => {
     // Login como admin
-    await page.goto('/login');
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
+    await performLogin(page, 'admin', 'admin123');
 
     // Esperar redirección al dashboard
-    await page.waitForURL('/dashboard');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
     await page.waitForLoadState('networkidle');
   });
 

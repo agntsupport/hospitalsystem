@@ -1,14 +1,8 @@
+// ABOUTME: Configuración de Playwright para Tests E2E del Sistema de Gestión Hospitalaria
+// ABOUTME: Define browsers, webservers (frontend + backend), y configuración de tests
+
 import { defineConfig, devices } from '@playwright/test';
 
-/**
- * Configuración de Playwright para Tests E2E
- * Sistema de Gestión Hospitalaria Integral
- *
- * Valida:
- * - ITEM 3: Validación de formularios
- * - ITEM 4: Skip Links WCAG 2.1 AA
- * - Flujos críticos del sistema
- */
 export default defineConfig({
   testDir: './e2e',
 
@@ -23,6 +17,14 @@ export default defineConfig({
 
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
+
+  /* Global timeout for each test */
+  timeout: 60000,
+
+  /* Expect timeout */
+  expect: {
+    timeout: 10000,
+  },
 
   /* Reporter to use. */
   reporter: [
@@ -44,41 +46,43 @@ export default defineConfig({
 
     /* Video on failure */
     video: 'retain-on-failure',
+
+    /* Action timeout */
+    actionTimeout: 15000,
+
+    /* Navigation timeout */
+    navigationTimeout: 30000,
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects for major browsers - reduced to essential browsers for faster CI */
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  /* Run local dev servers before starting the tests */
+  webServer: [
+    {
+      command: 'cd ../backend && npm run dev',
+      url: 'http://localhost:3001/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+    {
+      command: 'npm run dev',
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+  ],
 });

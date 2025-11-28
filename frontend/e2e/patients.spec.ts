@@ -1,28 +1,21 @@
+// ABOUTME: Tests E2E para Módulo de Pacientes del Sistema Hospitalario
+// ABOUTME: Valida listado, creación, edición, eliminación y búsqueda de pacientes
+
 import { test, expect } from '@playwright/test';
 
-/**
- * E2E Tests: Módulo de Pacientes
- * Sistema de Gestión Hospitalaria Integral
- *
- * Valida:
- * - Listado y paginación de pacientes
- * - Búsqueda y filtrado avanzado
- * - Creación de nuevos pacientes
- * - Edición de pacientes existentes
- * - Eliminación (soft delete) de pacientes
- * - Validación de formularios
- * - Visualización de detalles
- * - Export de datos
- */
+// Helper para realizar login
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
 
 test.describe('Módulo de Pacientes', () => {
   test.beforeEach(async ({ page }) => {
     // Login como admin
-    await page.goto('/login');
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/dashboard');
+    await performLogin(page, 'admin', 'admin123');
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
 
     // Navegar a pacientes
     await page.goto('/patients');

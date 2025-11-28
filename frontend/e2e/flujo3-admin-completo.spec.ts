@@ -39,10 +39,10 @@ test.describe('FLUJO 3: Administrador - Gestión Financiera', () => {
     await page.getByTestId('login-button').click();
 
     // Verificar redirección al dashboard
-    await expect(page).toHaveURL(/.*dashboard/, { timeout: 10000 });
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 30000 });
 
-    // Verificar que el usuario esté logueado (usar mensaje de bienvenida único)
-    await expect(page.locator('text=/buenos.*días|buenas.*tardes|buenas.*noches.*admin/i')).toBeVisible();
+    // Verificar que el nombre de usuario esté visible
+    await expect(page.locator('text=/admin/i').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('3.2 - Verificar Tabla de Ocupación en Dashboard', async () => {

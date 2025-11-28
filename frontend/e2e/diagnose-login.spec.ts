@@ -31,13 +31,13 @@ test('Diagnose login behavior', async ({ page }) => {
   await page.goto('http://localhost:3000/login');
   console.log('✓ Navegado a login');
 
-  // Llenar campos
-  await page.fill('input[name="username"]', 'cajero1');
-  await page.fill('input[name="password"]', 'cajero123');
+  // Llenar campos usando data-testid
+  await page.getByTestId('username-input').fill('cajero1');
+  await page.getByTestId('password-input').fill('cajero123');
   console.log('✓ Campos llenados');
 
   // Click en login
-  await page.click('button[data-testid="login-button"]');
+  await page.getByTestId('login-button').click();
   console.log('✓ Click en login button');
 
   // Esperar un poco para ver qué pasa

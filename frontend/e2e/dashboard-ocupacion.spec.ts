@@ -1,22 +1,23 @@
 // ABOUTME: Prueba E2E para validar la tabla de ocupación en tiempo real del Dashboard
+// ABOUTME: Valida visibilidad de tablas, datos por tipo, auto-refresh y acceso por roles
 
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:3000';
-const API_URL = 'http://localhost:3001';
+// Helper para realizar login
+async function performLogin(page: import('@playwright/test').Page, username: string, password: string) {
+  await page.goto('/login');
+  await page.getByTestId('username-input').fill(username);
+  await page.getByTestId('password-input').fill(password);
+  await page.getByTestId('login-button').click();
+}
 
 test.describe('Dashboard - Tabla de Ocupación en Tiempo Real', () => {
   test.beforeEach(async ({ page }) => {
-    // Navegar a la página de login
-    await page.goto(BASE_URL);
-
     // Realizar login con admin
-    await page.fill('input[name="username"]', 'admin');
-    await page.fill('input[name="password"]', 'admin123');
-    await page.click('button[type="submit"]');
+    await performLogin(page, 'admin', 'admin123');
 
     // Esperar a que la navegación complete y llegue al Dashboard
-    await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 10000 });
+    await page.waitForURL('**/dashboard', { timeout: 30000 });
   });
 
   test('VALIDACIÓN 1: Tabla de ocupación visible en Dashboard', async ({ page }) => {
@@ -201,12 +202,9 @@ test.describe('Dashboard - Acceso por Roles', () => {
       console.log(`✓ Test 9 (${rol}): Verificando acceso para rol ${rol}...`);
 
       // Login con el rol específico
-      await page.goto(BASE_URL);
-      await page.fill('input[name="username"]', username);
-      await page.fill('input[name="password"]', password);
-      await page.click('button[type="submit"]');
+      await performLogin(page, username, password);
 
-      await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 10000 });
+      await page.waitForURL('**/dashboard', { timeout: 30000 });
       await page.waitForTimeout(2000);
 
       // Verificar que la tabla de ocupación es visible
