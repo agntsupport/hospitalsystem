@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -38,9 +38,11 @@ import {
   Print as PrintIcon,
   Download as DownloadIcon
 } from '@mui/icons-material';
+import { useReactToPrint } from 'react-to-print';
 
 import { posService } from '@/services/posService';
 import { PatientAccount } from '@/types/pos.types';
+import PrintableAccountStatement from './PrintableAccountStatement';
 
 interface AccountDetailDialogProps {
   open: boolean;
@@ -113,6 +115,29 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
     totalProductos: account?.totalProductos || 0,
     totalCuenta: account?.totalCuenta || 0,
     saldoPendiente: account?.saldoPendiente || 0
+  });
+
+  // Referencia para impresión de estado de cuenta
+  const statementRef = useRef<HTMLDivElement>(null);
+
+  // Configuración de impresión formato Carta
+  const handlePrint = useReactToPrint({
+    contentRef: statementRef,
+    documentTitle: `Estado_Cuenta_${account?.id}_${new Date().getTime()}`,
+    pageStyle: `
+      @page {
+        size: letter portrait;
+        margin: 0.5in;
+      }
+      @media print {
+        body {
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `
   });
 
   useEffect(() => {
@@ -455,9 +480,10 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
         <Button
           variant="outlined"
           startIcon={<PrintIcon />}
-          disabled={loading}
+          disabled={loading || transactions.length === 0}
+          onClick={handlePrint}
         >
-          Imprimir
+          Imprimir Estado de Cuenta
         </Button>
         <Button
           variant="contained"
@@ -467,6 +493,40 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
           Exportar
         </Button>
       </DialogActions>
+
+      {/* Componente de estado de cuenta imprimible (oculto) */}
+      {account && (
+        <div style={{ display: 'none' }}>
+          <PrintableAccountStatement
+            ref={statementRef}
+            data={{
+              cuentaId: account.id,
+              fechaEmision: new Date(),
+              paciente: {
+                nombre: account.paciente?.nombre || '',
+                apellidoPaterno: account.paciente?.apellidoPaterno || '',
+                apellidoMaterno: account.paciente?.apellidoMaterno,
+                telefono: account.paciente?.telefono,
+                email: account.paciente?.email,
+                direccion: account.paciente?.direccion
+              },
+              medicoTratante: account.medicoTratante ? {
+                nombre: account.medicoTratante.nombre,
+                apellidoPaterno: account.medicoTratante.apellidoPaterno,
+                especialidad: account.medicoTratante.especialidad
+              } : undefined,
+              tipoAtencion: account.tipoAtencion,
+              fechaIngreso: account.fechaApertura,
+              transacciones: transactions.map(t => ({
+                ...t,
+                fecha: t.fecha
+              })),
+              totales: totales,
+              estado: account.estado
+            }}
+          />
+        </div>
+      )}
     </Dialog>
   );
 };

@@ -13,6 +13,7 @@ import {
   Box,
   IconButton,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,7 +23,7 @@ import {
   AccountBalance as AccountIcon,
   Visibility as ViewIcon,
   Payment as PaymentIcon,
-  History as HistoryIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
 
 import { PatientAccount } from '@/types/pos.types';
@@ -270,43 +271,51 @@ const OpenAccountsList: React.FC<OpenAccountsListProps> = ({
                 
                 <TableCell align="center">
                   <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<ViewIcon />}
-                      onClick={() => onViewAccount(account)}
-                      sx={{ minWidth: 'auto' }}
-                    >
-                      Ver
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={() => onAddTransaction(account)}
-                    >
-                      Agregar
-                    </Button>
-                    {onPartialPayment && (
+                    <Tooltip title="Ver estado de cuenta">
                       <Button
                         size="small"
                         variant="outlined"
-                        color="info"
-                        startIcon={<PaymentIcon />}
-                        onClick={() => onPartialPayment(account)}
+                        startIcon={<ViewIcon />}
+                        onClick={() => onViewAccount(account)}
+                        sx={{ minWidth: 'auto' }}
                       >
-                        Pago Parcial
+                        Ver
                       </Button>
+                    </Tooltip>
+                    <Tooltip title="Agregar servicios/productos">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={() => onAddTransaction(account)}
+                      >
+                        Agregar
+                      </Button>
+                    </Tooltip>
+                    {onPartialPayment && (
+                      <Tooltip title="Registrar pago parcial">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          startIcon={<PaymentIcon />}
+                          onClick={() => onPartialPayment(account)}
+                        >
+                          Pago Parcial
+                        </Button>
+                      </Tooltip>
                     )}
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="success"
-                      startIcon={<CloseIcon />}
-                      onClick={() => onCloseAccount(account)}
-                    >
-                      Cerrar
-                    </Button>
+                    <Tooltip title="Cerrar cuenta y cobrar">
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        startIcon={<CloseIcon />}
+                        onClick={() => onCloseAccount(account)}
+                      >
+                        Cerrar
+                      </Button>
+                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
