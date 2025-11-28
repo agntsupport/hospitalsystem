@@ -840,8 +840,8 @@ async function main() {
     console.log(`💰 ${costosOperativosData.length} costos operativos de ejemplo creados`);
 
     // Actualizar costos de servicios (60% del precio como ejemplo)
-    const servicios = await prisma.servicio.findMany();
-    for (const servicio of servicios) {
+    const serviciosParaCostos = await prisma.servicio.findMany();
+    for (const servicio of serviciosParaCostos) {
       await prisma.servicio.update({
         where: { id: servicio.id },
         data: {
@@ -850,7 +850,7 @@ async function main() {
       });
     }
 
-    console.log(`📊 Costos actualizados para ${servicios.length} servicios`);
+    console.log(`📊 Costos actualizados para ${serviciosParaCostos.length} servicios`);
 
     console.log('✅ Seed completado exitosamente');
     console.log('\n📋 CREDENCIALES DE ACCESO:');
