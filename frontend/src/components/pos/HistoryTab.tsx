@@ -30,7 +30,7 @@ import { es } from 'date-fns/locale';
 
 import { useAccountHistory } from '@/hooks/useAccountHistory';
 import AccountHistoryList from './AccountHistoryList';
-import AccountDetailsDialog from './AccountDetailsDialog';
+import AccountDetailDialog from './AccountDetailDialog';
 
 interface HistoryTabProps {
   onRefresh?: () => void;
@@ -201,11 +201,12 @@ const HistoryTab: React.FC<HistoryTabProps> = ({ onRefresh }) => {
           )}
         </Card>
 
-        {/* Diálogo de detalles */}
-        <AccountDetailsDialog
-          accountDetailsOpen={accountDetailsOpen}
-          selectedAccount={selectedAccount}
-          onCloseAccountDetails={() => setAccountDetailsOpen(false)}
+        {/* Diálogo de detalles - usando componente unificado en modo summary */}
+        <AccountDetailDialog
+          open={accountDetailsOpen}
+          account={selectedAccount}
+          onClose={() => setAccountDetailsOpen(false)}
+          mode="summary"
         />
       </Box>
     </LocalizationProvider>

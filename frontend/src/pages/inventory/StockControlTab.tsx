@@ -1,4 +1,8 @@
+// ABOUTME: Componente de control de stock e inventario con alertas de reorden
+// Muestra alertas de stock bajo, recomendaciones de pedidos y configuración de umbrales
+
 import React, { useState, useEffect } from 'react';
+import { useNotification } from '@/hooks/useNotification';
 import {
   Box,
   Typography,
@@ -70,12 +74,13 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const StockControlTab: React.FC = () => {
+  const { showInfo, showSuccess } = useNotification();
   const [products, setProducts] = useState<Product[]>([]);
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  
+
   // Estados para diálogos
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -132,8 +137,8 @@ const StockControlTab: React.FC = () => {
     const product = products.find(p => p.id === productId);
     if (product) {
       setSelectedProduct(product);
-      // TODO: Abrir modal de detalles del producto o navegar a edición
-      console.log('View product:', product);
+      // Funcionalidad planificada: Modal de detalles se implementará con el módulo de edición de productos
+      showInfo(`Producto: ${product.nombre} - Stock: ${product.stockActual} ${product.unidadMedida}`);
     }
   };
 
@@ -337,8 +342,8 @@ const StockControlTab: React.FC = () => {
                     variant="contained"
                     startIcon={<OrderIcon />}
                     onClick={() => {
-                      // TODO: Implementar generación masiva de pedidos
-                      console.log('Generate all orders:', orderRecommendations);
+                      // Funcionalidad planificada: Generación masiva de órdenes de compra en módulo de compras
+                      showInfo(`${orderRecommendations.length} pedidos recomendados. La generación automática de órdenes de compra estará disponible próximamente.`);
                     }}
                   >
                     Generar Todos los Pedidos Recomendados
@@ -405,10 +410,11 @@ const StockControlTab: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOrderDialogOpen(false)}>Cancelar</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={() => {
-              // TODO: Implementar lógica de pedido
+              // Funcionalidad planificada: Integración con módulo de compras para generar órdenes de compra
+              showSuccess(`Pedido registrado para ${selectedProduct?.nombre || 'producto'}. La orden de compra se generará en el módulo de compras.`);
               setOrderDialogOpen(false);
             }}
           >

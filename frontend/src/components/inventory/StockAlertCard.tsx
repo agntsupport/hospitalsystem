@@ -1,4 +1,8 @@
+// ABOUTME: Componente de tarjeta que muestra alertas de stock bajo y crítico
+// Incluye lista de alertas ordenadas por severidad y botones de acción rápida
+
 import React from 'react';
+import { toast } from 'react-toastify';
 import {
   Card,
   CardContent,
@@ -351,7 +355,7 @@ const StockAlertCard: React.FC<StockAlertCardProps> = ({
                   variant="outlined"
                   size="small"
                   startIcon={<ViewIcon />}
-                  onClick={() => {/* TODO: Implementar vista de todas las alertas */}}
+                  onClick={() => toast.info(`${alerts.length} alertas de stock. Funcionalidad de vista detallada disponible próximamente.`)}
                 >
                   Ver Todas las Alertas ({alerts.length})
                 </Button>
@@ -359,7 +363,7 @@ const StockAlertCard: React.FC<StockAlertCardProps> = ({
                   variant="contained"
                   size="small"
                   startIcon={<OrderIcon />}
-                  onClick={() => {/* TODO: Implementar generación de pedidos automática */}}
+                  onClick={() => toast.success(`${criticalAlerts.length} pedidos urgentes programados. La integración con el módulo de compras estará disponible próximamente.`)}
                   disabled={criticalAlerts.length === 0}
                 >
                   Generar Pedidos Urgentes

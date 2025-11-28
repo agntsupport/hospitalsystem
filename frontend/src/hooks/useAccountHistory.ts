@@ -66,7 +66,7 @@ export const useAccountHistory = () => {
           // Update the account in closedAccounts with loaded transactions
           setClosedAccounts(prev => prev.map(acc =>
             acc.id === accountId
-              ? { ...acc, transacciones: response.data.transacciones }
+              ? { ...acc, transacciones: response.data!.transacciones } as unknown as PatientAccount
               : acc
           ));
         }

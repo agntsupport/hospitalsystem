@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+// ABOUTME: Diálogo unificado para ver detalles de cuenta POS con dos modos: 'full' (transacciones completas) y 'summary' (resumen rápido)
+// Soporta impresión de estado de cuenta en formato Carta, paginación, filtros por tipo de transacción
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -26,7 +29,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Grid
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -42,12 +46,15 @@ import { useReactToPrint } from 'react-to-print';
 
 import { posService } from '@/services/posService';
 import { PatientAccount } from '@/types/pos.types';
+import { ATTENTION_TYPE_LABELS } from '@/utils/constants';
 import PrintableAccountStatement from './PrintableAccountStatement';
 
 interface AccountDetailDialogProps {
   open: boolean;
   onClose: () => void;
   account: PatientAccount | null;
+  /** Modo de visualización: 'full' muestra transacciones completas, 'summary' muestra solo resumen */
+  mode?: 'full' | 'summary';
 }
 
 interface Transaction {
@@ -99,7 +106,8 @@ function TabPanel(props: TabPanelProps) {
 const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
   open,
   onClose,
-  account
+  account,
+  mode = 'full'
 }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -116,6 +124,24 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
     totalCuenta: account?.totalCuenta || 0,
     saldoPendiente: account?.saldoPendiente || 0
   });
+
+  // Funciones de formato memoizadas (usadas en ambos modos)
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount);
+  }, []);
+
+  const formatDate = useCallback((dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, []);
 
   // Referencia para impresión de estado de cuenta
   const statementRef = useRef<HTMLDivElement>(null);
@@ -141,10 +167,11 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
   });
 
   useEffect(() => {
-    if (open && account) {
+    // En modo summary no cargamos transacciones
+    if (open && account && mode === 'full') {
       loadTransactions();
     }
-  }, [open, account, page, rowsPerPage, filterTipo]);
+  }, [open, account, page, rowsPerPage, filterTipo, mode]);
 
   const loadTransactions = async () => {
     if (!account) return;
@@ -174,23 +201,6 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const getTransactionIcon = (tipo: string) => {
@@ -242,6 +252,124 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
 
   if (!account) return null;
 
+  // Renderizado del modo 'summary' - Vista simplificada sin transacciones
+  if (mode === 'summary') {
+    return (
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ReceiptIcon />
+          Detalles de la Cuenta #{account.id}
+        </DialogTitle>
+
+        <DialogContent>
+          <Box>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Información del Paciente
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Nombre:</strong> {account.paciente?.nombre} {account.paciente?.apellidoPaterno}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Teléfono:</strong> {account.paciente?.telefono || 'Sin teléfono'}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Información de la Cuenta
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Tipo:</strong> {ATTENTION_TYPE_LABELS[account.tipoAtencion] || account.tipoAtencion}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Apertura:</strong> {formatDate(account.fechaApertura)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Cierre:</strong> {account.fechaCierre ? formatDate(account.fechaCierre) : 'N/A'}
+                </Typography>
+              </Grid>
+            </Grid>
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" gutterBottom>
+              Resumen Financiero
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={4}>
+                <Typography variant="body2">
+                  <strong>Servicios:</strong> {formatCurrency(account.totalServicios)}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography variant="body2">
+                  <strong>Productos:</strong> {formatCurrency(account.totalProductos)}
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Typography variant="body2">
+                  <strong>Total:</strong> {formatCurrency(account.totalCuenta)}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={onClose}>
+            Cerrar
+          </Button>
+          <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}>
+            Imprimir
+          </Button>
+        </DialogActions>
+
+        {/* Componente de estado de cuenta imprimible (oculto) */}
+        <div style={{ display: 'none' }}>
+          <PrintableAccountStatement
+            ref={statementRef}
+            data={{
+              cuentaId: account.id,
+              fechaEmision: new Date(),
+              paciente: {
+                nombre: account.paciente?.nombre || '',
+                apellidoPaterno: account.paciente?.apellidoPaterno || '',
+                apellidoMaterno: account.paciente?.apellidoMaterno,
+                telefono: account.paciente?.telefono,
+                email: account.paciente?.email,
+                direccion: account.paciente?.direccion
+              },
+              medicoTratante: account.medicoTratante ? {
+                nombre: account.medicoTratante.nombre,
+                apellidoPaterno: account.medicoTratante.apellidoPaterno,
+                especialidad: account.medicoTratante.especialidad
+              } : undefined,
+              tipoAtencion: account.tipoAtencion,
+              fechaIngreso: account.fechaApertura,
+              transacciones: [],
+              totales: {
+                anticipo: account.anticipo || 0,
+                totalServicios: account.totalServicios || 0,
+                totalProductos: account.totalProductos || 0,
+                totalCuenta: account.totalCuenta || 0,
+                saldoPendiente: account.saldoPendiente || 0
+              },
+              estado: account.estado
+            }}
+          />
+        </div>
+      </Dialog>
+    );
+  }
+
+  // Modo 'full' - Vista completa con transacciones
   return (
     <Dialog
       open={open}
@@ -261,7 +389,7 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
                 Estado de Cuenta #{account.id}
               </Typography>
               <Typography variant="subtitle2" color="text.secondary">
-                {account.paciente ? 
+                {account.paciente ?
                   `${account.paciente.nombre} ${account.paciente.apellidoPaterno} ${account.paciente.apellidoMaterno || ''}`.trim()
                   : 'Paciente no encontrado'
                 }

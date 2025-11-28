@@ -71,26 +71,13 @@ export const ATTENTION_TYPE_LABELS = {
   [ATTENTION_TYPES.HOSPITALIZATION]: 'Hospitalización'
 } as const;
 
-// Tipos de empleado (expandido para incluir todos los roles)
-export const EMPLOYEE_TYPES = {
-  CASHIER: 'cajero',
-  NURSE: 'enfermero',
-  WAREHOUSE: 'almacenista',
-  ADMINISTRATOR: 'administrador',
-  PARTNER: 'socio',
-  RESIDENT_DOCTOR: 'medico_residente',
-  SPECIALIST_DOCTOR: 'medico_especialista'
-} as const;
+// Tipos de empleado - Alias de ROLES para compatibilidad (valores idénticos)
+// @deprecated Usar ROLES en lugar de EMPLOYEE_TYPES para nuevos desarrollos
+export const EMPLOYEE_TYPES = ROLES;
 
-export const EMPLOYEE_TYPE_LABELS = {
-  [EMPLOYEE_TYPES.CASHIER]: 'Cajero',
-  [EMPLOYEE_TYPES.NURSE]: 'Enfermero',
-  [EMPLOYEE_TYPES.WAREHOUSE]: 'Almacenista',
-  [EMPLOYEE_TYPES.ADMINISTRATOR]: 'Administrador',
-  [EMPLOYEE_TYPES.PARTNER]: 'Socio',
-  [EMPLOYEE_TYPES.RESIDENT_DOCTOR]: 'Médico Residente',
-  [EMPLOYEE_TYPES.SPECIALIST_DOCTOR]: 'Médico Especialista'
-} as const;
+// Labels de tipos de empleado - Alias de ROLE_LABELS
+// @deprecated Usar ROLE_LABELS en lugar de EMPLOYEE_TYPE_LABELS para nuevos desarrollos
+export const EMPLOYEE_TYPE_LABELS = ROLE_LABELS;
 
 // Géneros
 export const GENDERS = {
