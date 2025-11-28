@@ -413,6 +413,7 @@ model Servicio {
   descripcion String?
   tipo        TipoServicio
   precio      Decimal      @db.Decimal(8, 2)
+  costo       Decimal?     @db.Decimal(8, 2)  // Costo operativo del servicio (editable por admin)
   activo      Boolean      @default(true)
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
@@ -1335,4 +1336,52 @@ model TokenBlacklist {
   @@index([token])
   @@index([fechaExpira])
   @@map("token_blacklist")
+}
+
+// ==============================================
+// COSTOS OPERATIVOS Y CONFIGURACIÓN DE REPORTES
+// ==============================================
+
+model CostoOperativo {
+  id          Int            @id @default(autoincrement())
+  categoria   CategoriaCosto
+  concepto    String
+  descripcion String?
+  monto       Decimal        @db.Decimal(12, 2)
+  periodo     DateTime       @db.Date  // Mes/Año al que corresponde
+  recurrente  Boolean        @default(true)
+  activo      Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@index([categoria])
+  @@index([periodo])
+  @@index([activo])
+  @@map("costos_operativos")
+}
+
+enum CategoriaCosto {
+  nomina
+  servicios_publicos    // luz, agua, gas
+  mantenimiento
+  insumos_generales
+  renta_inmueble
+  seguros
+  depreciacion
+  marketing
+  capacitacion
+  otros
+}
+
+model ConfiguracionReportes {
+  id                        Int      @id @default(autoincrement())
+  clave                     String   @unique
+  valor                     String
+  descripcion               String?
+  tipoDato                  String   @default("string") @map("tipo_dato")  // string, number, boolean, json
+  editablePorAdmin          Boolean  @default(true) @map("editable_por_admin")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("configuracion_reportes")
 }

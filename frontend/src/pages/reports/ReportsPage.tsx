@@ -21,7 +21,8 @@ import {
   TrendingUp as TrendingUpIcon,
   Business as BusinessIcon,
   DateRange as DateRangeIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  LocalHospital as DoctorIcon
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
@@ -32,6 +33,7 @@ import reportsService from '@/services/reportsService';
 import FinancialReportsTab from './FinancialReportsTab';
 import OperationalReportsTab from './OperationalReportsTab';
 import ExecutiveDashboardTab from './ExecutiveDashboardTab';
+import ManagerialReportsTab from './ManagerialReportsTab';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -121,6 +123,7 @@ const ReportsPage: React.FC = () => {
   const canViewFinancial = validateAccess(['administrador', 'socio']);
   const canViewOperational = validateAccess(['administrador', 'socio', 'almacenista']);
   const canViewExecutive = validateAccess(['administrador', 'socio']);
+  const canViewManagerial = validateAccess(['administrador', 'socio']);
 
   if (!canViewFinancial && !canViewOperational && !canViewExecutive) {
     return (
@@ -293,6 +296,13 @@ const ReportsPage: React.FC = () => {
                 {...a11yProps((canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0))}
               />
             )}
+            {canViewManagerial && (
+              <Tab
+                icon={<DoctorIcon />}
+                label="Reportes Gerenciales"
+                {...a11yProps((canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0) + (canViewOperational ? 1 : 0))}
+              />
+            )}
           </Tabs>
         </Box>
 
@@ -325,7 +335,17 @@ const ReportsPage: React.FC = () => {
 
         {canViewOperational && (
           <TabPanel value={tabValue} index={(canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0)}>
-            <OperationalReportsTab 
+            <OperationalReportsTab
+              filters={filters}
+              onError={setError}
+              onLoading={setLoading}
+            />
+          </TabPanel>
+        )}
+
+        {canViewManagerial && (
+          <TabPanel value={tabValue} index={(canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0) + (canViewOperational ? 1 : 0)}>
+            <ManagerialReportsTab
               filters={filters}
               onError={setError}
               onLoading={setLoading}

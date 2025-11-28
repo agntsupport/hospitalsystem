@@ -157,6 +157,267 @@ export interface OperationalReports {
   flujoPacientes: PatientFlowReport;
 }
 
+// ====================== REPORTES DE MÉDICOS ======================
+
+export interface DoctorRankingItem {
+  id: number;
+  nombre: string;
+  especialidad: string;
+  cedulaProfesional: string;
+  hospitalizaciones: number;
+  ingresos: {
+    total: number;
+    productos: number;
+    servicios: number;
+    porHospitalizaciones: number;
+    porConsultas: number;
+  };
+  pacientes: number;
+  cuentasAtendidas: number;
+}
+
+export interface DoctorRankingsReport {
+  medicos: DoctorRankingItem[];
+  totales: {
+    hospitalizaciones: number;
+    ingresos: number;
+    productos: number;
+    servicios: number;
+    pacientes: number;
+  };
+  periodo: {
+    fechaInicio: string;
+    fechaFin: string;
+    tipo: string;
+  };
+}
+
+export interface DoctorDetailReport {
+  medico: {
+    id: number;
+    nombre: string;
+    especialidad: string;
+    cedulaProfesional: string;
+    telefono: string;
+    email: string;
+  };
+  resumen: {
+    hospitalizaciones: number;
+    ingresosTotales: number;
+    promedioIngresoPorPaciente: number;
+    pacientesUnicos: number;
+  };
+  desglose: {
+    servicios: Array<{
+      codigo: string;
+      nombre: string;
+      cantidad: number;
+      ingresos: number;
+    }>;
+    productos: Array<{
+      codigo: string;
+      nombre: string;
+      cantidad: number;
+      ingresos: number;
+    }>;
+  };
+  hospitalizaciones: Array<{
+    id: number;
+    paciente: string;
+    fechaIngreso: string;
+    fechaAlta: string | null;
+    estado: string;
+    ingresos: number;
+  }>;
+  periodo: {
+    fechaInicio: string;
+    fechaFin: string;
+  };
+}
+
+// ====================== REPORTES DE UTILIDADES Y COSTOS ======================
+
+export interface ProfitSummaryReport {
+  ingresos: {
+    productos: number;
+    servicios: number;
+    total: number;
+  };
+  costos: {
+    productos: number;
+    servicios: number;
+    operativos: number;
+    nomina: number;
+    total: number;
+  };
+  utilidad: {
+    bruta: number;
+    margenBruto: string;
+    neta: number;
+    margenNeto: string;
+  };
+  periodo: string;
+}
+
+export interface ProfitDetailedReport {
+  productos: {
+    items: Array<{
+      id: number;
+      codigo: string;
+      nombre: string;
+      cantidadVendida: number;
+      ingresos: number;
+      costos: number;
+      utilidad: number;
+      margen: string;
+    }>;
+    totales: {
+      ingresos: number;
+      costos: number;
+      utilidad: number;
+      margen: string;
+    };
+  };
+  servicios: {
+    items: Array<{
+      id: number;
+      codigo: string;
+      nombre: string;
+      cantidadPrestados: number;
+      ingresos: number;
+      costos: number;
+      utilidad: number;
+      margen: string;
+      usaCostoReal: boolean;
+    }>;
+    totales: {
+      ingresos: number;
+      costos: number;
+      utilidad: number;
+      margen: string;
+    };
+  };
+  costosOperativos: {
+    porCategoria: Array<{
+      categoria: string;
+      total: number;
+      cantidad: number;
+    }>;
+    total: number;
+  };
+  nomina: {
+    total: number;
+    empleados: number;
+  };
+  resumen: ProfitSummaryReport;
+  periodo: {
+    fechaInicio: string;
+    fechaFin: string;
+    tipo: string;
+  };
+}
+
+// ====================== COSTOS OPERATIVOS ======================
+
+export type CategoriaCosto =
+  | 'nomina'
+  | 'servicios_publicos'
+  | 'mantenimiento'
+  | 'insumos_generales'
+  | 'renta_inmueble'
+  | 'seguros'
+  | 'depreciacion'
+  | 'marketing'
+  | 'capacitacion'
+  | 'otros';
+
+export interface CostoOperativo {
+  id: number;
+  categoria: CategoriaCosto;
+  concepto: string;
+  descripcion?: string;
+  monto: number;
+  periodo: string;
+  recurrente: boolean;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CostosOperativosListResponse {
+  items: CostoOperativo[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  totalesPorCategoria: Record<string, number>;
+}
+
+export interface CostSummaryReport {
+  porCategoria: Array<{
+    categoria: string;
+    total: number;
+    cantidad: number;
+    calculadoDesdeEmpleados?: boolean;
+  }>;
+  totalGeneral: number;
+  nomina: {
+    total: number;
+    empleados: number;
+  };
+  proyeccion: {
+    mensual: number;
+    trimestral: number;
+    anual: number;
+  };
+  periodo: {
+    fechaInicio: string;
+    fechaFin: string;
+  };
+}
+
+export interface ServiceCost {
+  id: number;
+  codigo: string;
+  nombre: string;
+  tipo: string;
+  precio: number;
+  costo: number | null;
+  costoReal: number | null;
+  costoEstimado: number;
+  usaCostoReal: boolean;
+  margen: string;
+}
+
+export interface ServiceCostsListResponse {
+  items: ServiceCost[];
+  porcentajeEstimacion: number;
+}
+
+export interface ConfiguracionReporte {
+  id: number;
+  clave: string;
+  valor: string;
+  descripcion?: string;
+  tipoDato: string;
+  editablePorAdmin: boolean;
+}
+
+export const CATEGORIA_COSTO_LABELS: Record<CategoriaCosto, string> = {
+  nomina: 'Nómina',
+  servicios_publicos: 'Servicios Públicos',
+  mantenimiento: 'Mantenimiento',
+  insumos_generales: 'Insumos Generales',
+  renta_inmueble: 'Renta de Inmueble',
+  seguros: 'Seguros',
+  depreciacion: 'Depreciación',
+  marketing: 'Marketing',
+  capacitacion: 'Capacitación',
+  otros: 'Otros'
+};
+
 // ====================== REPORTES GERENCIALES / KPIs ======================
 
 export interface KPIMetric {

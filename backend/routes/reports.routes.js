@@ -466,6 +466,733 @@ router.get('/managerial/kpis', authenticateToken, authorizeRoles(['administrador
   }
 });
 
+// ==============================================
+// REPORTES DE MÉDICOS - NUEVO (Junta Directiva)
+// ==============================================
+
+// GET /doctors/rankings - Ranking de médicos por hospitalizaciones e ingresos (Admin, Socio)
+router.get('/doctors/rankings', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { periodo = 'mes', fechaInicio, fechaFin, ordenarPor = 'ingresos', limite = 10 } = req.query;
+
+    // Calcular fechas basadas en el período
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (periodo === 'mes') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (periodo === 'trimestre') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (periodo === 'año') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    if (fechaInicio) startDate = new Date(fechaInicio);
+    if (fechaFin) endDate = new Date(fechaFin);
+
+    // Obtener médicos con sus hospitalizaciones y cuentas
+    const medicos = await prisma.empleado.findMany({
+      where: {
+        tipoEmpleado: { in: ['medico_residente', 'medico_especialista'] },
+        activo: true
+      },
+      include: {
+        hospitalizaciones: {
+          where: {
+            fechaIngreso: { gte: startDate, lte: endDate }
+          },
+          include: {
+            cuentaPaciente: {
+              include: {
+                transacciones: {
+                  where: {
+                    tipo: { in: ['servicio', 'producto'] }
+                  }
+                }
+              }
+            }
+          }
+        },
+        cuentasTratante: {
+          where: {
+            fechaApertura: { gte: startDate, lte: endDate }
+          },
+          include: {
+            transacciones: {
+              where: {
+                tipo: { in: ['servicio', 'producto'] }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Calcular métricas por médico
+    let medicosConMetricas = medicos.map(medico => {
+      // Hospitalizaciones
+      const hospitalizaciones = medico.hospitalizaciones.length;
+
+      // Ingresos de hospitalizaciones
+      let ingresosHospitalizaciones = 0;
+      let ingresosProductosHosp = 0;
+      let ingresosServiciosHosp = 0;
+
+      medico.hospitalizaciones.forEach(hosp => {
+        hosp.cuentaPaciente.transacciones.forEach(trans => {
+          const subtotal = parseFloat(trans.subtotal || 0);
+          if (trans.tipo === 'producto') {
+            ingresosProductosHosp += subtotal;
+          } else if (trans.tipo === 'servicio') {
+            ingresosServiciosHosp += subtotal;
+          }
+        });
+      });
+      ingresosHospitalizaciones = ingresosProductosHosp + ingresosServiciosHosp;
+
+      // Ingresos de cuentas como médico tratante (consultas)
+      let ingresosCuentas = 0;
+      let ingresosProductosCuentas = 0;
+      let ingresosServiciosCuentas = 0;
+
+      medico.cuentasTratante.forEach(cuenta => {
+        cuenta.transacciones.forEach(trans => {
+          const subtotal = parseFloat(trans.subtotal || 0);
+          if (trans.tipo === 'producto') {
+            ingresosProductosCuentas += subtotal;
+          } else if (trans.tipo === 'servicio') {
+            ingresosServiciosCuentas += subtotal;
+          }
+        });
+      });
+      ingresosCuentas = ingresosProductosCuentas + ingresosServiciosCuentas;
+
+      // Totales
+      const ingresosTotales = ingresosHospitalizaciones + ingresosCuentas;
+      const ingresosProductos = ingresosProductosHosp + ingresosProductosCuentas;
+      const ingresosServicios = ingresosServiciosHosp + ingresosServiciosCuentas;
+
+      // Pacientes únicos atendidos
+      const pacientesUnicos = new Set([
+        ...medico.hospitalizaciones.map(h => h.cuentaPaciente.pacienteId),
+        ...medico.cuentasTratante.map(c => c.pacienteId)
+      ]).size;
+
+      return {
+        id: medico.id,
+        nombre: `${medico.nombre} ${medico.apellidoPaterno} ${medico.apellidoMaterno || ''}`.trim(),
+        especialidad: medico.especialidad || medico.tipoEmpleado,
+        cedulaProfesional: medico.cedulaProfesional,
+        hospitalizaciones,
+        ingresos: {
+          total: ingresosTotales,
+          productos: ingresosProductos,
+          servicios: ingresosServicios,
+          porHospitalizaciones: ingresosHospitalizaciones,
+          porConsultas: ingresosCuentas
+        },
+        pacientes: pacientesUnicos,
+        cuentasAtendidas: medico.cuentasTratante.length
+      };
+    });
+
+    // Ordenar según el criterio solicitado
+    if (ordenarPor === 'hospitalizaciones') {
+      medicosConMetricas.sort((a, b) => b.hospitalizaciones - a.hospitalizaciones);
+    } else if (ordenarPor === 'ingresos') {
+      medicosConMetricas.sort((a, b) => b.ingresos.total - a.ingresos.total);
+    } else if (ordenarPor === 'pacientes') {
+      medicosConMetricas.sort((a, b) => b.pacientes - a.pacientes);
+    }
+
+    // Limitar resultados
+    const limitNum = parseInt(limite) || 10;
+    medicosConMetricas = medicosConMetricas.slice(0, limitNum);
+
+    // Calcular totales generales
+    const totales = {
+      hospitalizaciones: medicosConMetricas.reduce((sum, m) => sum + m.hospitalizaciones, 0),
+      ingresos: medicosConMetricas.reduce((sum, m) => sum + m.ingresos.total, 0),
+      productos: medicosConMetricas.reduce((sum, m) => sum + m.ingresos.productos, 0),
+      servicios: medicosConMetricas.reduce((sum, m) => sum + m.ingresos.servicios, 0),
+      pacientes: medicosConMetricas.reduce((sum, m) => sum + m.pacientes, 0)
+    };
+
+    res.json({
+      success: true,
+      data: {
+        medicos: medicosConMetricas,
+        totales,
+        periodo: {
+          fechaInicio: startDate.toISOString(),
+          fechaFin: endDate.toISOString(),
+          tipo: periodo
+        }
+      },
+      message: 'Ranking de médicos generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_DOCTORS_RANKINGS', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /doctors/:id/detail - Detalle de ingresos de un médico específico (Admin, Socio)
+router.get('/doctors/:id/detail', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { periodo = 'mes', fechaInicio, fechaFin } = req.query;
+
+    // Calcular fechas basadas en el período
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (periodo === 'mes') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (periodo === 'trimestre') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (periodo === 'año') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    if (fechaInicio) startDate = new Date(fechaInicio);
+    if (fechaFin) endDate = new Date(fechaFin);
+
+    // Obtener médico con todas sus transacciones
+    const medico = await prisma.empleado.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        hospitalizaciones: {
+          where: {
+            fechaIngreso: { gte: startDate, lte: endDate }
+          },
+          include: {
+            cuentaPaciente: {
+              include: {
+                paciente: {
+                  select: { id: true, nombre: true, apellidoPaterno: true }
+                },
+                transacciones: {
+                  where: { tipo: { in: ['servicio', 'producto'] } },
+                  include: {
+                    servicio: { select: { id: true, nombre: true, codigo: true } },
+                    producto: { select: { id: true, nombre: true, codigo: true, precioCompra: true } }
+                  }
+                }
+              }
+            },
+            habitacion: { select: { numero: true, tipo: true } }
+          }
+        },
+        cuentasTratante: {
+          where: {
+            fechaApertura: { gte: startDate, lte: endDate }
+          },
+          include: {
+            paciente: {
+              select: { id: true, nombre: true, apellidoPaterno: true }
+            },
+            transacciones: {
+              where: { tipo: { in: ['servicio', 'producto'] } },
+              include: {
+                servicio: { select: { id: true, nombre: true, codigo: true } },
+                producto: { select: { id: true, nombre: true, codigo: true, precioCompra: true } }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!medico) {
+      return res.status(404).json({
+        success: false,
+        message: 'Médico no encontrado'
+      });
+    }
+
+    // Desglosar transacciones por tipo
+    const detalleProductos = [];
+    const detalleServicios = [];
+
+    // Procesar hospitalizaciones
+    medico.hospitalizaciones.forEach(hosp => {
+      hosp.cuentaPaciente.transacciones.forEach(trans => {
+        const item = {
+          fecha: trans.fechaTransaccion,
+          paciente: `${hosp.cuentaPaciente.paciente.nombre} ${hosp.cuentaPaciente.paciente.apellidoPaterno}`,
+          concepto: trans.concepto,
+          cantidad: trans.cantidad,
+          precioUnitario: parseFloat(trans.precioUnitario),
+          subtotal: parseFloat(trans.subtotal),
+          tipoAtencion: 'hospitalizacion',
+          habitacion: hosp.habitacion?.numero
+        };
+
+        if (trans.tipo === 'producto' && trans.producto) {
+          item.codigo = trans.producto.codigo;
+          item.costo = trans.producto.precioCompra ? parseFloat(trans.producto.precioCompra) * trans.cantidad : null;
+          item.margen = item.costo ? ((item.subtotal - item.costo) / item.subtotal * 100).toFixed(2) : null;
+          detalleProductos.push(item);
+        } else if (trans.tipo === 'servicio' && trans.servicio) {
+          item.codigo = trans.servicio.codigo;
+          detalleServicios.push(item);
+        }
+      });
+    });
+
+    // Procesar consultas/cuentas
+    medico.cuentasTratante.forEach(cuenta => {
+      cuenta.transacciones.forEach(trans => {
+        const item = {
+          fecha: trans.fechaTransaccion,
+          paciente: `${cuenta.paciente.nombre} ${cuenta.paciente.apellidoPaterno}`,
+          concepto: trans.concepto,
+          cantidad: trans.cantidad,
+          precioUnitario: parseFloat(trans.precioUnitario),
+          subtotal: parseFloat(trans.subtotal),
+          tipoAtencion: cuenta.tipoAtencion
+        };
+
+        if (trans.tipo === 'producto' && trans.producto) {
+          item.codigo = trans.producto.codigo;
+          item.costo = trans.producto.precioCompra ? parseFloat(trans.producto.precioCompra) * trans.cantidad : null;
+          item.margen = item.costo ? ((item.subtotal - item.costo) / item.subtotal * 100).toFixed(2) : null;
+          detalleProductos.push(item);
+        } else if (trans.tipo === 'servicio' && trans.servicio) {
+          item.codigo = trans.servicio.codigo;
+          detalleServicios.push(item);
+        }
+      });
+    });
+
+    // Calcular resumen
+    const totalProductos = detalleProductos.reduce((sum, p) => sum + p.subtotal, 0);
+    const totalServicios = detalleServicios.reduce((sum, s) => sum + s.subtotal, 0);
+    const costoProductos = detalleProductos.reduce((sum, p) => sum + (p.costo || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        medico: {
+          id: medico.id,
+          nombre: `${medico.nombre} ${medico.apellidoPaterno} ${medico.apellidoMaterno || ''}`.trim(),
+          especialidad: medico.especialidad,
+          cedulaProfesional: medico.cedulaProfesional
+        },
+        resumen: {
+          totalIngresos: totalProductos + totalServicios,
+          totalProductos,
+          totalServicios,
+          costoProductos,
+          utilidadProductos: totalProductos - costoProductos,
+          margenProductos: totalProductos > 0 ? ((totalProductos - costoProductos) / totalProductos * 100).toFixed(2) : 0,
+          hospitalizaciones: medico.hospitalizaciones.length,
+          consultas: medico.cuentasTratante.length
+        },
+        detalleProductos,
+        detalleServicios,
+        periodo: {
+          fechaInicio: startDate.toISOString(),
+          fechaFin: endDate.toISOString()
+        }
+      },
+      message: 'Detalle de médico generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_DOCTOR_DETAIL', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// ==============================================
+// REPORTES DE UTILIDADES - NUEVO (Junta Directiva)
+// ==============================================
+
+// GET /profit/detailed - Reporte detallado de utilidades netas (Admin, Socio)
+router.get('/profit/detailed', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { periodo = 'mes', fechaInicio, fechaFin, desglose = 'todo' } = req.query;
+
+    // Calcular fechas basadas en el período
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (periodo === 'mes') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (periodo === 'trimestre') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (periodo === 'año') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    if (fechaInicio) startDate = new Date(fechaInicio);
+    if (fechaFin) endDate = new Date(fechaFin);
+
+    // Obtener configuración de porcentaje estimado para servicios
+    const configPorcentaje = await prisma.configuracionReportes.findUnique({
+      where: { clave: 'porcentaje_costo_servicio' }
+    });
+    const porcentajeCostoServicio = configPorcentaje ? parseFloat(configPorcentaje.valor) : 60;
+
+    const data = {};
+
+    // ========== PRODUCTOS ==========
+    if (desglose === 'productos' || desglose === 'todo') {
+      // Transacciones de productos con costo
+      const transaccionesProductos = await prisma.transaccionCuenta.findMany({
+        where: {
+          tipo: 'producto',
+          fechaTransaccion: { gte: startDate, lte: endDate }
+        },
+        include: {
+          producto: {
+            select: {
+              id: true,
+              codigo: true,
+              nombre: true,
+              precioCompra: true,
+              precioVenta: true,
+              categoria: true
+            }
+          }
+        }
+      });
+
+      // Agrupar por producto
+      const productosPorId = {};
+      transaccionesProductos.forEach(trans => {
+        if (!trans.producto) return;
+        const prodId = trans.producto.id;
+        if (!productosPorId[prodId]) {
+          productosPorId[prodId] = {
+            id: prodId,
+            codigo: trans.producto.codigo,
+            nombre: trans.producto.nombre,
+            categoria: trans.producto.categoria,
+            precioCompra: trans.producto.precioCompra ? parseFloat(trans.producto.precioCompra) : null,
+            precioVenta: parseFloat(trans.producto.precioVenta),
+            vendidos: 0,
+            ingreso: 0,
+            costo: 0
+          };
+        }
+        productosPorId[prodId].vendidos += trans.cantidad;
+        productosPorId[prodId].ingreso += parseFloat(trans.subtotal);
+        if (trans.producto.precioCompra) {
+          productosPorId[prodId].costo += parseFloat(trans.producto.precioCompra) * trans.cantidad;
+        }
+      });
+
+      const itemsProductos = Object.values(productosPorId).map(p => ({
+        ...p,
+        utilidad: p.ingreso - p.costo,
+        margen: p.ingreso > 0 ? ((p.ingreso - p.costo) / p.ingreso * 100).toFixed(2) : 0
+      })).sort((a, b) => b.ingreso - a.ingreso);
+
+      const totalIngresosProductos = itemsProductos.reduce((sum, p) => sum + p.ingreso, 0);
+      const totalCostoProductos = itemsProductos.reduce((sum, p) => sum + p.costo, 0);
+
+      data.productos = {
+        ingresos: totalIngresosProductos,
+        costo: totalCostoProductos,
+        utilidad: totalIngresosProductos - totalCostoProductos,
+        margen: totalIngresosProductos > 0
+          ? ((totalIngresosProductos - totalCostoProductos) / totalIngresosProductos * 100).toFixed(2)
+          : 0,
+        items: itemsProductos.slice(0, 20) // Top 20
+      };
+    }
+
+    // ========== SERVICIOS ==========
+    if (desglose === 'servicios' || desglose === 'todo') {
+      // Transacciones de servicios
+      const transaccionesServicios = await prisma.transaccionCuenta.findMany({
+        where: {
+          tipo: 'servicio',
+          fechaTransaccion: { gte: startDate, lte: endDate }
+        },
+        include: {
+          servicio: {
+            select: {
+              id: true,
+              codigo: true,
+              nombre: true,
+              tipo: true,
+              precio: true,
+              costo: true
+            }
+          }
+        }
+      });
+
+      // Agrupar por servicio
+      const serviciosPorId = {};
+      transaccionesServicios.forEach(trans => {
+        if (!trans.servicio) return;
+        const servId = trans.servicio.id;
+        if (!serviciosPorId[servId]) {
+          serviciosPorId[servId] = {
+            id: servId,
+            codigo: trans.servicio.codigo,
+            nombre: trans.servicio.nombre,
+            tipo: trans.servicio.tipo,
+            precioBase: parseFloat(trans.servicio.precio),
+            costoReal: trans.servicio.costo ? parseFloat(trans.servicio.costo) : null,
+            vendidos: 0,
+            ingreso: 0,
+            costoRealTotal: 0,
+            costoEstimadoTotal: 0
+          };
+        }
+        serviciosPorId[servId].vendidos += trans.cantidad;
+        serviciosPorId[servId].ingreso += parseFloat(trans.subtotal);
+        if (trans.servicio.costo) {
+          serviciosPorId[servId].costoRealTotal += parseFloat(trans.servicio.costo) * trans.cantidad;
+        }
+        // Siempre calcular estimado como fallback
+        serviciosPorId[servId].costoEstimadoTotal += parseFloat(trans.subtotal) * (porcentajeCostoServicio / 100);
+      });
+
+      const itemsServicios = Object.values(serviciosPorId).map(s => {
+        // Usar costo real si está disponible, si no, estimado
+        const costoFinal = s.costoRealTotal > 0 ? s.costoRealTotal : s.costoEstimadoTotal;
+        const usaCostoReal = s.costoRealTotal > 0;
+        return {
+          ...s,
+          costo: costoFinal,
+          usaCostoReal,
+          utilidad: s.ingreso - costoFinal,
+          margen: s.ingreso > 0 ? ((s.ingreso - costoFinal) / s.ingreso * 100).toFixed(2) : 0
+        };
+      }).sort((a, b) => b.ingreso - a.ingreso);
+
+      const totalIngresosServicios = itemsServicios.reduce((sum, s) => sum + s.ingreso, 0);
+      const totalCostoServicios = itemsServicios.reduce((sum, s) => sum + s.costo, 0);
+      const serviciosConCostoReal = itemsServicios.filter(s => s.usaCostoReal).length;
+
+      data.servicios = {
+        ingresos: totalIngresosServicios,
+        costoEstimado: totalIngresosServicios * (porcentajeCostoServicio / 100),
+        costoCalculado: totalCostoServicios,
+        porcentajeEstimado: porcentajeCostoServicio,
+        serviciosConCostoReal,
+        serviciosTotales: itemsServicios.length,
+        utilidad: totalIngresosServicios - totalCostoServicios,
+        margen: totalIngresosServicios > 0
+          ? ((totalIngresosServicios - totalCostoServicios) / totalIngresosServicios * 100).toFixed(2)
+          : 0,
+        items: itemsServicios.slice(0, 20)
+      };
+    }
+
+    // ========== COSTOS OPERATIVOS ==========
+    const costosOperativos = await prisma.costoOperativo.findMany({
+      where: {
+        activo: true,
+        periodo: { gte: startDate, lte: endDate }
+      },
+      orderBy: { categoria: 'asc' }
+    });
+
+    // Agrupar por categoría
+    const costosPorCategoria = {};
+    costosOperativos.forEach(costo => {
+      if (!costosPorCategoria[costo.categoria]) {
+        costosPorCategoria[costo.categoria] = {
+          categoria: costo.categoria,
+          total: 0,
+          items: []
+        };
+      }
+      costosPorCategoria[costo.categoria].total += parseFloat(costo.monto);
+      costosPorCategoria[costo.categoria].items.push({
+        id: costo.id,
+        concepto: costo.concepto,
+        monto: parseFloat(costo.monto),
+        periodo: costo.periodo,
+        recurrente: costo.recurrente
+      });
+    });
+
+    const totalCostosOperativos = Object.values(costosPorCategoria).reduce((sum, cat) => sum + cat.total, 0);
+
+    // Calcular nómina desde empleados (si no hay datos en CostoOperativo)
+    let nominaEmpleados = 0;
+    if (!costosPorCategoria['nomina'] || costosPorCategoria['nomina'].total === 0) {
+      const empleadosActivos = await prisma.empleado.findMany({
+        where: { activo: true },
+        select: { salario: true, nombre: true, tipoEmpleado: true }
+      });
+      nominaEmpleados = empleadosActivos.reduce((sum, emp) => sum + parseFloat(emp.salario || 0), 0);
+
+      // Agregar a costos operativos
+      if (!costosPorCategoria['nomina']) {
+        costosPorCategoria['nomina'] = { categoria: 'nomina', total: 0, items: [] };
+      }
+      costosPorCategoria['nomina'].total = nominaEmpleados;
+      costosPorCategoria['nomina'].calculadoDesdeEmpleados = true;
+    }
+
+    data.operativos = {
+      porCategoria: Object.values(costosPorCategoria),
+      total: totalCostosOperativos + nominaEmpleados,
+      nominaCalculada: nominaEmpleados > 0 ? nominaEmpleados : null
+    };
+
+    // ========== RESUMEN GENERAL ==========
+    const ingresosTotales = (data.productos?.ingresos || 0) + (data.servicios?.ingresos || 0);
+    const costoProductos = data.productos?.costo || 0;
+    const costoServicios = data.servicios?.costoCalculado || 0;
+    const costosOps = data.operativos?.total || 0;
+
+    const costosTotales = costoProductos + costoServicios;
+    const utilidadBruta = ingresosTotales - costosTotales;
+    const utilidadNeta = utilidadBruta - costosOps;
+
+    data.resumen = {
+      ingresosTotales,
+      costoProductos,
+      costoServicios,
+      costosTotalesDirectos: costosTotales,
+      utilidadBruta,
+      margenBruto: ingresosTotales > 0 ? (utilidadBruta / ingresosTotales * 100).toFixed(2) : 0,
+      costosOperativos: costosOps,
+      utilidadNeta,
+      margenNeto: ingresosTotales > 0 ? (utilidadNeta / ingresosTotales * 100).toFixed(2) : 0
+    };
+
+    data.periodo = {
+      fechaInicio: startDate.toISOString(),
+      fechaFin: endDate.toISOString(),
+      tipo: periodo
+    };
+
+    data.configuracion = {
+      porcentajeCostoServicioEstimado: porcentajeCostoServicio
+    };
+
+    res.json({
+      success: true,
+      data,
+      message: 'Reporte de utilidades generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_PROFIT_DETAILED', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /profit/summary - Resumen rápido de utilidades (Admin, Socio)
+router.get('/profit/summary', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { periodo = 'mes' } = req.query;
+
+    // Calcular fechas
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (periodo === 'mes') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (periodo === 'trimestre') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (periodo === 'año') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    // Obtener configuración
+    const configPorcentaje = await prisma.configuracionReportes.findUnique({
+      where: { clave: 'porcentaje_costo_servicio' }
+    });
+    const porcentajeCostoServicio = configPorcentaje ? parseFloat(configPorcentaje.valor) : 60;
+
+    // Calcular ingresos y costos de forma agregada
+    const [transaccionesProductos, transaccionesServicios, costosOps, nomina] = await Promise.all([
+      // Productos
+      prisma.$queryRaw`
+        SELECT
+          SUM(tc.subtotal) as ingresos,
+          SUM(p.precio_compra * tc.cantidad) as costo
+        FROM transacciones_cuenta tc
+        LEFT JOIN productos p ON tc.producto_id = p.id
+        WHERE tc.tipo = 'producto'
+          AND tc.fecha_transaccion >= ${startDate}
+          AND tc.fecha_transaccion <= ${endDate}
+      `,
+      // Servicios
+      prisma.$queryRaw`
+        SELECT
+          SUM(tc.subtotal) as ingresos,
+          SUM(COALESCE(s.costo, tc.subtotal * ${porcentajeCostoServicio / 100}) * tc.cantidad) as costo
+        FROM transacciones_cuenta tc
+        LEFT JOIN servicios s ON tc.servicio_id = s.id
+        WHERE tc.tipo = 'servicio'
+          AND tc.fecha_transaccion >= ${startDate}
+          AND tc.fecha_transaccion <= ${endDate}
+      `,
+      // Costos operativos
+      prisma.costoOperativo.aggregate({
+        where: {
+          activo: true,
+          periodo: { gte: startDate, lte: endDate }
+        },
+        _sum: { monto: true }
+      }),
+      // Nómina
+      prisma.empleado.aggregate({
+        where: { activo: true },
+        _sum: { salario: true }
+      })
+    ]);
+
+    const ingresosProductos = parseFloat(transaccionesProductos[0]?.ingresos || 0);
+    const costoProductos = parseFloat(transaccionesProductos[0]?.costo || 0);
+    const ingresosServicios = parseFloat(transaccionesServicios[0]?.ingresos || 0);
+    const costoServicios = parseFloat(transaccionesServicios[0]?.costo || 0);
+    const costosOperativos = parseFloat(costosOps._sum.monto || 0);
+    const nominaMensual = parseFloat(nomina._sum.salario || 0);
+
+    const ingresosTotales = ingresosProductos + ingresosServicios;
+    const costosTotalesDirectos = costoProductos + costoServicios;
+    const utilidadBruta = ingresosTotales - costosTotalesDirectos;
+    const totalCostosOperativos = costosOperativos + nominaMensual;
+    const utilidadNeta = utilidadBruta - totalCostosOperativos;
+
+    res.json({
+      success: true,
+      data: {
+        ingresos: {
+          productos: ingresosProductos,
+          servicios: ingresosServicios,
+          total: ingresosTotales
+        },
+        costos: {
+          productos: costoProductos,
+          servicios: costoServicios,
+          operativos: costosOperativos,
+          nomina: nominaMensual,
+          total: costosTotalesDirectos + totalCostosOperativos
+        },
+        utilidad: {
+          bruta: utilidadBruta,
+          margenBruto: ingresosTotales > 0 ? (utilidadBruta / ingresosTotales * 100).toFixed(2) : 0,
+          neta: utilidadNeta,
+          margenNeto: ingresosTotales > 0 ? (utilidadNeta / ingresosTotales * 100).toFixed(2) : 0
+        },
+        periodo
+      },
+      message: 'Resumen de utilidades generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_PROFIT_SUMMARY', error);
+    handlePrismaError(error, res);
+  }
+});
+
 // GET /inventory - Reporte de inventario (Admin, Socio, Médico Especialista, Almacenista)
 router.get('/inventory', authenticateToken, authorizeRoles(['administrador', 'socio', 'medico_especialista', 'almacenista']), validateDateRange, async (req, res) => {
   try {

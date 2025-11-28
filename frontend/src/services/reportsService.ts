@@ -13,7 +13,18 @@ import {
   KPIMetric,
   ReportFilters,
   ReportsResponse,
-  ReportsListResponse
+  ReportsListResponse,
+  DoctorRankingsReport,
+  DoctorDetailReport,
+  ProfitSummaryReport,
+  ProfitDetailedReport,
+  CostoOperativo,
+  CostosOperativosListResponse,
+  CostSummaryReport,
+  ServiceCost,
+  ServiceCostsListResponse,
+  ConfiguracionReporte,
+  CategoriaCosto
 } from '@/types/reports.types';
 
 class ReportsService {
@@ -531,6 +542,459 @@ class ReportsService {
       return {
         success: false,
         message: error.message || 'Error al obtener flujo de pacientes',
+        error: error.error
+      };
+    }
+  }
+
+  // ====================== REPORTES DE MÉDICOS ======================
+
+  /**
+   * Obtiene ranking de médicos por hospitalizaciones e ingresos
+   */
+  async getDoctorRankings(filters: ReportFilters = {}): Promise<ReportsResponse<DoctorRankingsReport>> {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
+      if (filters.fechaFin) params.append('fechaFin', filters.fechaFin);
+      if (filters.periodo) params.append('periodo', filters.periodo);
+
+      const response = await api.get(`/reports/doctors/rankings?${params.toString()}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Rankings de médicos obtenidos correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString(),
+          parametros: filters
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener rankings de médicos:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener rankings de médicos',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Obtiene detalle de ingresos de un médico específico
+   */
+  async getDoctorDetail(medicoId: number, filters: ReportFilters = {}): Promise<ReportsResponse<DoctorDetailReport>> {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
+      if (filters.fechaFin) params.append('fechaFin', filters.fechaFin);
+      if (filters.periodo) params.append('periodo', filters.periodo);
+
+      const response = await api.get(`/reports/doctors/${medicoId}/detail?${params.toString()}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Detalle del médico obtenido correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString(),
+          parametros: filters
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener detalle del médico:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener detalle del médico',
+        error: error.error
+      };
+    }
+  }
+
+  // ====================== REPORTES DE UTILIDADES ======================
+
+  /**
+   * Obtiene resumen de utilidades netas
+   */
+  async getProfitSummary(filters: ReportFilters = {}): Promise<ReportsResponse<ProfitSummaryReport>> {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
+      if (filters.fechaFin) params.append('fechaFin', filters.fechaFin);
+      if (filters.periodo) params.append('periodo', filters.periodo);
+
+      const response = await api.get(`/reports/profit/summary?${params.toString()}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Resumen de utilidades obtenido correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString(),
+          parametros: filters
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener resumen de utilidades:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener resumen de utilidades',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Obtiene reporte detallado de utilidades
+   */
+  async getProfitDetailed(filters: ReportFilters = {}): Promise<ReportsResponse<ProfitDetailedReport>> {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
+      if (filters.fechaFin) params.append('fechaFin', filters.fechaFin);
+      if (filters.periodo) params.append('periodo', filters.periodo);
+
+      const response = await api.get(`/reports/profit/detailed?${params.toString()}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Reporte detallado de utilidades obtenido correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString(),
+          parametros: filters
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener reporte detallado de utilidades:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener reporte detallado de utilidades',
+        error: error.error
+      };
+    }
+  }
+
+  // ====================== COSTOS OPERATIVOS ======================
+
+  /**
+   * Obtiene lista de costos operativos
+   */
+  async getOperationalCosts(params: {
+    page?: number;
+    limit?: number;
+    categoria?: CategoriaCosto;
+    activo?: boolean;
+    fechaInicio?: string;
+    fechaFin?: string;
+  } = {}): Promise<ReportsResponse<CostosOperativosListResponse>> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.categoria) queryParams.append('categoria', params.categoria);
+      if (params.activo !== undefined) queryParams.append('activo', params.activo.toString());
+      if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
+      if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
+
+      const response = await api.get(`/costs/operational?${queryParams.toString()}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costos operativos obtenidos correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener costos operativos:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener costos operativos',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Crea un nuevo costo operativo
+   */
+  async createOperationalCost(data: {
+    categoria: CategoriaCosto;
+    concepto: string;
+    descripcion?: string;
+    monto: number;
+    periodo: string;
+    recurrente?: boolean;
+  }): Promise<ReportsResponse<CostoOperativo>> {
+    try {
+      const response = await api.post('/costs/operational', data);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costo operativo creado correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al crear costo operativo');
+    } catch (error: any) {
+      console.error('Error al crear costo operativo:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al crear costo operativo',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Actualiza un costo operativo
+   */
+  async updateOperationalCost(id: number, data: Partial<{
+    categoria: CategoriaCosto;
+    concepto: string;
+    descripcion: string;
+    monto: number;
+    periodo: string;
+    recurrente: boolean;
+    activo: boolean;
+  }>): Promise<ReportsResponse<CostoOperativo>> {
+    try {
+      const response = await api.put(`/costs/operational/${id}`, data);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costo operativo actualizado correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al actualizar costo operativo');
+    } catch (error: any) {
+      console.error('Error al actualizar costo operativo:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al actualizar costo operativo',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Elimina un costo operativo
+   */
+  async deleteOperationalCost(id: number): Promise<ReportsResponse<null>> {
+    try {
+      const response = await api.delete(`/costs/operational/${id}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costo operativo eliminado correctamente',
+          data: null,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al eliminar costo operativo');
+    } catch (error: any) {
+      console.error('Error al eliminar costo operativo:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al eliminar costo operativo',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Obtiene resumen de costos por categoría
+   */
+  async getCostsSummary(filters: ReportFilters = {}): Promise<ReportsResponse<CostSummaryReport>> {
+    try {
+      const params = new URLSearchParams();
+
+      if (filters.fechaInicio) params.append('fechaInicio', filters.fechaInicio);
+      if (filters.fechaFin) params.append('fechaFin', filters.fechaFin);
+
+      const response = await api.get(`/costs/summary?${params.toString()}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Resumen de costos obtenido correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString(),
+          parametros: filters
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener resumen de costos:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener resumen de costos',
+        error: error.error
+      };
+    }
+  }
+
+  // ====================== COSTOS DE SERVICIOS ======================
+
+  /**
+   * Obtiene lista de costos de servicios
+   */
+  async getServiceCosts(): Promise<ReportsResponse<ServiceCostsListResponse>> {
+    try {
+      const response = await api.get('/costs/services');
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costos de servicios obtenidos correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error en la respuesta del servidor');
+    } catch (error: any) {
+      console.error('Error al obtener costos de servicios:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener costos de servicios',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Actualiza el costo de un servicio
+   */
+  async updateServiceCost(servicioId: number, costo: number | null): Promise<ReportsResponse<ServiceCost>> {
+    try {
+      const response = await api.put(`/costs/services/${servicioId}`, { costo });
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costo del servicio actualizado correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al actualizar costo del servicio');
+    } catch (error: any) {
+      console.error('Error al actualizar costo del servicio:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al actualizar costo del servicio',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Actualiza costos de múltiples servicios
+   */
+  async updateServiceCostsBulk(servicios: Array<{ id: number; costo: number | null }>): Promise<ReportsResponse<{ actualizados: number }>> {
+    try {
+      const response = await api.put('/costs/services/bulk', { servicios });
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Costos actualizados correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al actualizar costos');
+    } catch (error: any) {
+      console.error('Error al actualizar costos de servicios:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al actualizar costos de servicios',
+        error: error.error
+      };
+    }
+  }
+
+  // ====================== CONFIGURACIÓN ======================
+
+  /**
+   * Obtiene una configuración de reporte
+   */
+  async getConfig(clave: string): Promise<ReportsResponse<ConfiguracionReporte>> {
+    try {
+      const response = await api.get(`/costs/config/${clave}`);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Configuración obtenida correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al obtener configuración');
+    } catch (error: any) {
+      console.error('Error al obtener configuración:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al obtener configuración',
+        error: error.error
+      };
+    }
+  }
+
+  /**
+   * Actualiza una configuración de reporte
+   */
+  async updateConfig(clave: string, valor: string): Promise<ReportsResponse<ConfiguracionReporte>> {
+    try {
+      const response = await api.put(`/costs/config/${clave}`, { valor });
+
+      if (response.success) {
+        return {
+          success: true,
+          message: 'Configuración actualizada correctamente',
+          data: response.data,
+          generadoEn: new Date().toISOString()
+        };
+      }
+
+      throw new Error(response.message || 'Error al actualizar configuración');
+    } catch (error: any) {
+      console.error('Error al actualizar configuración:', error);
+      return {
+        success: false,
+        message: error.message || 'Error al actualizar configuración',
         error: error.error
       };
     }

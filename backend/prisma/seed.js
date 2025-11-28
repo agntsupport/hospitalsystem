@@ -788,6 +788,70 @@ async function main() {
 
     console.log(`🚫 ${causasCancelacion.length} causas de cancelación creadas`);
 
+    // ========================================
+    // COSTOS OPERATIVOS Y CONFIGURACIÓN (Nuevo - Junta Directiva)
+    // ========================================
+
+    // Configuración de reportes
+    await prisma.configuracionReportes.upsert({
+      where: { clave: 'porcentaje_costo_servicio' },
+      update: {},
+      create: {
+        clave: 'porcentaje_costo_servicio',
+        valor: '60',
+        descripcion: 'Porcentaje estimado del costo operativo de un servicio (usado cuando no hay costo real)',
+        tipoDato: 'number',
+        editablePorAdmin: true
+      }
+    });
+
+    console.log('⚙️ Configuración de reportes creada');
+
+    // Costos operativos de ejemplo
+    const mesActual = new Date();
+    mesActual.setDate(1); // Primer día del mes
+
+    const costosOperativosData = [
+      // Nómina se calcula desde empleados, pero podemos agregar extras
+      { categoria: 'servicios_publicos', concepto: 'Energía eléctrica', monto: 45000, periodo: mesActual, recurrente: true },
+      { categoria: 'servicios_publicos', concepto: 'Agua', monto: 8500, periodo: mesActual, recurrente: true },
+      { categoria: 'servicios_publicos', concepto: 'Gas', monto: 12000, periodo: mesActual, recurrente: true },
+      { categoria: 'servicios_publicos', concepto: 'Internet y telefonía', monto: 15000, periodo: mesActual, recurrente: true },
+      { categoria: 'mantenimiento', concepto: 'Mantenimiento de equipos médicos', monto: 25000, periodo: mesActual, recurrente: true },
+      { categoria: 'mantenimiento', concepto: 'Limpieza y sanitización', monto: 18000, periodo: mesActual, recurrente: true },
+      { categoria: 'insumos_generales', concepto: 'Papelería y oficina', monto: 5000, periodo: mesActual, recurrente: true },
+      { categoria: 'insumos_generales', concepto: 'Material de limpieza', monto: 8000, periodo: mesActual, recurrente: true },
+      { categoria: 'renta_inmueble', concepto: 'Renta del local', monto: 85000, periodo: mesActual, recurrente: true },
+      { categoria: 'seguros', concepto: 'Seguro de responsabilidad civil médica', monto: 35000, periodo: mesActual, recurrente: true },
+      { categoria: 'seguros', concepto: 'Seguro del inmueble', monto: 12000, periodo: mesActual, recurrente: true },
+      { categoria: 'depreciacion', concepto: 'Depreciación equipo médico', monto: 40000, periodo: mesActual, recurrente: true },
+      { categoria: 'marketing', concepto: 'Publicidad digital', monto: 15000, periodo: mesActual, recurrente: true },
+      { categoria: 'capacitacion', concepto: 'Capacitación del personal', monto: 10000, periodo: mesActual, recurrente: false }
+    ];
+
+    for (const costo of costosOperativosData) {
+      await prisma.costoOperativo.upsert({
+        where: { id: costosOperativosData.indexOf(costo) + 1 },
+        update: {},
+        create: costo
+      });
+    }
+
+    console.log(`💰 ${costosOperativosData.length} costos operativos de ejemplo creados`);
+
+    // Actualizar costos de servicios (60% del precio como ejemplo)
+    const servicios = await prisma.servicio.findMany();
+    for (const servicio of servicios) {
+      await prisma.servicio.update({
+        where: { id: servicio.id },
+        data: {
+          costo: parseFloat(servicio.precio) * 0.6 // 60% del precio como costo estimado
+        }
+      });
+    }
+
+    console.log(`📊 Costos actualizados para ${servicios.length} servicios`);
+
     console.log('✅ Seed completado exitosamente');
     console.log('\n📋 CREDENCIALES DE ACCESO:');
     console.log('👨‍💼 Administrador: admin / admin123');

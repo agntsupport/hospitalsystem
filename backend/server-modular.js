@@ -221,6 +221,7 @@ const usersRoutes = require('./routes/users.routes');
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 const notificacionesRoutes = require('./routes/notificaciones.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const costsRoutes = require('./routes/costs.routes');
 
 // ==============================================
 // RATE LIMITING ESPECÍFICO PARA LOGIN
@@ -281,6 +282,7 @@ app.use('/api/rooms', roomsRoutes);
 app.use('/api/offices', officesRoutes);
 app.use('/api/quirofanos', quirofanosRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/costs', costsRoutes);
 
 // Ruta de consulta de auditoría
 app.use('/api/audit', auditRoutes);
