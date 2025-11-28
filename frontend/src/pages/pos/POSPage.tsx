@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Grid,
   Card,
   CardContent,
   Typography,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Tabs,
   Tab,
   Alert,
@@ -18,9 +13,7 @@ import {
   Add as AddIcon,
   PointOfSale as POSIcon,
   Receipt as ReceiptIcon,
-  AttachMoney as MoneyIcon,
   AccountBalance as AccountIcon,
-  ShoppingCart as CartIcon,
 } from '@mui/icons-material';
 
 import { posService } from '@/services/posService';
@@ -29,7 +22,6 @@ import NewAccountDialog from '@/components/pos/NewAccountDialog';
 import OpenAccountsList from '@/components/pos/OpenAccountsList';
 import POSTransactionDialog from '@/components/pos/POSTransactionDialog';
 import HistoryTab from '@/components/pos/HistoryTab';
-import QuickSalesTab from '@/components/pos/QuickSalesTab';
 import AccountClosureDialog from '@/components/pos/AccountClosureDialog';
 import AccountDetailDialog from '@/components/pos/AccountDetailDialog';
 import PartialPaymentDialog from '@/components/pos/PartialPaymentDialog';
@@ -165,14 +157,9 @@ const POSPage: React.FC = () => {
             label="Cuentas Abiertas" 
             iconPosition="start"
           />
-          <Tab 
-            icon={<ReceiptIcon />} 
-            label="Historial" 
-            iconPosition="start"
-          />
-          <Tab 
-            icon={<CartIcon />} 
-            label="Ventas Rápidas" 
+          <Tab
+            icon={<ReceiptIcon />}
+            label="Historial"
             iconPosition="start"
           />
         </Tabs>
@@ -193,10 +180,6 @@ const POSPage: React.FC = () => {
           
           {currentTab === 1 && (
             <HistoryTab onRefresh={loadInitialData} />
-          )}
-          
-          {currentTab === 2 && (
-            <QuickSalesTab onRefresh={loadInitialData} />
           )}
         </CardContent>
       </Card>
