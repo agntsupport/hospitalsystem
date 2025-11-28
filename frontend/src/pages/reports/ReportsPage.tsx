@@ -1,29 +1,33 @@
+// ABOUTME: Página de Reportes Administrativos del sistema hospitalario
+// ABOUTME: Dashboard ejecutivo, reportes financieros, operativos y gerenciales
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
-  Typography,
   Tabs,
   Tab,
   Paper,
   Alert,
-  CircularProgress,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Button,
   Grid,
-  TextField
+  TextField,
+  Typography,
+  CircularProgress
 } from '@mui/material';
 import {
   Assessment as AssessmentIcon,
   TrendingUp as TrendingUpIcon,
   Business as BusinessIcon,
-  DateRange as DateRangeIcon,
   Refresh as RefreshIcon,
   LocalHospital as DoctorIcon
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import { FullPageLoader } from '@/components/common/LoadingState';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { ReportFilters, REPORT_PERIODS, PERIOD_LABELS } from '@/types/reports.types';
@@ -137,34 +141,13 @@ const ReportsPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 2, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            fontWeight: 600,
-            fontSize: { xs: '1.8rem', sm: '2.125rem' }
-          }}
-        >
-          <AssessmentIcon fontSize="large" color="primary" />
-          Reportes Administrativos
-        </Typography>
-        <Typography 
-          variant="body1" 
-          color="text.secondary"
-          sx={{
-            fontSize: { xs: '0.9rem', sm: '1rem' },
-            maxWidth: '600px'
-          }}
-        >
-          Análisis financiero, operativo y gerencial del hospital con indicadores clave de rendimiento
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Reportes Administrativos"
+        subtitle="Análisis financiero, operativo y gerencial del hospital con indicadores clave de rendimiento"
+        icon={<AssessmentIcon />}
+        iconColor="primary"
+      />
 
       {/* Filtros globales */}
       <Paper 

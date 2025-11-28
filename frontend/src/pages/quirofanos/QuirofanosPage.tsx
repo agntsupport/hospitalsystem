@@ -1,11 +1,11 @@
+// ABOUTME: Página de gestión de Quirófanos del hospital
+// ABOUTME: CRUD de quirófanos con estados, filtros y estadísticas
+
 import React, { useState, useEffect } from 'react';
 import {
   Container,
-  Typography,
   Paper,
   Grid,
-  Card,
-  CardContent,
   Box,
   Button,
   Table,
@@ -18,7 +18,6 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  CircularProgress,
   TextField,
   MenuItem,
   FormControl,
@@ -28,7 +27,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Typography
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,8 +40,13 @@ import {
   CheckCircle as AvailableIcon,
   Cancel as OccupiedIcon,
   Warning as MaintenanceIcon,
-  CleaningServices as CleaningIcon
+  CleaningServices as CleaningIcon,
+  LocalHospital as HospitalIcon
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
+import { FullPageLoader } from '@/components/common/LoadingState';
+import EmptyState from '@/components/common/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import quirofanosService, { Quirofano, QuirofanoStats } from '@/services/quirofanosService';
 import QuirofanoFormDialog from './QuirofanoFormDialog';
@@ -189,9 +194,7 @@ const QuirofanosPage: React.FC = () => {
   if (loading && quirofanos.length === 0) {
     return (
       <Container maxWidth="xl">
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
-        </Box>
+        <FullPageLoader message="Cargando quirófanos..." />
       </Container>
     );
   }
@@ -199,21 +202,21 @@ const QuirofanosPage: React.FC = () => {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
-        {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            🏥 Gestión de Quirófanos
-          </Typography>
-          {canEdit && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreateClick}
-            >
-              Nuevo Quirófano
-            </Button>
-          )}
-        </Box>
+        {/* Header unificado */}
+        <PageHeader
+          title="Gestión de Quirófanos"
+          subtitle="Administra los quirófanos y su disponibilidad"
+          icon={<HospitalIcon />}
+          iconColor="primary"
+          actions={canEdit ? [
+            {
+              label: 'Nuevo Quirófano',
+              icon: <AddIcon />,
+              onClick: handleCreateClick,
+              variant: 'contained',
+            }
+          ] : undefined}
+        />
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -221,82 +224,37 @@ const QuirofanosPage: React.FC = () => {
           </Alert>
         )}
 
-        {/* Estadísticas */}
-        {stats && (
-          <Grid container spacing={3} mb={4}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <MedicalIcon color="primary" sx={{ fontSize: 40, mr: 2 }} />
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total Quirófanos
-                      </Typography>
-                      <Typography variant="h4">
-                        {stats.resumen.totalQuirofanos}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <AvailableIcon color="success" sx={{ fontSize: 40, mr: 2 }} />
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Disponibles
-                      </Typography>
-                      <Typography variant="h4" color="success.main">
-                        {stats.resumen.disponibles}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <OccupiedIcon color="error" sx={{ fontSize: 40, mr: 2 }} />
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Ocupados
-                      </Typography>
-                      <Typography variant="h4" color="error.main">
-                        {stats.resumen.ocupados}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center">
-                    <MedicalIcon color="info" sx={{ fontSize: 40, mr: 2 }} />
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Cirugías Hoy
-                      </Typography>
-                      <Typography variant="h4" color="info.main">
-                        {stats.resumen.cirugiasHoy}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
+        {/* Estadísticas con StatCard unificado */}
+        <StatCardsGrid sx={{ mb: 3 }}>
+          <StatCard
+            title="Total Quirófanos"
+            value={stats?.resumen?.totalQuirofanos || 0}
+            icon={<MedicalIcon />}
+            color="primary"
+            loading={!stats}
+          />
+          <StatCard
+            title="Disponibles"
+            value={stats?.resumen?.disponibles || 0}
+            icon={<AvailableIcon />}
+            color="success"
+            loading={!stats}
+          />
+          <StatCard
+            title="Ocupados"
+            value={stats?.resumen?.ocupados || 0}
+            icon={<OccupiedIcon />}
+            color="error"
+            loading={!stats}
+          />
+          <StatCard
+            title="Cirugías Hoy"
+            value={stats?.resumen?.cirugiasHoy || 0}
+            icon={<MedicalIcon />}
+            color="info"
+            loading={!stats}
+          />
+        </StatCardsGrid>
 
         {/* Filtros */}
         <Paper sx={{ p: 2, mb: 3 }}>

@@ -1,10 +1,11 @@
+// ABOUTME: Página de Punto de Venta (POS) del sistema hospitalario
+// ABOUTME: Gestión de cuentas de pacientes, transacciones y cobros
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
   CardContent,
-  Typography,
-  Button,
   Tabs,
   Tab,
   Alert,
@@ -16,6 +17,7 @@ import {
   AccountBalance as AccountIcon,
 } from '@mui/icons-material';
 
+import PageHeader from '@/components/common/PageHeader';
 import { posService } from '@/services/posService';
 import { PatientAccount } from '@/types/pos.types';
 import NewAccountDialog from '@/components/pos/NewAccountDialog';
@@ -122,21 +124,21 @@ const POSPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <POSIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-          Punto de Venta
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          size="large"
-          onClick={handleNewAccount}
-        >
-          Nueva Cuenta
-        </Button>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Punto de Venta"
+        subtitle="Gestión de cuentas de pacientes, transacciones y cobros"
+        icon={<POSIcon />}
+        iconColor="primary"
+        actions={[
+          {
+            label: 'Nueva Cuenta',
+            icon: <AddIcon />,
+            onClick: handleNewAccount,
+            variant: 'contained',
+          }
+        ]}
+      />
 
       {/* Error Alert */}
       {error && (

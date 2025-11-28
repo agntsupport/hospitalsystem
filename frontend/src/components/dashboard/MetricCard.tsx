@@ -1,18 +1,9 @@
-// ABOUTME: Tarjeta de métrica reutilizable con layout Grid 9/3, tooltips, formato de valores y responsive design
-// Combina MetricLabel, MetricValue y MetricTrend en un Card cohesivo con avatar de icono
+// ABOUTME: MetricCard wrapper sobre el nuevo StatCard unificado del Design System
+// ABOUTME: Mantiene compatibilidad hacia atrás con la API anterior mientras usa el nuevo diseño
 
 import React from 'react';
-import {
-  Card,
-  CardContent,
-  Grid,
-  Avatar,
-  Typography,
-  CardProps,
-} from '@mui/material';
-import { MetricLabel } from './MetricLabel';
-import { MetricValue } from './MetricValue';
-import { MetricTrend } from './MetricTrend';
+import { CardProps } from '@mui/material';
+import StatCard from '@/components/common/StatCard';
 
 export interface MetricCardProps {
   /** Título de la métrica (ej: "Ingresos Totales") */
@@ -40,16 +31,63 @@ export interface MetricCardProps {
     label?: string;
   };
 
-  /** Información adicional para tooltip */
+  /** Información adicional para tooltip (no usado en nuevo diseño) */
   tooltipInfo?: string;
 
-  /** Altura fija o auto */
+  /** Altura fija o auto (no usado en nuevo diseño) */
   height?: string | number;
 
-  /** Props adicionales de Card */
+  /** Props adicionales de Card (no usado en nuevo diseño) */
   CardProps?: Partial<CardProps>;
 }
 
+/**
+ * Mapea colores hex a colores del tema MUI
+ */
+const mapColorToTheme = (hexColor: string): 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' => {
+  const colorMap: Record<string, 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'> = {
+    // Greens
+    '#4caf50': 'success',
+    '#388e3c': 'success',
+    '#2e7d32': 'success',
+    // Blues
+    '#2196f3': 'info',
+    '#1976d2': 'primary',
+    '#1565c0': 'primary',
+    '#00bcd4': 'info',
+    '#0288d1': 'info',
+    // Oranges/Warnings
+    '#ff9800': 'warning',
+    '#f57c00': 'warning',
+    '#ed6c02': 'warning',
+    // Reds/Errors
+    '#f44336': 'error',
+    '#d32f2f': 'error',
+    // Purples/Secondary
+    '#9c27b0': 'secondary',
+    '#7b1fa2': 'secondary',
+    // Grays (default to primary)
+    '#607d8b': 'primary',
+  };
+
+  return colorMap[hexColor.toLowerCase()] || 'primary';
+};
+
+/**
+ * MetricCard - Wrapper compatible con API anterior que usa StatCard internamente
+ *
+ * @deprecated Usar StatCard directamente para nuevos componentes
+ *
+ * @example
+ * <MetricCard
+ *   title="Ingresos del Mes"
+ *   value={15000}
+ *   icon={<AttachMoney />}
+ *   color="#4caf50"
+ *   format="currency"
+ *   subtitle="Ventas + Servicios"
+ * />
+ */
 export const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
@@ -58,76 +96,30 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   format = 'number',
   subtitle,
   trend,
-  tooltipInfo,
-  height,
-  CardProps: customCardProps
 }) => {
-  return (
-    <Card
-      elevation={2}
-      sx={{
-        height: height || '100%',
-        minHeight: 140,
-        ...customCardProps?.sx
-      }}
-      {...customCardProps}
-    >
-      <CardContent sx={{ p: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          {/* Columna de contenido - flexible */}
-          <Grid item xs={9} sm={8} md={9}>
-            <MetricLabel title={title} />
-            <MetricValue
-              value={value}
-              format={format}
-              tooltipInfo={tooltipInfo}
-            />
-            {subtitle && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mt: 0.5,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 1,
-                  WebkitBoxOrient: 'vertical'
-                }}
-              >
-                {subtitle}
-              </Typography>
-            )}
-            {trend && (
-              <MetricTrend
-                value={trend.value}
-                isPositive={trend.isPositive}
-                label={trend.label}
-              />
-            )}
-          </Grid>
+  // Mapear la estructura de trend antigua a la nueva
+  const mappedTrend = trend
+    ? {
+        value: trend.value,
+        direction: trend.isPositive ? 'up' as const : 'down' as const,
+        label: trend.label,
+      }
+    : undefined;
 
-          {/* Columna de icono - fijo */}
-          <Grid item xs={3} sm={4} md={3}>
-            <Avatar
-              sx={{
-                bgcolor: color,
-                width: { xs: 48, sm: 56, md: 64 },
-                height: { xs: 48, sm: 56, md: 64 },
-                margin: '0 auto'
-              }}
-            >
-              {icon && React.isValidElement(icon)
-                ? React.cloneElement(icon, {
-                    sx: {
-                      fontSize: { xs: '1.2rem', sm: '1.5rem' }
-                    }
-                  } as any)
-                : icon}
-            </Avatar>
-          </Grid>
-        </Grid>
-      </CardContent>
-    </Card>
+  // Mapear formato
+  const mappedFormat = format === 'number' ? 'none' as const : format;
+
+  return (
+    <StatCard
+      title={title}
+      value={value}
+      icon={icon}
+      color={mapColorToTheme(color)}
+      format={mappedFormat}
+      subtitle={subtitle}
+      trend={mappedTrend}
+    />
   );
 };
+
+export default MetricCard;

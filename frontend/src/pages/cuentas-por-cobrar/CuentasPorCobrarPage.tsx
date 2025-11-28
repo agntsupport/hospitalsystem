@@ -1,11 +1,11 @@
 // ABOUTME: Página principal para gestionar cuentas por cobrar (CPC) del hospital
-// Muestra lista de CPC, permite registrar pagos y ver estadísticas
+// ABOUTME: Muestra lista de CPC, permite registrar pagos y ver estadísticas
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
   CardContent,
-  Typography,
   Button,
   Grid,
   Chip,
@@ -26,6 +26,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Typography,
 } from '@mui/material';
 import {
   Payment as PaymentIcon,
@@ -39,6 +40,7 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 
+import PageHeader from '@/components/common/PageHeader';
 import { posService } from '@/services/posService';
 import { CuentaPorCobrar, EstadoCPC } from '@/types/pos.types';
 import CPCPaymentDialog from '@/components/cuentas-por-cobrar/CPCPaymentDialog';
@@ -189,14 +191,14 @@ const CuentasPorCobrarPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
+      {/* Header unificado */}
+      <PageHeader
+        title="Cuentas por Cobrar"
+        subtitle="Gestión de deudas pendientes de pacientes"
+        icon={<AccountIcon />}
+        iconColor="warning"
+      />
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Cuentas por Cobrar
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Gestión de deudas pendientes de pacientes
-        </Typography>
       </Box>
 
       {error && (

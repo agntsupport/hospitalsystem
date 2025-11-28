@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider } from '@mui/material/styles';
 import { CircularProgress, Box } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ToastContainer } from 'react-toastify';
@@ -10,6 +10,9 @@ import 'react-toastify/dist/ReactToastify.css';
 import { store } from '@/store/store';
 import Layout from '@/components/common/Layout';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
+
+// Design System - Tema unificado del Hospital
+import { hospitalTheme } from '@/theme';
 
 // Eager loading solo para Login (primera página que se carga)
 import Login from '@/pages/auth/Login';
@@ -29,54 +32,6 @@ const QuirofanosPage = lazy(() => import('@/pages/quirofanos/QuirofanosPage'));
 const CirugiasPage = lazy(() => import('@/pages/quirofanos/CirugiasPage'));
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'));
 const SolicitudesPage = lazy(() => import('@/pages/solicitudes/SolicitudesPage'));
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-      '50': '#e3f2fd',
-      '200': '#90caf9',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 600,
-    },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
-    },
-  },
-});
 
 // Componente de loading para Lazy Loading
 const PageLoader: React.FC = () => (
@@ -104,7 +59,7 @@ const ComingSoon: React.FC<{ title: string }> = ({ title }) => (
 function App() {
   return (
     <Provider store={store}>
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={hospitalTheme}>
         <CssBaseline />
         <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <Suspense fallback={<PageLoader />}>

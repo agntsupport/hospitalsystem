@@ -1,11 +1,12 @@
+// ABOUTME: Página de Gestión de Cirugías del sistema hospitalario
+// ABOUTME: CRUD de cirugías con filtros por estado, fechas y médicos
+
 import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
   Paper,
   Grid,
-  Card,
-  CardContent,
   Box,
   Button,
   Table,
@@ -18,7 +19,6 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  CircularProgress,
   TextField,
   MenuItem,
   FormControl,
@@ -41,9 +41,11 @@ import {
   Stop as CompleteIcon,
   Schedule as ScheduleIcon,
   LocalHospital as SurgeryIcon,
-  Person as DoctorIcon,
-  Group as TeamIcon
+  Person as DoctorIcon
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import { FullPageLoader } from '@/components/common/LoadingState';
+import EmptyState from '@/components/common/EmptyState';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -259,9 +261,7 @@ const CirugiasPage: React.FC = () => {
   if (loading && cirugias.length === 0) {
     return (
       <Container maxWidth="xl">
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
-        </Box>
+        <FullPageLoader message="Cargando cirugías..." />
       </Container>
     );
   }
@@ -269,21 +269,19 @@ const CirugiasPage: React.FC = () => {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
-        {/* Header */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            🏥 Gestión de Cirugías
-          </Typography>
-          {canManage && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleCreateClick}
-            >
-              Programar Cirugía
-            </Button>
-          )}
-        </Box>
+        {/* Header unificado */}
+        <PageHeader
+          title="Gestión de Cirugías"
+          subtitle="Programa y gestiona las cirugías del hospital"
+          icon={<SurgeryIcon />}
+          iconColor="primary"
+          actions={canManage ? [{
+            label: 'Programar Cirugía',
+            icon: <AddIcon />,
+            onClick: handleCreateClick,
+            variant: 'contained',
+          }] : undefined}
+        />
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -500,21 +498,15 @@ const CirugiasPage: React.FC = () => {
         )}
 
         {cirugias.length === 0 && !loading && (
-          <Box textAlign="center" py={4}>
-            <Typography variant="h6" color="textSecondary">
-              No se encontraron cirugías
-            </Typography>
-            {canManage && (
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                sx={{ mt: 2 }}
-                onClick={handleCreateClick}
-              >
-                Programar Primera Cirugía
-              </Button>
-            )}
-          </Box>
+          <EmptyState
+            title="No se encontraron cirugías"
+            description="No hay cirugías registradas con los filtros actuales"
+            icon={<SurgeryIcon />}
+            action={canManage ? {
+              label: 'Programar Primera Cirugía',
+              onClick: handleCreateClick
+            } : undefined}
+          />
         )}
       </Box>
 

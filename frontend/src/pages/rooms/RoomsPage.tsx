@@ -1,15 +1,14 @@
+// ABOUTME: Página de gestión de Habitaciones y Consultorios
+// ABOUTME: Administra la ocupación y disponibilidad de espacios médicos
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
-  Typography,
   Tab,
   Tabs,
   Paper,
   Grid,
-  Card,
-  CardContent,
-  CircularProgress,
   Alert,
   useTheme,
   useMediaQuery,
@@ -17,9 +16,9 @@ import {
 import {
   Hotel as RoomIcon,
   MeetingRoom as OfficeIcon,
-  TrendingUp as StatsIcon,
-  Assignment as AssignIcon,
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import { FullPageLoader } from '@/components/common/LoadingState';
 
 import { roomsService } from '@/services/roomsService';
 import { RoomStats, OfficeStats } from '@/types/rooms.types';
@@ -110,25 +109,20 @@ const RoomsPage: React.FC = () => {
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-          <CircularProgress size={60} />
-        </Box>
+        <FullPageLoader message="Cargando habitaciones..." />
       </Container>
     );
   }
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <RoomIcon color="primary" />
-          Gestión de Habitaciones y Consultorios
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Administra la ocupación y disponibilidad de habitaciones y consultorios médicos
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Gestión de Habitaciones y Consultorios"
+        subtitle="Administra la ocupación y disponibilidad de habitaciones y consultorios médicos"
+        icon={<RoomIcon />}
+        iconColor="primary"
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>

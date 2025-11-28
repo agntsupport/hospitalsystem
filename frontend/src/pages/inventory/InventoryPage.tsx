@@ -1,20 +1,24 @@
+// ABOUTME: Página de Módulo de Inventario del sistema hospitalario
+// ABOUTME: Gestión de proveedores, productos, servicios y control de stock
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
-  Typography,
   Tabs,
   Tab,
   Alert,
   Fab,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Typography
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
   Add as AddIcon
 } from '@mui/icons-material';
 
+import PageHeader from '@/components/common/PageHeader';
 import InventoryStatsCard from './InventoryStatsCard';
 import SuppliersTab from './SuppliersTab';
 import ProductsTab from './ProductsTab';
@@ -176,26 +180,13 @@ const InventoryPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 2,
-            fontWeight: 600 
-          }}
-        >
-          <InventoryIcon fontSize="large" color="primary" />
-          Módulo de Inventario
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Gestión integral de proveedores, productos y control de stock
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Módulo de Inventario"
+        subtitle="Gestión integral de proveedores, productos y control de stock"
+        icon={<InventoryIcon />}
+        iconColor="primary"
+      />
 
       {/* Estadísticas Card */}
       <Box sx={{ mb: 4 }}>

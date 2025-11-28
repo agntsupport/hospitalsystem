@@ -1,3 +1,6 @@
+// ABOUTME: Página de Solicitudes de Productos del sistema hospitalario
+// ABOUTME: Gestiona las solicitudes de productos médicos y farmacéuticos
+
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -22,16 +25,13 @@ import {
   InputLabel,
   Select,
   Grid,
-  Card,
-  CardContent,
   Alert,
   Snackbar,
   Tooltip,
-  CircularProgress,
   SelectChangeEvent,
   Stack,
-  Divider,
-  Badge
+  Badge,
+  CircularProgress
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,6 +48,10 @@ import {
   Visibility as ViewIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
+import { FullPageLoader } from '@/components/common/LoadingState';
+import EmptyState from '@/components/common/EmptyState';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
@@ -249,69 +253,45 @@ const SolicitudesPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl">
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AssignmentIcon fontSize="large" />
-          Solicitudes de Productos
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Gestiona las solicitudes de productos médicos y farmacéuticos
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Solicitudes de Productos"
+        subtitle="Gestiona las solicitudes de productos médicos y farmacéuticos"
+        icon={<AssignmentIcon />}
+        iconColor="primary"
+      />
 
-      {/* Tarjetas de estadísticas */}
-      {stats && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Solicitudes
-                </Typography>
-                <Typography variant="h4">
-                  {stats.totalSolicitudes}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Pendientes
-                </Typography>
-                <Typography variant="h4" sx={{ color: 'warning.main' }}>
-                  {stats.solicitudesPorEstado.find(s => s.estado === 'SOLICITADO')?.cantidad || 0}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  En Proceso
-                </Typography>
-                <Typography variant="h4" sx={{ color: 'info.main' }}>
-                  {stats.solicitudesPorEstado.find(s => s.estado === ('EN_PREPARACION' as EstadoSolicitud))?.cantidad || 0}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Completadas Hoy
-                </Typography>
-                <Typography variant="h4" sx={{ color: 'success.main' }}>
-                  {stats.solicitudesHoy}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
+      {/* Estadísticas con StatCard unificado */}
+      <StatCardsGrid sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Solicitudes"
+          value={stats?.totalSolicitudes || 0}
+          icon={<AssignmentIcon />}
+          color="primary"
+          loading={!stats}
+        />
+        <StatCard
+          title="Pendientes"
+          value={stats?.solicitudesPorEstado?.find(s => s.estado === 'SOLICITADO')?.cantidad || 0}
+          icon={<TimeIcon />}
+          color="warning"
+          loading={!stats}
+        />
+        <StatCard
+          title="En Proceso"
+          value={stats?.solicitudesPorEstado?.find(s => s.estado === ('EN_PREPARACION' as EstadoSolicitud))?.cantidad || 0}
+          icon={<InventoryIcon />}
+          color="info"
+          loading={!stats}
+        />
+        <StatCard
+          title="Completadas Hoy"
+          value={stats?.solicitudesHoy || 0}
+          icon={<CheckIcon />}
+          color="success"
+          loading={!stats}
+        />
+      </StatCardsGrid>
 
       {/* Filtros y acciones */}
       <Paper sx={{ p: 3, mb: 3 }}>

@@ -1,8 +1,10 @@
+// ABOUTME: Página de gestión de Usuarios del sistema
+// ABOUTME: CRUD de usuarios con roles, permisos y auditoría
+
 import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
-  Typography,
   Box,
   Button,
   TextField,
@@ -22,21 +24,18 @@ import {
   InputLabel,
   Select,
   Grid,
-  Card,
-  CardContent,
   Alert,
   Snackbar,
   Tooltip,
-  CircularProgress,
   SelectChangeEvent,
   Stack,
-  Divider
+  Divider,
+  Typography,
+  CircularProgress
 } from '@mui/material';
 import {
-  Add as AddIcon,
   Search as SearchIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   MoreVert as MoreVertIcon,
   VpnKey as KeyIcon,
   CheckCircle as ActiveIcon,
@@ -46,8 +45,12 @@ import {
   Group as GroupIcon,
   PersonAdd as PersonAddIcon,
   Block as BlockIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  TrendingUp as TrendingIcon
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
+import { FullPageLoader } from '@/components/common/LoadingState';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
@@ -232,69 +235,45 @@ const UsersPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl">
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <GroupIcon fontSize="large" />
-          Gestión de Usuarios
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Administra los usuarios del sistema, sus roles y permisos
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Gestión de Usuarios"
+        subtitle="Administra los usuarios del sistema, sus roles y permisos"
+        icon={<GroupIcon />}
+        iconColor="primary"
+      />
 
-      {/* Tarjetas de estadísticas */}
-      {stats && (
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Usuarios
-                </Typography>
-                <Typography variant="h4">
-                  {stats.totalUsuarios}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Usuarios Activos
-                </Typography>
-                <Typography variant="h4" sx={{ color: 'success.main' }}>
-                  {stats.usuariosActivos}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Usuarios Inactivos
-                </Typography>
-                <Typography variant="h4" sx={{ color: 'error.main' }}>
-                  {stats.usuariosInactivos}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Nuevos (30 días)
-                </Typography>
-                <Typography variant="h4" sx={{ color: 'info.main' }}>
-                  {stats.usuariosCreados30Dias}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
+      {/* Estadísticas con StatCard unificado */}
+      <StatCardsGrid sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Usuarios"
+          value={stats?.totalUsuarios || 0}
+          icon={<GroupIcon />}
+          color="primary"
+          loading={!stats}
+        />
+        <StatCard
+          title="Usuarios Activos"
+          value={stats?.usuariosActivos || 0}
+          icon={<ActiveIcon />}
+          color="success"
+          loading={!stats}
+        />
+        <StatCard
+          title="Usuarios Inactivos"
+          value={stats?.usuariosInactivos || 0}
+          icon={<InactiveIcon />}
+          color="error"
+          loading={!stats}
+        />
+        <StatCard
+          title="Nuevos (30 días)"
+          value={stats?.usuariosCreados30Dias || 0}
+          icon={<TrendingIcon />}
+          color="info"
+          loading={!stats}
+        />
+      </StatCardsGrid>
 
       {/* Filtros y acciones */}
       <Paper sx={{ p: 3, mb: 3 }}>

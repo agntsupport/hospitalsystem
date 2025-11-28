@@ -1,3 +1,6 @@
+// ABOUTME: Página de Hospitalización del sistema hospitalario
+// ABOUTME: Gestión de ingresos, altas, notas médicas y traslados de pacientes
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -47,6 +50,7 @@ import {
   SwapHoriz as TransferIcon
 } from '@mui/icons-material';
 
+import PageHeader from '@/components/common/PageHeader';
 import hospitalizationService from '@/services/hospitalizationService';
 import AdmissionFormDialog from './AdmissionFormDialog';
 import MedicalNotesDialog from './MedicalNotesDialog';
@@ -769,16 +773,21 @@ const HospitalizationPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Encabezado */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <LocalHospitalIcon sx={{ fontSize: 40 }} />
-          Hospitalización
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
-          Gestión integral de pacientes hospitalizados, ingresos y altas médicas
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Hospitalización"
+        subtitle="Gestión integral de pacientes hospitalizados, ingresos y altas médicas"
+        icon={<LocalHospitalIcon />}
+        iconColor="primary"
+        actions={puedeCrearIngreso ? [
+          {
+            label: 'Nuevo Ingreso',
+            icon: <AddIcon />,
+            onClick: () => setAdmissionDialogOpen(true),
+            variant: 'contained',
+          }
+        ] : undefined}
+      />
 
       {/* Tarjetas de estadísticas */}
       {renderStatsCards()}

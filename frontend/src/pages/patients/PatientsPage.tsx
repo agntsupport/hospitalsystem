@@ -1,19 +1,19 @@
+// ABOUTME: Página de Gestión de Pacientes del sistema hospitalario
+// ABOUTME: CRUD de pacientes con búsqueda avanzada y estadísticas
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
-  Typography,
   Tab,
   Tabs,
   Paper,
   Grid,
   Card,
   CardContent,
-  CircularProgress,
   Alert,
   useTheme,
   useMediaQuery,
-  Button,
   Fab,
 } from '@mui/material';
 import {
@@ -26,6 +26,8 @@ import {
 
 import { patientsService } from '@/services/patientsService';
 import { PatientStats } from '@/types/patients.types';
+import PageHeader from '@/components/common/PageHeader';
+import { FullPageLoader } from '@/components/common/LoadingState';
 
 // Import components we'll create
 import PatientsTab from './PatientsTab';
@@ -118,36 +120,28 @@ const PatientsPage: React.FC = () => {
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-          <CircularProgress size={60} />
-        </Box>
+        <FullPageLoader message="Cargando pacientes..." />
       </Container>
     );
   }
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <PeopleIcon color="primary" />
-            Gestión de Pacientes
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
-            Administra el registro de pacientes y sus responsables
-          </Typography>
-        </Box>
-        
-        <Button
-          variant="contained"
-          startIcon={<PersonAddIcon />}
-          onClick={handleOpenPatientForm}
-          size="large"
-        >
-          Nuevo Paciente
-        </Button>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Gestión de Pacientes"
+        subtitle="Administra el registro de pacientes y sus responsables"
+        icon={<PeopleIcon />}
+        iconColor="primary"
+        actions={[
+          {
+            label: 'Nuevo Paciente',
+            icon: <PersonAddIcon />,
+            onClick: handleOpenPatientForm,
+            variant: 'contained',
+          }
+        ]}
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>

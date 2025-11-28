@@ -1,3 +1,6 @@
+// ABOUTME: Página de gestión de Empleados del sistema hospitalario
+// ABOUTME: CRUD completo con filtros, estadísticas y auditoría
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -22,11 +25,11 @@ import {
   Grid,
   Pagination,
   Alert,
-  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -40,7 +43,11 @@ import {
   MedicalServices as NurseIcon,
   History as HistoryIcon,
   CheckCircle as CheckCircleIcon,
+  Group as GroupIcon,
 } from '@mui/icons-material';
+import PageHeader from '@/components/common/PageHeader';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
+import { FullPageLoader } from '@/components/common/LoadingState';
 import { useDebounce } from '@/hooks/useDebounce';
 import { employeeService } from '@/services/employeeService';
 import { Employee, EmployeeStats, EmployeeType } from '@/types/employee.types';
@@ -251,165 +258,60 @@ const EmployeesPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-          Gestión de Empleados
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          size="large"
-          onClick={handleCreateEmployee}
-        >
-          Nuevo Empleado
-        </Button>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Gestión de Empleados"
+        subtitle="Administra el personal médico y administrativo del hospital"
+        icon={<GroupIcon />}
+        iconColor="primary"
+        actions={[
+          {
+            label: 'Nuevo Empleado',
+            icon: <AddIcon />,
+            onClick: handleCreateEmployee,
+            variant: 'contained',
+          }
+        ]}
+      />
 
-      {/* Estadísticas */}
-      {stats && (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <PersonAddIcon color="primary" sx={{ fontSize: 40 }} />
-                  <Box>
-                    <Typography 
-                      variant="h4" 
-                      component="div" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {stats.totalEmpleados}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Total Empleados
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <MedicIcon color="primary" sx={{ fontSize: 40 }} />
-                  <Box>
-                    <Typography 
-                      variant="h4" 
-                      component="div" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {stats?.empleadosPorTipo?.medico_especialista || 0}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Especialistas
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <ResidentIcon color="secondary" sx={{ fontSize: 40 }} />
-                  <Box>
-                    <Typography 
-                      variant="h4" 
-                      component="div" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {stats?.empleadosPorTipo?.medico_residente || 0}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Residentes
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <NurseIcon color="success" sx={{ fontSize: 40 }} />
-                  <Box>
-                    <Typography 
-                      variant="h4" 
-                      component="div" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {stats?.empleadosPorTipo?.enfermero || 0}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Enfermeros
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2.4}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <PersonAddIcon color="success" sx={{ fontSize: 40 }} />
-                  <Box>
-                    <Typography 
-                      variant="h4" 
-                      component="div" 
-                      sx={{ 
-                        fontWeight: 'bold',
-                        fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {stats?.empleadosActivos || 0}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Activos
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
+      {/* Estadísticas con StatCard unificado */}
+      <StatCardsGrid sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Empleados"
+          value={stats?.totalEmpleados || 0}
+          icon={<PersonAddIcon />}
+          color="primary"
+          loading={!stats}
+        />
+        <StatCard
+          title="Especialistas"
+          value={stats?.empleadosPorTipo?.medico_especialista || 0}
+          icon={<MedicIcon />}
+          color="primary"
+          loading={!stats}
+        />
+        <StatCard
+          title="Residentes"
+          value={stats?.empleadosPorTipo?.medico_residente || 0}
+          icon={<ResidentIcon />}
+          color="secondary"
+          loading={!stats}
+        />
+        <StatCard
+          title="Enfermeros"
+          value={stats?.empleadosPorTipo?.enfermero || 0}
+          icon={<NurseIcon />}
+          color="success"
+          loading={!stats}
+        />
+        <StatCard
+          title="Activos"
+          value={stats?.empleadosActivos || 0}
+          icon={<CheckCircleIcon />}
+          color="success"
+          loading={!stats}
+        />
+      </StatCardsGrid>
 
       {/* Filtros */}
       <Card sx={{ mb: 3 }}>

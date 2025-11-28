@@ -1,11 +1,12 @@
+// ABOUTME: Página principal del módulo de Facturación
+// ABOUTME: Gestiona facturas, pagos y cuentas por cobrar del sistema hospitalario
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
   Tabs,
   Tab,
   Paper,
-  Grid,
   Alert
 } from '@mui/material';
 import {
@@ -20,6 +21,7 @@ import PaymentsTab from './PaymentsTab';
 import AccountsReceivableTab from './AccountsReceivableTab';
 import BillingStatsTab from './BillingStatsTab';
 import BillingStatsCards from '@/components/billing/BillingStatsCards';
+import PageHeader from '@/components/common/PageHeader';
 import { billingService } from '@/services/billingService';
 import { BillingStats } from '@/types/billing.types';
 
@@ -84,16 +86,13 @@ const BillingPage: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <InvoiceIcon color="primary" />
-          Facturación y Cuentas por Cobrar
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Gestión completa de facturas, pagos y cuentas por cobrar del sistema hospitalario
-        </Typography>
-      </Box>
+      {/* Header unificado */}
+      <PageHeader
+        title="Facturación y Cuentas por Cobrar"
+        subtitle="Gestión completa de facturas, pagos y cuentas por cobrar del sistema hospitalario"
+        icon={<InvoiceIcon />}
+        iconColor="primary"
+      />
 
       {/* Error Alert */}
       {error && (
