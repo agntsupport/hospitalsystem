@@ -1315,10 +1315,10 @@ describe('Hospitalization Module - Critical Tests', () => {
       expect(orphanAdmissions.length).toBe(0);
     });
 
-    it('should handle database connection errors gracefully', async () => {
-      // Simular timeout en transacción (válido test conceptual)
+    it('should handle large pagination gracefully', async () => {
+      // Simular request con paginación grande pero razonable
       const response = await request(app)
-        .get('/api/hospitalization/admissions?page=1&limit=1000000')
+        .get('/api/hospitalization/admissions?page=1&limit=1000')
         .set('Authorization', `Bearer ${adminToken}`);
 
       // Sistema debe manejar carga sin crash

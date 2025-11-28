@@ -1,7 +1,7 @@
 // ABOUTME: Diálogo para registrar pagos parciales (abonos) en cuentas abiertas de pacientes
 // Permite al cajero recibir pagos antes del cierre final de la cuenta
 import React, { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
@@ -73,7 +73,7 @@ const PartialPaymentDialog: React.FC<PartialPaymentDialogProps> = ({
     reset,
     formState: { errors },
   } = useForm<PartialPaymentFormValues>({
-    resolver: yupResolver(partialPaymentSchema),
+    resolver: yupResolver(partialPaymentSchema) as Resolver<PartialPaymentFormValues>,
     defaultValues: {
       monto: 0,
       metodoPago: 'efectivo',

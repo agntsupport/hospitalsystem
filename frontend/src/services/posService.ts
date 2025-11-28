@@ -163,6 +163,13 @@ export const posService = {
       currentPage: number;
       pageSize: number;
     };
+    totales?: {
+      totalServicios: number;
+      totalProductos: number;
+      totalAnticipos: number;
+      totalPagos: number;
+      saldoPendiente: number;
+    };
   }>> {
     const queryParams = new URLSearchParams();
 
@@ -209,7 +216,7 @@ export const posService = {
     return api.post(`/pos/cuentas-por-cobrar/${cpcId}/pago`, paymentData);
   },
 
-  async getCPCStats(): Promise<ApiResponse<{ stats: any }>> {
+  async getCPCStats(): Promise<ApiResponse<{ resumen: any; distribucion: any[] }>> {
     return api.get('/pos/cuentas-por-cobrar/estadisticas');
   }
 };

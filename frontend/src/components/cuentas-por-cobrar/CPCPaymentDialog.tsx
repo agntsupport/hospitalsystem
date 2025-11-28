@@ -1,7 +1,7 @@
 // ABOUTME: Diálogo para registrar pagos contra una cuenta por cobrar existente
 // Valida que el monto no exceda el saldo pendiente y actualiza el estado de la CPC
 import React, { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
@@ -79,7 +79,7 @@ const CPCPaymentDialog: React.FC<CPCPaymentDialogProps> = ({
   } = useForm<CPCPaymentFormValues>({
     resolver: yupResolver(
       createPaymentSchema(cuentaPorCobrar?.saldoPendiente || 0)
-    ),
+    ) as Resolver<CPCPaymentFormValues>,
     defaultValues: {
       monto: 0,
       metodoPago: 'efectivo',

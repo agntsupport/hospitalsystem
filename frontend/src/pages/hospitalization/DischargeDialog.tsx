@@ -303,7 +303,7 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
             <Box>
               <Typography variant="h6">Alta Hospitalaria</Typography>
               <Typography variant="subtitle2" color="textSecondary">
-                {admission.paciente.nombre} • {admission.numeroIngreso} • Habitación {admission.habitacion.numero}
+                {admission.paciente.nombre} • {admission.numeroIngreso} • Habitación {admission.habitacion?.numero ?? 'N/A'}
               </Typography>
             </Box>
           </Box>

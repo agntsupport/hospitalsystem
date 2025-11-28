@@ -137,8 +137,11 @@ const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
         setTotalTransactions(response.data.pagination.total);
 
         // Actualizar totales con los valores actualizados del backend
-        if (response.data.totales) {
-          setTotales(response.data.totales);
+        if (response.data?.totales) {
+          setTotales(prev => ({
+            ...prev,
+            ...response.data!.totales
+          }));
         }
       }
     } catch (error) {

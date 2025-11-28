@@ -4,6 +4,7 @@ export interface Patient {
   nombre: string;
   apellidoPaterno: string;
   apellidoMaterno?: string;
+  apellidos?: string; // Computed field: apellidoPaterno + apellidoMaterno
   fechaNacimiento: string;
   edad: number;
   genero: 'M' | 'F' | 'Otro';
@@ -104,6 +105,7 @@ export interface PatientFilters {
   conSeguroMedico?: boolean;
   conAlergias?: boolean;
   // Paginación y ordenamiento
+  page?: number;
   limit?: number;
   offset?: number;
   sortBy?: string;

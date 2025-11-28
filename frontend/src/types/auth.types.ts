@@ -6,6 +6,9 @@ export interface User {
   activo: boolean;
   createdAt: string;
   updatedAt?: string;
+  nombre?: string;
+  apellidos?: string;
+  empleadoId?: number;
 }
 
 export type UserRole = 

@@ -18,6 +18,7 @@ const renderWithTheme = (component: React.ReactElement) => {
 
 const mockStats: POSStats = {
   cuentasAbiertas: 5,
+  cuentasCerradas: 10,
   totalVentasHoy: 15000.50,
   totalVentasMes: 450000.75,
   serviciosVendidos: 25,
@@ -84,13 +85,14 @@ describe('POSStatsCards - P0 Critical Tests', () => {
     it('should handle undefined stats gracefully', () => {
       const undefinedStats = {
         cuentasAbiertas: undefined,
+        cuentasCerradas: undefined,
         totalVentasHoy: undefined,
         totalVentasMes: undefined,
         serviciosVendidos: undefined,
         productosVendidos: undefined,
         saldosAFavor: undefined,
         saldosPorCobrar: undefined,
-      } as POSStats;
+      } as unknown as POSStats;
 
       renderWithTheme(<POSStatsCards stats={undefinedStats} />);
 
@@ -128,6 +130,7 @@ describe('POSStatsCards - P0 Critical Tests', () => {
     it('should handle zero values correctly', () => {
       const zeroStats: POSStats = {
         cuentasAbiertas: 0,
+        cuentasCerradas: 0,
         totalVentasHoy: 0,
         totalVentasMes: 0,
         serviciosVendidos: 0,
@@ -152,6 +155,7 @@ describe('POSStatsCards - P0 Critical Tests', () => {
     it('should format large currency values correctly', () => {
       const largeStats: POSStats = {
         cuentasAbiertas: 1000,
+        cuentasCerradas: 500,
         totalVentasHoy: 1000000.99,
         totalVentasMes: 50000000.50,
         serviciosVendidos: 5000,

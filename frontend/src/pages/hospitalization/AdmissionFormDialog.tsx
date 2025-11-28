@@ -187,9 +187,9 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
             room.tipo === 'individual'
           );
         } else if (watchedValues.nivelCuidado === 'intensivo') {
-          // Si es cuidado intensivo, solo mostrar terapia intensiva
+          // Si es cuidado intensivo, solo mostrar cuidados intensivos
           filteredRooms = filteredRooms.filter((room: Room) =>
-            room.tipo === 'terapia_intensiva'
+            room.tipo === 'cuidados_intensivos'
           );
         }
 

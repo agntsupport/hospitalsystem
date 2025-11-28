@@ -466,6 +466,10 @@ export interface HospitalizationReport {
 // ====================== FILTROS Y BÚSQUEDAS ======================
 
 export interface HospitalizationFilters {
+  // Filtros de paciente
+  pacienteId?: number;
+  includeDischarges?: boolean;
+
   // Filtros de fecha
   fechaIngresoDesde?: string;
   fechaIngresoHasta?: string;
@@ -512,6 +516,12 @@ export interface HospitalizationListResponse<T> extends HospitalizationResponse<
   limite: number;
   totalPaginas: number;
   resumen?: any;
+  pagination?: {
+    total: number;
+    totalPages: number;
+    page: number;
+    limit: number;
+  };
 }> {}
 
 // ====================== CONSTANTES ======================

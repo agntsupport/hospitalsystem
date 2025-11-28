@@ -1,6 +1,6 @@
 // Tipos para el módulo de facturación y cuentas abiertas
 
-import { Patient } from './patient.types';
+import { Patient } from './patients.types';
 
 // Estados de las facturas
 export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'partial';

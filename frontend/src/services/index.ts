@@ -32,4 +32,4 @@ export { default as auditService } from './auditService';
 export { default as notificacionesService } from './notificacionesService';
 
 // Utilities
-export { postalCodeService } from './postalCodeService';
+export { PostalCodeService } from './postalCodeService';

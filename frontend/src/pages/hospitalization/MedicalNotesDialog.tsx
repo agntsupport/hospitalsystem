@@ -245,7 +245,7 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
             <Box>
               <Typography variant="h6">Notas Médicas SOAP</Typography>
               <Typography variant="subtitle2" color="textSecondary">
-                {admission.paciente.nombre} • {admission.numeroIngreso} • Habitación {admission.habitacion.numero}
+                {admission.paciente.nombre} • {admission.numeroIngreso} • Habitación {admission.habitacion?.numero ?? 'N/A'}
               </Typography>
             </Box>
           </Box>

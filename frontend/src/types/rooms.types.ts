@@ -169,6 +169,7 @@ export interface SingleOfficeResponse {
 
 // Constants
 export const ROOM_TYPES = {
+  consultorio_general: 'Consultorio General',
   individual: 'Individual',
   doble: 'Doble',
   triple: 'Triple',

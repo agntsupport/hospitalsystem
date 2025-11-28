@@ -201,7 +201,7 @@ const PatientHospitalizationHistory: React.FC<PatientHospitalizationHistoryProps
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <DoctorIcon fontSize="small" color="action" />
                       <Typography variant="body2" color="text.secondary">
-                        Médico Tratante: <strong>{admission.medicoTratante.username}</strong>
+                        Médico Tratante: <strong>{admission.medicoTratante.nombre}</strong>
                       </Typography>
                     </Box>
                   </Grid>

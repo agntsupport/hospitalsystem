@@ -46,7 +46,7 @@ const mockAccount: PatientAccount = {
     apellidoPaterno: 'Pérez',
     apellidoMaterno: 'García',
     fechaNacimiento: '1980-01-01',
-    genero: 'masculino',
+    genero: 'M',
     telefono: '4431234567',
     email: 'juan@example.com',
     numeroExpediente: 'EXP-001',

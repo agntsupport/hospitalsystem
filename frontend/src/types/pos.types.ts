@@ -1,4 +1,4 @@
-import { Patient } from './patient.types';
+import { Patient } from './patients.types';
 import { Employee } from './employee.types';
 
 export interface Service {
