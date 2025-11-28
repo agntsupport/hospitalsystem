@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Box,
   Table,
@@ -24,9 +24,12 @@ import {
   AccountBalance as AccountIcon,
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
+import { useReactToPrint } from 'react-to-print';
+import { toast } from 'react-toastify';
 
 import { PatientAccount } from '@/types/pos.types';
 import { ATTENTION_TYPE_LABELS } from '@/utils/constants';
+import HistoryPrintableReceipt from './HistoryPrintableReceipt';
 
 interface AccountHistoryListProps {
   accounts: PatientAccount[];
@@ -45,6 +48,34 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
   loading,
   historyTab
 }) => {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [accountToPrint, setAccountToPrint] = useState<PatientAccount | null>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Ticket-Cuenta-${accountToPrint?.id || ''}`,
+    onAfterPrint: () => {
+      setAccountToPrint(null);
+    },
+    onPrintError: (error) => {
+      console.error('Error al imprimir:', error);
+      toast.error('Error al imprimir el ticket');
+      setAccountToPrint(null);
+    }
+  });
+
+  const handlePrintAccount = useCallback((account: PatientAccount) => {
+    if (!account.transacciones || account.transacciones.length === 0) {
+      toast.warning('Primero expanda la cuenta para cargar las transacciones');
+      return;
+    }
+    setAccountToPrint(account);
+    // Pequeño delay para que el componente se renderice antes de imprimir
+    setTimeout(() => {
+      handlePrint();
+    }, 100);
+  }, [handlePrint]);
+
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -100,8 +131,9 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
   }
 
   return (
-    <TableContainer>
-      <Table>
+    <>
+      <TableContainer>
+        <Table>
         <TableHead>
           <TableRow>
             <TableCell>Cuenta #</TableCell>
@@ -231,7 +263,10 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
                     </Tooltip>
 
                     <Tooltip title="Imprimir recibo">
-                      <IconButton size="small">
+                      <IconButton
+                        size="small"
+                        onClick={() => handlePrintAccount(account)}
+                      >
                         <PrintIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -292,8 +327,19 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
             </React.Fragment>
           ))}
         </TableBody>
-      </Table>
-    </TableContainer>
+        </Table>
+      </TableContainer>
+
+      {/* Componente oculto para impresión */}
+      <div style={{ display: 'none' }}>
+        {accountToPrint && (
+          <HistoryPrintableReceipt
+            ref={printRef}
+            account={accountToPrint}
+          />
+        )}
+      </div>
+    </>
   );
 };
 

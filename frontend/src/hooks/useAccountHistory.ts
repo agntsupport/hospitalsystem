@@ -114,8 +114,33 @@ export const useAccountHistory = () => {
   }, [page, filters]);
 
   const handleExpandAccount = useCallback(async (accountId: number) => {
-    setExpandedAccount(prev => prev === accountId ? null : accountId);
-  }, []);
+    // Toggle expand state
+    if (expandedAccount === accountId) {
+      setExpandedAccount(null);
+      return;
+    }
+
+    setExpandedAccount(accountId);
+
+    // Load transactions for this account if not already loaded
+    const account = closedAccounts.find(a => a.id === accountId);
+    if (account && (!account.transacciones || account.transacciones.length === 0)) {
+      try {
+        const response = await posService.getAccountTransactions(accountId);
+        if (response.success && response.data) {
+          // Update the account in closedAccounts with loaded transactions
+          setClosedAccounts(prev => prev.map(acc =>
+            acc.id === accountId
+              ? { ...acc, transacciones: response.data.transacciones }
+              : acc
+          ));
+        }
+      } catch (error) {
+        console.error('Error loading account transactions:', error);
+        toast.error('Error al cargar transacciones de la cuenta');
+      }
+    }
+  }, [expandedAccount, closedAccounts]);
 
   const handleViewDetails = useCallback(async (account: PatientAccount) => {
     try {
