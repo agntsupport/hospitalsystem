@@ -28,7 +28,7 @@ import { toast } from 'react-toastify';
 
 import { PatientAccount } from '@/types/pos.types';
 import { ATTENTION_TYPE_LABELS } from '@/utils/constants';
-import HistoryPrintableReceipt from './HistoryPrintableReceipt';
+import PrintableAccountStatement from './PrintableAccountStatement';
 
 interface AccountHistoryListProps {
   accounts: PatientAccount[];
@@ -50,13 +50,27 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `Ticket-Cuenta-${accountToPrint?.id || ''}`,
+    documentTitle: `Estado_Cuenta_${accountToPrint?.id || ''}_${new Date().getTime()}`,
+    pageStyle: `
+      @page {
+        size: letter portrait;
+        margin: 0.5in;
+      }
+      @media print {
+        body {
+          margin: 0;
+          padding: 0;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `,
     onAfterPrint: () => {
       setAccountToPrint(null);
     },
     onPrintError: (error) => {
       console.error('Error al imprimir:', error);
-      toast.error('Error al imprimir el ticket');
+      toast.error('Error al imprimir el estado de cuenta');
       setAccountToPrint(null);
     }
   });
@@ -245,7 +259,7 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
                       </IconButton>
                     </Tooltip>
 
-                    <Tooltip title="Imprimir recibo">
+                    <Tooltip title="Imprimir estado de cuenta">
                       <IconButton
                         size="small"
                         onClick={() => handlePrintAccount(account)}
@@ -313,12 +327,49 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
         </Table>
       </TableContainer>
 
-      {/* Componente oculto para impresión */}
+      {/* Componente oculto para impresión - Estado de Cuenta formato Carta */}
       <div style={{ display: 'none' }}>
         {accountToPrint && (
-          <HistoryPrintableReceipt
+          <PrintableAccountStatement
             ref={printRef}
-            account={accountToPrint}
+            data={{
+              cuentaId: accountToPrint.id,
+              fechaEmision: new Date(),
+              paciente: {
+                nombre: accountToPrint.paciente?.nombre || '',
+                apellidoPaterno: accountToPrint.paciente?.apellidoPaterno || '',
+                apellidoMaterno: accountToPrint.paciente?.apellidoMaterno,
+                telefono: accountToPrint.paciente?.telefono,
+                email: accountToPrint.paciente?.email,
+                direccion: accountToPrint.paciente?.direccion
+              },
+              medicoTratante: accountToPrint.medicoTratante ? {
+                nombre: accountToPrint.medicoTratante.nombre,
+                apellidoPaterno: accountToPrint.medicoTratante.apellidoPaterno,
+                especialidad: accountToPrint.medicoTratante.especialidad
+              } : undefined,
+              tipoAtencion: accountToPrint.tipoAtencion,
+              fechaIngreso: accountToPrint.fechaApertura,
+              transacciones: (accountToPrint.transacciones || []).map((t: any) => ({
+                id: t.id,
+                tipo: t.tipo,
+                concepto: t.concepto,
+                cantidad: t.cantidad || 1,
+                precioUnitario: t.precioUnitario || t.subtotal,
+                subtotal: t.subtotal,
+                fecha: t.fecha,
+                producto: t.producto,
+                servicio: t.servicio
+              })),
+              totales: {
+                anticipo: accountToPrint.anticipo || 0,
+                totalServicios: accountToPrint.totalServicios || 0,
+                totalProductos: accountToPrint.totalProductos || 0,
+                totalCuenta: accountToPrint.totalCuenta || 0,
+                saldoPendiente: accountToPrint.saldoPendiente || 0
+              },
+              estado: accountToPrint.estado
+            }}
           />
         )}
       </div>

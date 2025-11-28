@@ -286,7 +286,10 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
           paciente: {
             nombre: patient?.nombre || '',
             apellidoPaterno: patient?.apellidoPaterno || '',
-            apellidoMaterno: patient?.apellidoMaterno || ''
+            apellidoMaterno: patient?.apellidoMaterno || '',
+            telefono: patient?.telefono,
+            email: patient?.email,
+            direccion: patient?.direccion
           },
           cuentaId: account.id,
           totalCargos: totalCharges,
@@ -297,7 +300,23 @@ const AccountClosureDialog: React.FC<AccountClosureDialogProps> = ({
           cajero: user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : 'Sistema',
           fecha: new Date(),
           tipoTransaccion,
-          motivoCPC: authorizeCPC ? motivoCPC : undefined
+          motivoCPC: authorizeCPC ? motivoCPC : undefined,
+          // Datos adicionales para el estado de cuenta formato Carta
+          tipoAtencion: account.tipoAtencion || 'consulta_general',
+          fechaIngreso: account.fechaApertura || new Date().toISOString(),
+          medicoTratante: account.medicoTratante ? {
+            nombre: account.medicoTratante.nombre,
+            apellidoPaterno: account.medicoTratante.apellidoPaterno,
+            especialidad: account.medicoTratante.especialidad
+          } : undefined,
+          transacciones: accountDetails?.transacciones || [],
+          totales: {
+            anticipo: totalAdvances,
+            totalServicios: totalServices,
+            totalProductos: totalProducts,
+            totalCuenta: totalCharges,
+            saldoPendiente: finalBalance
+          }
         };
 
         // Guardar datos y mostrar diálogo de resumen

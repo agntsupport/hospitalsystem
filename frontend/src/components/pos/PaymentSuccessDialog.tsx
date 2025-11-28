@@ -1,5 +1,5 @@
-// ABOUTME: Diálogo de confirmación de pago exitoso con resumen de transacción e impresión de ticket
-// Muestra el resumen completo del cobro realizado y permite imprimir el ticket de compra
+// ABOUTME: Diálogo de confirmación de pago exitoso con resumen de transacción e impresión de estado de cuenta
+// Muestra el resumen completo del cobro realizado y permite imprimir el estado de cuenta en formato Carta
 
 import React, { useRef } from 'react';
 import {
@@ -28,7 +28,27 @@ import {
   CreditCard as CardIcon
 } from '@mui/icons-material';
 import { useReactToPrint } from 'react-to-print';
-import PrintableReceipt from './PrintableReceipt';
+import PrintableAccountStatement from './PrintableAccountStatement';
+
+interface Transaction {
+  id: number;
+  tipo: string;
+  concepto: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+  fecha: string;
+  producto?: {
+    codigo: string;
+    nombre: string;
+    unidadMedida: string;
+  };
+  servicio?: {
+    codigo: string;
+    nombre: string;
+    tipo: string;
+  };
+}
 
 interface PaymentSuccessDialogProps {
   open: boolean;
@@ -38,6 +58,9 @@ interface PaymentSuccessDialogProps {
       nombre: string;
       apellidoPaterno: string;
       apellidoMaterno: string;
+      telefono?: string;
+      email?: string;
+      direccion?: string;
     };
     cuentaId: number;
     totalCargos: number;
@@ -49,6 +72,22 @@ interface PaymentSuccessDialogProps {
     fecha: Date;
     tipoTransaccion: 'cobro' | 'devolucion' | 'cpc';
     motivoCPC?: string;
+    // Datos para estado de cuenta formato Carta
+    tipoAtencion?: string;
+    fechaIngreso?: string;
+    medicoTratante?: {
+      nombre: string;
+      apellidoPaterno: string;
+      especialidad?: string;
+    };
+    transacciones?: Transaction[];
+    totales?: {
+      anticipo: number;
+      totalServicios: number;
+      totalProductos: number;
+      totalCuenta: number;
+      saldoPendiente: number;
+    };
   };
 }
 
@@ -57,20 +96,22 @@ const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   onClose,
   transactionData
 }) => {
-  const receiptRef = useRef<HTMLDivElement>(null);
+  const statementRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    contentRef: receiptRef,
-    documentTitle: `Ticket_Cuenta_${transactionData.cuentaId}_${new Date().getTime()}`,
+    contentRef: statementRef,
+    documentTitle: `Estado_Cuenta_${transactionData.cuentaId}_${new Date().getTime()}`,
     pageStyle: `
       @page {
-        size: 80mm auto;
-        margin: 0;
+        size: letter portrait;
+        margin: 0.5in;
       }
       @media print {
         body {
           margin: 0;
           padding: 0;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
       }
     `
@@ -323,7 +364,7 @@ const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
             startIcon={<PrintIcon />}
             size="large"
           >
-            Imprimir Ticket
+            Imprimir Estado de Cuenta
           </Button>
           <Button
             variant="contained"
@@ -336,11 +377,34 @@ const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Componente de ticket imprimible (oculto) */}
+      {/* Componente de estado de cuenta imprimible (oculto) - Formato Carta */}
       <div style={{ display: 'none' }}>
-        <PrintableReceipt
-          ref={receiptRef}
-          transactionData={transactionData}
+        <PrintableAccountStatement
+          ref={statementRef}
+          data={{
+            cuentaId: transactionData.cuentaId,
+            fechaEmision: transactionData.fecha,
+            paciente: {
+              nombre: transactionData.paciente.nombre,
+              apellidoPaterno: transactionData.paciente.apellidoPaterno,
+              apellidoMaterno: transactionData.paciente.apellidoMaterno,
+              telefono: transactionData.paciente.telefono,
+              email: transactionData.paciente.email,
+              direccion: transactionData.paciente.direccion
+            },
+            medicoTratante: transactionData.medicoTratante,
+            tipoAtencion: transactionData.tipoAtencion || 'consulta_general',
+            fechaIngreso: transactionData.fechaIngreso || transactionData.fecha.toISOString(),
+            transacciones: transactionData.transacciones || [],
+            totales: transactionData.totales || {
+              anticipo: 0,
+              totalServicios: 0,
+              totalProductos: 0,
+              totalCuenta: transactionData.totalCargos,
+              saldoPendiente: -transactionData.totalAdeudado
+            },
+            estado: 'cerrada'
+          }}
         />
       </div>
     </>
