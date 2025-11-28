@@ -551,8 +551,9 @@ router.get('/ocupacion', authenticateToken, async (req, res) => {
       };
     });
 
-    // 3. QUIRÓFANOS
+    // 3. QUIRÓFANOS (excluir los eliminados con fuera_de_servicio)
     const quirofanos = await prisma.quirofano.findMany({
+      where: { estado: { not: 'fuera_de_servicio' } },
       orderBy: { numero: 'asc' },
       include: {
         cirugias: {
