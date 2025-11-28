@@ -28,9 +28,13 @@ router.get('/metrics', authenticateToken, async (req, res) => {
     };
 
     // Métricas de ocupación (disponibles para todos)
+    // Solo quirófanos tienen soft delete (fuera_de_servicio)
     const [habitaciones, quirofanos, consultorios] = await Promise.all([
       prisma.habitacion.findMany({ select: { estado: true } }),
-      prisma.quirofano.findMany({ select: { estado: true } }),
+      prisma.quirofano.findMany({
+        where: { estado: { not: 'fuera_de_servicio' } },
+        select: { estado: true }
+      }),
       prisma.consultorio.findMany({ select: { estado: true } })
     ]);
 
