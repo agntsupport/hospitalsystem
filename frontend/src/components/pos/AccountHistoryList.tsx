@@ -21,8 +21,7 @@ import {
   ExpandLess as CollapseIcon,
   Visibility as ViewIcon,
   Print as PrintIcon,
-  AccountBalance as AccountIcon,
-  AttachMoney as MoneyIcon
+  AccountBalance as AccountIcon
 } from '@mui/icons-material';
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'react-toastify';
@@ -37,7 +36,6 @@ interface AccountHistoryListProps {
   onExpandAccount: (accountId: number) => void;
   onViewDetails: (account: PatientAccount) => void;
   loading: boolean;
-  historyTab: number;
 }
 
 const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
@@ -45,8 +43,7 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
   expandedAccount,
   onExpandAccount,
   onViewDetails,
-  loading,
-  historyTab
+  loading
 }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [accountToPrint, setAccountToPrint] = useState<PatientAccount | null>(null);
@@ -105,27 +102,13 @@ const AccountHistoryList: React.FC<AccountHistoryListProps> = ({
   if (accounts.length === 0 && !loading) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
-        {historyTab === 0 ? (
-          <>
-            <AccountIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No se encontraron cuentas cerradas
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              No hay cuentas que coincidan con los filtros seleccionados
-            </Typography>
-          </>
-        ) : (
-          <>
-            <MoneyIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No se encontraron ventas rápidas
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              No hay ventas que coincidan con los filtros seleccionados
-            </Typography>
-          </>
-        )}
+        <AccountIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          No se encontraron cuentas cerradas
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          No hay cuentas que coincidan con los filtros seleccionados
+        </Typography>
       </Box>
     );
   }
