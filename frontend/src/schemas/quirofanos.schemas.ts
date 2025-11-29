@@ -46,7 +46,14 @@ export const quirofanoFormSchema = yup.object({
     .optional()
     .nullable()
     .min(0, 'El precio no puede ser negativo')
-    .max(999999, 'Precio máximo excedido')
+    .max(999999, 'Precio máximo excedido'),
+
+  costoHora: yup
+    .number()
+    .optional()
+    .nullable()
+    .min(0, 'El costo no puede ser negativo')
+    .max(999999, 'Costo máximo excedido')
 });
 
 // Tipo inferido del schema

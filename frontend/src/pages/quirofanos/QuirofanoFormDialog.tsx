@@ -16,7 +16,8 @@ import {
   Alert,
   CircularProgress,
   FormHelperText,
-  InputAdornment
+  InputAdornment,
+  Tooltip
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -27,8 +28,11 @@ import {
   MedicalServices,
   AttachMoney,
   People,
-  Description
+  Description,
+  Info as InfoIcon,
+  MoneyOff as CostIcon
 } from '@mui/icons-material';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
   open: boolean;
@@ -44,6 +48,8 @@ const QuirofanoFormDialog: React.FC<Props> = ({
   quirofano
 }) => {
   const isEditing = !!quirofano;
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'administrador';
   const [availableNumbers, setAvailableNumbers] = React.useState<{
     existingNumbers: string[];
     suggestions: string[];
@@ -64,7 +70,8 @@ const QuirofanoFormDialog: React.FC<Props> = ({
       descripcion: '',
       equipamiento: '',
       capacidadEquipo: 6,
-      precioHora: 0
+      precioHora: 0,
+      costoHora: null
     }
   });
 
@@ -96,7 +103,8 @@ const QuirofanoFormDialog: React.FC<Props> = ({
           descripcion: quirofano.descripcion || '',
           equipamiento: quirofano.equipamiento || '',
           capacidadEquipo: quirofano.capacidadEquipo || 6,
-          precioHora: quirofano.precioHora || 0
+          precioHora: quirofano.precioHora || 0,
+          costoHora: quirofano.costoHora ?? null
         });
       } else {
         // Resetear formulario para nuevo quirófano
@@ -280,10 +288,10 @@ const QuirofanoFormDialog: React.FC<Props> = ({
                   <TextField
                     {...field}
                     fullWidth
-                    label="Precio por Hora"
+                    label="Precio por Hora (Venta)"
                     type="number"
                     error={!!errors.precioHora}
-                    helperText={errors.precioHora?.message || 'Tarifa por hora de uso (opcional)'}
+                    helperText={errors.precioHora?.message || 'Tarifa cobrada por hora de uso'}
                     disabled={isSubmitting}
                     InputProps={{
                       startAdornment: (
@@ -297,6 +305,44 @@ const QuirofanoFormDialog: React.FC<Props> = ({
                 )}
               />
             </Grid>
+
+            {isAdmin && (
+              <Grid item xs={12} sm={6}>
+                <Controller
+                  name="costoHora"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      fullWidth
+                      label="Costo por Hora (Operativo)"
+                      type="number"
+                      error={!!errors.costoHora}
+                      helperText={errors.costoHora?.message || 'Costo interno del hospital'}
+                      disabled={isSubmitting}
+                      value={field.value ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === '' ? null : parseFloat(val) || 0);
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CostIcon color="action" />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <Tooltip title="Este costo se usa para calcular márgenes de utilidad en reportes">
+                            <InfoIcon color="action" fontSize="small" />
+                          </Tooltip>
+                        ),
+                        inputProps: { min: 0, step: 100 }
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+            )}
 
             {/* Información Adicional */}
             <Grid item xs={12}>

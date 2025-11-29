@@ -10,6 +10,7 @@ export interface Quirofano {
   equipamiento?: string;
   capacidadEquipo: number;
   precioHora?: number;
+  costoHora?: number | null; // Costo operativo por hora (editable por admin)
   ocupado?: boolean;
   citasActivas?: number;
   cirugiasActivas?: number;
@@ -38,6 +39,7 @@ export interface QuirofanoFormData {
   equipamiento?: string | null;
   capacidadEquipo: number;
   precioHora?: number | null;
+  costoHora?: number | null;
 }
 
 export interface QuirofanoFilters {

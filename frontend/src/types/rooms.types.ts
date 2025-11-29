@@ -3,6 +3,7 @@ export interface Room {
   numero: string;
   tipo: 'consultorio_general' | 'individual' | 'doble' | 'triple' | 'suite' | 'cuidados_intensivos';
   precioPorDia: number;
+  costoPorDia?: number | null; // Costo operativo diario (editable por admin)
   estado: 'disponible' | 'ocupada' | 'mantenimiento';
   descripcion: string;
   piso?: string; // Piso de la habitación
@@ -102,6 +103,7 @@ export interface CreateRoomRequest {
   numero: string;
   tipo: Room['tipo'];
   precioPorDia: number;
+  costoPorDia?: number | null;
   descripcion: string;
 }
 

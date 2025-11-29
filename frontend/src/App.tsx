@@ -32,6 +32,7 @@ const QuirofanosPage = lazy(() => import('@/pages/quirofanos/QuirofanosPage'));
 const CirugiasPage = lazy(() => import('@/pages/quirofanos/CirugiasPage'));
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'));
 const SolicitudesPage = lazy(() => import('@/pages/solicitudes/SolicitudesPage'));
+const CostsPage = lazy(() => import('@/pages/costs/CostsPage'));
 
 // Componente de loading para Lazy Loading
 const PageLoader: React.FC = () => (
@@ -187,7 +188,15 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            
+
+            <Route path="/costs" element={
+              <ProtectedRoute roles={['administrador']}>
+                <Layout>
+                  <CostsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Layout>

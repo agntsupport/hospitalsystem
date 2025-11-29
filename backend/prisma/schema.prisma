@@ -201,6 +201,7 @@ model Habitacion {
   numero       String           @unique
   tipo         TipoHabitacion
   precioPorDia Decimal          @map("precio_por_dia") @db.Decimal(8, 2)
+  costoPorDia  Decimal?         @map("costo_por_dia") @db.Decimal(8, 2) // Costo operativo diario (editable por admin)
   estado       EstadoHabitacion @default(disponible)
   descripcion  String?
   createdAt    DateTime         @default(now()) @map("created_at")
@@ -269,6 +270,7 @@ model Quirofano {
   equipamiento    String? // Descripción del equipamiento especializado
   capacidadEquipo Int             @default(6) @map("capacidad_equipo") // Número máximo de personas en el quirófano
   precioHora      Decimal?        @map("precio_hora") @db.Decimal(8, 2)
+  costoHora       Decimal?        @map("costo_hora") @db.Decimal(8, 2) // Costo operativo por hora (editable por admin)
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 

@@ -17,18 +17,21 @@ import {
   Box,
   CircularProgress,
   FormHelperText,
-  InputAdornment
+  InputAdornment,
+  Tooltip
 } from '@mui/material';
 import {
   Hotel as RoomIcon,
   Edit as EditIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 
 import { roomsService } from '@/services/roomsService';
 import { Room, ROOM_TYPES, ROOM_STATES } from '@/types/rooms.types';
 import { roomFormSchema, type RoomFormValues } from '@/schemas/rooms.schemas';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RoomFormDialogProps {
   open: boolean;
@@ -44,6 +47,8 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
   editingRoom
 }) => {
   const isEditing = !!editingRoom;
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'administrador';
 
   const {
     control,
@@ -56,6 +61,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
       numero: '',
       tipo: 'individual',
       precioPorDia: 0,
+      costoPorDia: null,
       estado: 'disponible',
       descripcion: ''
     }
@@ -68,6 +74,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
         numero: editingRoom.numero,
         tipo: editingRoom.tipo,
         precioPorDia: editingRoom.precioPorDia,
+        costoPorDia: editingRoom.costoPorDia ?? null,
         estado: editingRoom.estado,
         descripcion: editingRoom.descripcion || ''
       });
@@ -77,6 +84,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
         numero: '',
         tipo: 'individual',
         precioPorDia: 0,
+        costoPorDia: null,
         estado: 'disponible',
         descripcion: ''
       });
@@ -189,10 +197,10 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
                 <TextField
                   {...field}
                   fullWidth
-                  label="Precio por Día *"
+                  label="Precio por Día (Venta) *"
                   type="number"
                   error={!!errors.precioPorDia}
-                  helperText={errors.precioPorDia?.message}
+                  helperText={errors.precioPorDia?.message || 'Precio cobrado al paciente'}
                   disabled={isSubmitting}
                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                   InputProps={{
@@ -202,6 +210,39 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({
               )}
             />
           </Grid>
+
+          {isAdmin && (
+            <Grid item xs={12} sm={6}>
+              <Controller
+                name="costoPorDia"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    label="Costo por Día (Operativo)"
+                    type="number"
+                    error={!!errors.costoPorDia}
+                    helperText={errors.costoPorDia?.message || 'Costo interno del hospital'}
+                    disabled={isSubmitting}
+                    value={field.value ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === '' ? null : parseFloat(val) || 0);
+                    }}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>,
+                      endAdornment: (
+                        <Tooltip title="Este costo se usa para calcular márgenes de utilidad en reportes">
+                          <InfoIcon color="action" fontSize="small" />
+                        </Tooltip>
+                      )
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+          )}
 
           <Grid item xs={12} sm={6}>
             <Controller

@@ -17,7 +17,14 @@ export const roomFormSchema = yup.object({
     .required('El precio por día es requerido')
     .min(0, 'El precio por día debe ser mayor a 0')
     .max(99999, 'Precio máximo excedido'),
-  
+
+  costoPorDia: yup
+    .number()
+    .nullable()
+    .optional()
+    .min(0, 'El costo por día debe ser mayor o igual a 0')
+    .max(99999, 'Costo máximo excedido'),
+
   estado: yup
     .string()
     .required('El estado es requerido')

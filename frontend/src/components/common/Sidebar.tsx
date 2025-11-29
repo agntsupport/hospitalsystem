@@ -30,6 +30,7 @@ import {
   Group,
   Assignment,
   AccountBalance,
+  AttachMoney,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -140,6 +141,13 @@ const menuItems: MenuItem[] = [
     icon: <Assessment />,
     path: '/reports',
     roles: ['administrador', 'socio', 'almacenista'],
+  },
+  {
+    id: 'costs',
+    text: 'Costos Operativos',
+    icon: <AttachMoney />,
+    path: '/costs',
+    roles: ['administrador'],
     divider: true,
   },
   {
