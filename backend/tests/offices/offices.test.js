@@ -2,20 +2,36 @@
 
 const request = require('supertest');
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const officesRoutes = require('../../routes/offices.routes');
 const testHelpers = require('../setupTests');
 
-// Create test app (no authentication middleware for this module)
+// Create test app
 const app = express();
 app.use(express.json());
 app.use('/api/offices', officesRoutes);
 
 describe('Offices Endpoints', () => {
   let testOffice;
+  let testUser;
+  let authToken;
 
   beforeEach(async () => {
     const timestamp = Date.now();
     const randomSuffix = Math.floor(Math.random() * 1000);
+
+    // Create test user for authenticated routes
+    testUser = await testHelpers.createTestUser({
+      username: `testadmin_offices_${timestamp}_${randomSuffix}`,
+      rol: 'administrador'
+    });
+
+    // Generate JWT token
+    authToken = jwt.sign(
+      { userId: testUser.id, username: testUser.username, rol: testUser.rol },
+      process.env.JWT_SECRET || 'test_secret',
+      { expiresIn: '1h' }
+    );
 
     // Create test office
     testOffice = await testHelpers.prisma.consultorio.create({
@@ -118,6 +134,7 @@ describe('Offices Endpoints', () => {
 
       const response = await request(app)
         .post('/api/offices')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(officeData);
 
       expect(response.status).toBe(201);
@@ -135,6 +152,7 @@ describe('Offices Endpoints', () => {
 
       const response = await request(app)
         .post('/api/offices')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(invalidData);
 
       expect(response.status).toBe(400);
@@ -149,6 +167,7 @@ describe('Offices Endpoints', () => {
 
       const response = await request(app)
         .post('/api/offices')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(duplicateData);
 
       expect(response.status).toBe(400);
@@ -164,6 +183,7 @@ describe('Offices Endpoints', () => {
 
       const response = await request(app)
         .post('/api/offices')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(minimalData);
 
       expect(response.status).toBe(201);
@@ -202,6 +222,7 @@ describe('Offices Endpoints', () => {
 
       const response = await request(app)
         .put(`/api/offices/${testOffice.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send(updateData);
 
       expect(response.status).toBe(200);
@@ -224,6 +245,7 @@ describe('Offices Endpoints', () => {
       // Try to update testOffice with office2's numero
       const response = await request(app)
         .put(`/api/offices/${testOffice.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ numero: office2.numero });
 
       expect(response.status).toBe(400);
@@ -233,6 +255,7 @@ describe('Offices Endpoints', () => {
     it('should return 404 for non-existent office', async () => {
       const response = await request(app)
         .put('/api/offices/999999')
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ descripcion: 'Test' });
 
       expect(response.status).toBe(404);
@@ -242,7 +265,8 @@ describe('Offices Endpoints', () => {
   describe('DELETE /api/offices/:id', () => {
     it('should delete office', async () => {
       const response = await request(app)
-        .delete(`/api/offices/${testOffice.id}`);
+        .delete(`/api/offices/${testOffice.id}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -258,7 +282,8 @@ describe('Offices Endpoints', () => {
 
     it('should return 404 for non-existent office', async () => {
       const response = await request(app)
-        .delete('/api/offices/999999');
+        .delete('/api/offices/999999')
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(404);
     });

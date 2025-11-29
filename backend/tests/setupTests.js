@@ -38,60 +38,109 @@ beforeEach(async () => {
 
 async function cleanTestData() {
   try {
-    // STRATEGY: Delete in strict FK dependency order (leaf tables first, then parents)
-    // Each operation is wrapped in try-catch to avoid blocking on missing tables
+    // STRATEGY: Use transaction with correct FK dependency order
+    // CRITICAL: Hospitalizacion has UNIQUE FK to CuentaPaciente, so delete Hospitalizacion BEFORE CuentaPaciente
+    // Order: leaf tables → children → parents
 
-    // 1. Delete leaf tables (no children reference them)
-    try { await prisma.auditoriaOperacion.deleteMany({ where: { usuarioId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.alertaInventario.deleteMany({}); } catch (e) {}
-    try { await prisma.historialModificacionPOS.deleteMany({}); } catch (e) {}
-    try { await prisma.cancelacion.deleteMany({}); } catch (e) {}
+    await prisma.$transaction(async (tx) => {
+      // ============================================
+      // PHASE 1: Leaf tables (no FK dependencies)
+      // ============================================
+      await tx.auditoriaOperacion.deleteMany({ where: { usuarioId: { gt: 1000 } } }).catch(() => {});
+      await tx.alertaInventario.deleteMany({}).catch(() => {});
+      await tx.historialRolUsuario.deleteMany({}).catch(() => {});
 
-    // 2. Solicitudes chain (detalles → historial → notificaciones → solicitudes)
-    try { await prisma.detalleSolicitudProducto.deleteMany({}); } catch (e) {}
-    try { await prisma.historialSolicitud.deleteMany({}); } catch (e) {}
-    try { await prisma.notificacionSolicitud.deleteMany({}); } catch (e) {}
-    try { await prisma.solicitudProductos.deleteMany({ where: { numero: { startsWith: 'SP-' } } }); } catch (e) {}
+      // ============================================
+      // PHASE 2: Solicitudes chain (detalles → historial → notificaciones → solicitudes)
+      // ============================================
+      await tx.detalleSolicitudProducto.deleteMany({}).catch(() => {});
+      await tx.historialSolicitud.deleteMany({}).catch(() => {});
+      await tx.notificacionSolicitud.deleteMany({}).catch(() => {});
+      await tx.solicitudProductos.deleteMany({ where: { numero: { startsWith: 'SP-' } } }).catch(() => {});
 
-    // 3. Medical records chain
-    try { await prisma.seguimientoOrden.deleteMany({}); } catch (e) {}
-    try { await prisma.aplicacionMedicamento.deleteMany({}); } catch (e) {}
-    try { await prisma.notaHospitalizacion.deleteMany({ where: { hospitalizacionId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.ordenMedica.deleteMany({}); } catch (e) {}
+      // ============================================
+      // PHASE 3: POS modifications and cancellations
+      // ============================================
+      await tx.historialModificacionPOS.deleteMany({}).catch(() => {});
+      await tx.cancelacion.deleteMany({}).catch(() => {});
 
-    // 4. Financial transactions
-    try { await prisma.transaccionCuenta.deleteMany({ where: { cuentaId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.historialCuentaPorCobrar.deleteMany({}); } catch (e) {}
-    try { await prisma.pago.deleteMany({}); } catch (e) {}
-    try { await prisma.pagoFactura.deleteMany({}); } catch (e) {}
+      // ============================================
+      // PHASE 4: Medical records (children of Hospitalizacion)
+      // These MUST be deleted BEFORE Hospitalizacion
+      // ============================================
+      await tx.seguimientoOrden.deleteMany({}).catch(() => {});
+      await tx.aplicacionMedicamento.deleteMany({}).catch(() => {});
+      await tx.notaHospitalizacion.deleteMany({}).catch(() => {});
+      await tx.ordenMedica.deleteMany({}).catch(() => {});
 
-    // 5. Inventory movements (before products)
-    try { await prisma.itemVentaRapida.deleteMany({ where: { producto: { codigo: { startsWith: 'TEST-' } } } }); } catch (e) {}
-    try { await prisma.movimientoInventario.deleteMany({ where: { producto: { codigo: { startsWith: 'TEST-' } } } }); } catch (e) {}
+      // ============================================
+      // PHASE 5: Hospitalizacion (has UNIQUE FK to CuentaPaciente)
+      // MUST delete BEFORE CuentaPaciente
+      // ============================================
+      await tx.hospitalizacion.deleteMany({}).catch(() => {});
 
-    // 6. Clinical entities (before paciente/empleado)
-    try { await prisma.citaMedica.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.historialMedico.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.cirugiaQuirofano.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.hospitalizacion.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+      // ============================================
+      // PHASE 6: Financial (children of CuentaPaciente)
+      // These MUST be deleted BEFORE CuentaPaciente
+      // ============================================
+      await tx.transaccionCuenta.deleteMany({}).catch(() => {});
+      await tx.historialCuentaPorCobrar.deleteMany({}).catch(() => {});
+      await tx.pago.deleteMany({}).catch(() => {});
+      await tx.pagoFactura.deleteMany({}).catch(() => {});
 
-    // 7. Cuentas (after hospitalización which references them)
-    try { await prisma.cuentaPaciente.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
+      // ============================================
+      // PHASE 7: Inventory movements and sales
+      // ============================================
+      await tx.itemVentaRapida.deleteMany({}).catch(() => {});
+      await tx.ventaRapida.deleteMany({}).catch(() => {});
+      await tx.movimientoInventario.deleteMany({}).catch(() => {});
 
-    // 8. Main entities
-    try { await prisma.responsable.deleteMany({ where: { pacienteId: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.paciente.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.empleado.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.usuario.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+      // ============================================
+      // PHASE 8: Facturas (child of CuentaPaciente and Paciente)
+      // ============================================
+      await tx.factura.deleteMany({}).catch(() => {});
 
-    // 9. Products and resources
-    try { await prisma.producto.deleteMany({ where: { codigo: { startsWith: 'TEST-' } } }); } catch (e) {}
-    try { await prisma.producto.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.proveedor.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
-    try { await prisma.quirofano.deleteMany({ where: { id: { gt: 1000 } } }); } catch (e) {}
+      // ============================================
+      // PHASE 9: Clinical entities (children of Paciente)
+      // ============================================
+      await tx.citaMedica.deleteMany({}).catch(() => {});
+      await tx.historialMedico.deleteMany({}).catch(() => {});
+      await tx.cirugiaQuirofano.deleteMany({}).catch(() => {});
+
+      // ============================================
+      // PHASE 10: CuentaPaciente (NOW safe to delete)
+      // All children have been deleted in previous phases
+      // ============================================
+      await tx.cuentaPaciente.deleteMany({}).catch(() => {});
+
+      // ============================================
+      // PHASE 11: Main entities (Paciente, Empleado, Usuario)
+      // ============================================
+      // Note: Responsable has FK to Paciente via relation, not direct field
+      await tx.paciente.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+      await tx.responsable.deleteMany({}).catch(() => {});
+      await tx.empleado.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+      await tx.usuario.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+
+      // ============================================
+      // PHASE 12: Products and resources
+      // ============================================
+      await tx.producto.deleteMany({ where: { codigo: { startsWith: 'TEST-' } } }).catch(() => {});
+      await tx.producto.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+      await tx.proveedor.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+      await tx.quirofano.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+      await tx.servicio.deleteMany({ where: { codigo: { startsWith: 'TEST-' } } }).catch(() => {});
+
+    }, {
+      timeout: 60000, // 60 seconds timeout for cleanup
+      maxWait: 10000  // 10 seconds max wait for transaction lock
+    });
 
   } catch (error) {
-    console.warn('Warning: Error cleaning test data:', error.message);
+    // Log but don't fail - some tables may not exist or be empty
+    if (process.env.DEBUG_TESTS === 'true') {
+      console.warn('Warning: Error cleaning test data:', error.message);
+    }
   }
 }
 
@@ -417,30 +466,56 @@ global.testHelpers = {
 
       if (testUserIds.length === 0) return;
 
-      // Clean in correct order respecting FK constraints
-      await prisma.detalleSolicitudProducto.deleteMany({});
-      await prisma.historialSolicitud.deleteMany({});
-      await prisma.notificacionSolicitud.deleteMany({});
-      await prisma.solicitudProductos.deleteMany({
-        where: { solicitanteId: { in: testUserIds } }
-      });
-      await prisma.transaccionCuenta.deleteMany({});
-      await prisma.cuentaPaciente.deleteMany({});
-      await prisma.movimientoInventario.deleteMany({
-        where: { usuarioId: { in: testUserIds } }
-      });
-      await prisma.producto.deleteMany({
-        where: { codigo: { startsWith: 'TEST-' } }
-      });
-      await prisma.paciente.deleteMany({
-        where: { nombre: 'Paciente' }
-      });
-      await prisma.empleado.deleteMany({});
-      await prisma.usuario.deleteMany({
-        where: { id: { in: testUserIds } }
+      // Clean in correct order respecting FK constraints using transaction
+      await prisma.$transaction(async (tx) => {
+        // 1. Solicitudes chain
+        await tx.detalleSolicitudProducto.deleteMany({}).catch(() => {});
+        await tx.historialSolicitud.deleteMany({}).catch(() => {});
+        await tx.notificacionSolicitud.deleteMany({}).catch(() => {});
+        await tx.solicitudProductos.deleteMany({
+          where: { solicitanteId: { in: testUserIds } }
+        }).catch(() => {});
+
+        // 2. Medical records (before hospitalization)
+        await tx.notaHospitalizacion.deleteMany({}).catch(() => {});
+        await tx.ordenMedica.deleteMany({}).catch(() => {});
+
+        // 3. Hospitalizacion (BEFORE CuentaPaciente due to UNIQUE FK)
+        await tx.hospitalizacion.deleteMany({}).catch(() => {});
+
+        // 4. Financial (before CuentaPaciente)
+        await tx.transaccionCuenta.deleteMany({}).catch(() => {});
+        await tx.historialCuentaPorCobrar.deleteMany({}).catch(() => {});
+        await tx.pago.deleteMany({}).catch(() => {});
+
+        // 5. Inventory movements
+        await tx.movimientoInventario.deleteMany({
+          where: { usuarioId: { in: testUserIds } }
+        }).catch(() => {});
+
+        // 6. CuentaPaciente (NOW safe)
+        await tx.cuentaPaciente.deleteMany({}).catch(() => {});
+
+        // 7. Products
+        await tx.producto.deleteMany({
+          where: { codigo: { startsWith: 'TEST-' } }
+        }).catch(() => {});
+
+        // 8. Main entities
+        await tx.paciente.deleteMany({
+          where: { nombre: 'Paciente' }
+        }).catch(() => {});
+        await tx.empleado.deleteMany({ where: { id: { gt: 1000 } } }).catch(() => {});
+        await tx.usuario.deleteMany({
+          where: { id: { in: testUserIds } }
+        }).catch(() => {});
+      }, {
+        timeout: 30000
       });
     } catch (error) {
-      console.warn('Warning: Error cleaning solicitudes test data:', error.message);
+      if (process.env.DEBUG_TESTS === 'true') {
+        console.warn('Warning: Error cleaning solicitudes test data:', error.message);
+      }
     }
   }
 };
