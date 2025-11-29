@@ -121,7 +121,7 @@ class UsersService {
   // Obtener estadísticas de usuarios
   async getUserStats(): Promise<UserStats> {
     const response = await api.get('/users/stats/summary');
-    return response.data as UserStats;
+    return response as unknown as UserStats;
   }
 
   // Validar username disponible
