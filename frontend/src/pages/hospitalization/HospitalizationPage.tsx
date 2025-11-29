@@ -51,6 +51,7 @@ import {
 } from '@mui/icons-material';
 
 import PageHeader from '@/components/common/PageHeader';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
 import hospitalizationService from '@/services/hospitalizationService';
 import AdmissionFormDialog from './AdmissionFormDialog';
 import MedicalNotesDialog from './MedicalNotesDialog';
@@ -271,91 +272,37 @@ const HospitalizationPage: React.FC = () => {
     if (!stats) return null;
 
     return (
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography color="textSecondary" gutterBottom variant="overline">
-                    Total Camas
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {stats.totalCamas}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {stats.camasDisponibles} disponibles
-                  </Typography>
-                </Box>
-                <HotelIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography color="textSecondary" gutterBottom variant="overline">
-                    Ocupación
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {stats.porcentajeOcupacion}%
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {stats.camasOcupadas} ocupadas
-                  </Typography>
-                </Box>
-                <TrendingUpIcon sx={{ fontSize: 40, color: 'warning.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography color="textSecondary" gutterBottom variant="overline">
-                    Pacientes Hospitalizados
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {stats.pacientesHospitalizados}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {stats.ingresosHoy} ingresos hoy
-                  </Typography>
-                </Box>
-                <PeopleIcon sx={{ fontSize: 40, color: 'success.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography color="textSecondary" gutterBottom variant="overline">
-                    Altas Hoy
-                  </Typography>
-                  <Typography variant="h4" component="div">
-                    {stats.altasHoy}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Estancia: {stats.estanciaPromedio} días
-                  </Typography>
-                </Box>
-                <ExitToAppIcon sx={{ fontSize: 40, color: 'info.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <StatCardsGrid sx={{ mb: 3 }}>
+        <StatCard
+          title="Total Camas"
+          value={stats.totalCamas}
+          subtitle={`${stats.camasDisponibles} disponibles`}
+          icon={<HotelIcon />}
+          color="primary"
+        />
+        <StatCard
+          title="Ocupación"
+          value={stats.porcentajeOcupacion}
+          subtitle={`${stats.camasOcupadas} ocupadas`}
+          icon={<TrendingUpIcon />}
+          color="warning"
+          format="percentage"
+        />
+        <StatCard
+          title="Pacientes Hospitalizados"
+          value={stats.pacientesHospitalizados}
+          subtitle={`${stats.ingresosHoy} ingresos hoy`}
+          icon={<PeopleIcon />}
+          color="success"
+        />
+        <StatCard
+          title="Altas Hoy"
+          value={stats.altasHoy}
+          subtitle={`Estancia: ${stats.estanciaPromedio} días`}
+          icon={<ExitToAppIcon />}
+          color="info"
+        />
+      </StatCardsGrid>
     );
   };
 

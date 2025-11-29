@@ -1,9 +1,10 @@
+// ABOUTME: Tarjeta de estadísticas de Consultorios para el módulo de Rooms
+// ABOUTME: Usa StatCard unificado del Design System para consistencia visual
 import React from 'react';
 import {
   Card,
   CardContent,
   Typography,
-  Grid,
   Box,
   LinearProgress,
   CircularProgress,
@@ -21,6 +22,7 @@ import {
 } from '@mui/icons-material';
 
 import { OfficeStats, OFFICE_TYPES } from '@/types/rooms.types';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
 
 interface OfficesStatsCardProps {
   stats: OfficeStats | null;
@@ -29,7 +31,7 @@ interface OfficesStatsCardProps {
 }
 
 const OfficesStatsCard: React.FC<OfficesStatsCardProps> = ({ stats, loading, onRefresh }) => {
-  const getOccupancyColor = (rate: number) => {
+  const getOccupancyColor = (rate: number): 'error' | 'warning' | 'info' | 'success' => {
     if (rate >= 90) return 'error';
     if (rate >= 70) return 'warning';
     if (rate >= 50) return 'info';
@@ -64,49 +66,33 @@ const OfficesStatsCard: React.FC<OfficesStatsCardProps> = ({ stats, loading, onR
           </IconButton>
         </Box>
 
-        {/* Overall Stats */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="secondary" fontWeight="bold">
-                {stats?.totalOffices || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Total
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="success.main" fontWeight="bold">
-                {stats?.availableOffices || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Disponibles
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="error.main" fontWeight="bold">
-                {stats?.occupiedOffices || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Ocupados
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" color="warning.main" fontWeight="bold">
-                {stats?.maintenanceOffices || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Mantenimiento
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
+        {/* Estadísticas principales usando StatCard unificado */}
+        <StatCardsGrid columns={{ xs: 6, sm: 6, md: 6, lg: 6 }} sx={{ mb: 3 }}>
+          <StatCard
+            title="Total"
+            value={stats?.totalOffices || 0}
+            icon={<OfficeIcon />}
+            color="secondary"
+          />
+          <StatCard
+            title="Disponibles"
+            value={stats?.availableOffices || 0}
+            icon={<AvailableIcon />}
+            color="success"
+          />
+          <StatCard
+            title="Ocupados"
+            value={stats?.occupiedOffices || 0}
+            icon={<OccupiedIcon />}
+            color="error"
+          />
+          <StatCard
+            title="Mantenimiento"
+            value={stats?.maintenanceOffices || 0}
+            icon={<MaintenanceIcon />}
+            color="warning"
+          />
+        </StatCardsGrid>
 
         {/* Occupancy Rate */}
         <Box sx={{ mb: 3 }}>
@@ -124,7 +110,7 @@ const OfficesStatsCard: React.FC<OfficesStatsCardProps> = ({ stats, loading, onR
           <LinearProgress
             variant="determinate"
             value={stats?.occupancyRate || 0}
-            color={getOccupancyColor(stats.occupancyRate)}
+            color={getOccupancyColor(stats?.occupancyRate || 0)}
             sx={{ height: 8, borderRadius: 4 }}
           />
         </Box>

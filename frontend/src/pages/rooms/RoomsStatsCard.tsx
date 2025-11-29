@@ -1,3 +1,5 @@
+// ABOUTME: Tarjeta de estadísticas de Habitaciones para el módulo de Rooms
+// ABOUTME: Usa StatCard unificado del Design System para consistencia visual
 import React from 'react';
 import {
   Card,
@@ -21,6 +23,7 @@ import {
 } from '@mui/icons-material';
 
 import { RoomStats, ROOM_TYPES } from '@/types/rooms.types';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
 
 interface RoomsStatsCardProps {
   stats: RoomStats | null;
@@ -29,24 +32,11 @@ interface RoomsStatsCardProps {
 }
 
 const RoomsStatsCard: React.FC<RoomsStatsCardProps> = ({ stats, loading, onRefresh }) => {
-  const getOccupancyColor = (rate: number) => {
+  const getOccupancyColor = (rate: number): 'error' | 'warning' | 'info' | 'success' => {
     if (rate >= 90) return 'error';
     if (rate >= 70) return 'warning';
     if (rate >= 50) return 'info';
     return 'success';
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'available':
-        return <AvailableIcon color="success" fontSize="small" />;
-      case 'occupied':
-        return <OccupiedIcon color="error" fontSize="small" />;
-      case 'maintenance':
-        return <MaintenanceIcon color="warning" fontSize="small" />;
-      default:
-        return null;
-    }
   };
 
   if (loading || !stats) {
@@ -77,89 +67,33 @@ const RoomsStatsCard: React.FC<RoomsStatsCardProps> = ({ stats, loading, onRefre
           </IconButton>
         </Box>
 
-        {/* Overall Stats */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography 
-                variant="h4" 
-                color="primary" 
-                fontWeight="bold"
-                sx={{
-                  fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {stats?.totalRooms || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Total
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography 
-                variant="h4" 
-                color="success.main" 
-                fontWeight="bold"
-                sx={{
-                  fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {stats?.availableRooms || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Disponibles
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography 
-                variant="h4" 
-                color="error.main" 
-                fontWeight="bold"
-                sx={{
-                  fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {stats?.occupiedRooms || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Ocupadas
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography 
-                variant="h4" 
-                color="warning.main" 
-                fontWeight="bold"
-                sx={{
-                  fontSize: { xs: '1.2rem', sm: '1.5rem', md: '1.75rem' },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {stats?.maintenanceRooms || 0}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Mantenimiento
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
+        {/* Estadísticas principales usando StatCard unificado */}
+        <StatCardsGrid columns={{ xs: 6, sm: 6, md: 6, lg: 6 }} sx={{ mb: 3 }}>
+          <StatCard
+            title="Total"
+            value={stats?.totalRooms || 0}
+            icon={<RoomIcon />}
+            color="primary"
+          />
+          <StatCard
+            title="Disponibles"
+            value={stats?.availableRooms || 0}
+            icon={<AvailableIcon />}
+            color="success"
+          />
+          <StatCard
+            title="Ocupadas"
+            value={stats?.occupiedRooms || 0}
+            icon={<OccupiedIcon />}
+            color="error"
+          />
+          <StatCard
+            title="Mantenimiento"
+            value={stats?.maintenanceRooms || 0}
+            icon={<MaintenanceIcon />}
+            color="warning"
+          />
+        </StatCardsGrid>
 
         {/* Occupancy Rate */}
         <Box sx={{ mb: 3 }}>
@@ -177,7 +111,7 @@ const RoomsStatsCard: React.FC<RoomsStatsCardProps> = ({ stats, loading, onRefre
           <LinearProgress
             variant="determinate"
             value={stats?.occupancyRate || 0}
-            color={getOccupancyColor(stats.occupancyRate)}
+            color={getOccupancyColor(stats?.occupancyRate || 0)}
             sx={{ height: 8, borderRadius: 4 }}
           />
         </Box>
@@ -194,8 +128,8 @@ const RoomsStatsCard: React.FC<RoomsStatsCardProps> = ({ stats, loading, onRefre
             {Object.entries(stats?.roomsByType || {}).map(([tipo, data]) => (
               <Box key={tipo} sx={{ mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     fontWeight="medium"
                     sx={{
                       overflow: 'hidden',

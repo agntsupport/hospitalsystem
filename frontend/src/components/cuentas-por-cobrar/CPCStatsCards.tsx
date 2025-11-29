@@ -1,5 +1,5 @@
 // ABOUTME: Tarjetas de estadísticas para el dashboard de Cuentas por Cobrar
-// Muestra métricas clave: CPC activas, monto pendiente, recuperado, porcentaje de recuperación
+// ABOUTME: Usa StatCard unificado del Design System para consistencia visual
 import React from 'react';
 import {
   Grid,
@@ -7,7 +7,6 @@ import {
   CardContent,
   Typography,
   Box,
-  Chip,
 } from '@mui/material';
 import {
   AccountBalance as AccountIcon,
@@ -15,6 +14,7 @@ import {
   AttachMoney as MoneyIcon,
   Assessment as AssessmentIcon,
 } from '@mui/icons-material';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
 
 interface CPCStatsCardsProps {
   stats: {
@@ -37,79 +37,42 @@ const CPCStatsCards: React.FC<CPCStatsCardsProps> = ({ stats }) => {
     return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const statCards = [
-    {
-      title: 'CPC Activas',
-      value: stats.totalCPCActivas,
-      subtitle: 'Cuentas pendientes de pago',
-      icon: <AccountIcon fontSize="large" />,
-      color: 'error.main',
-      bgColor: 'error.light',
-    },
-    {
-      title: 'Monto Pendiente',
-      value: formatCurrency(stats.montoPendienteTotal),
-      subtitle: 'Total por recuperar',
-      icon: <MoneyIcon fontSize="large" />,
-      color: 'warning.main',
-      bgColor: 'warning.light',
-    },
-    {
-      title: 'Monto Recuperado',
-      value: formatCurrency(stats.montoRecuperadoTotal),
-      subtitle: 'Total cobrado',
-      icon: <TrendingIcon fontSize="large" />,
-      color: 'success.main',
-      bgColor: 'success.light',
-    },
-    {
-      title: 'Tasa de Recuperación',
-      value: `${(stats.porcentajeRecuperacion ?? 0).toFixed(1)}%`,
-      subtitle: 'Porcentaje cobrado',
-      icon: <AssessmentIcon fontSize="large" />,
-      color: 'info.main',
-      bgColor: 'info.light',
-    },
-  ];
-
   return (
     <>
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        {statCards.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card elevation={2}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" gutterBottom>
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="h4" fontWeight="bold" color={stat.color}>
-                      {stat.value}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {stat.subtitle}
-                    </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      bgcolor: stat.bgColor,
-                      borderRadius: 2,
-                      p: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: 0.8,
-                    }}
-                  >
-                    {stat.icon}
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {/* Estadísticas principales usando StatCard unificado */}
+      <StatCardsGrid sx={{ mb: 3 }}>
+        <StatCard
+          title="CPC Activas"
+          value={stats.totalCPCActivas}
+          subtitle="Cuentas pendientes de pago"
+          icon={<AccountIcon />}
+          color="error"
+        />
+        <StatCard
+          title="Monto Pendiente"
+          value={stats.montoPendienteTotal}
+          subtitle="Total por recuperar"
+          icon={<MoneyIcon />}
+          color="warning"
+          format="currency"
+        />
+        <StatCard
+          title="Monto Recuperado"
+          value={stats.montoRecuperadoTotal}
+          subtitle="Total cobrado"
+          icon={<TrendingIcon />}
+          color="success"
+          format="currency"
+        />
+        <StatCard
+          title="Tasa de Recuperación"
+          value={stats.porcentajeRecuperacion ?? 0}
+          subtitle="Porcentaje cobrado"
+          icon={<AssessmentIcon />}
+          color="info"
+          format="percentage"
+        />
+      </StatCardsGrid>
 
       {/* Distribución por Estado */}
       <Card sx={{ mb: 3 }}>
