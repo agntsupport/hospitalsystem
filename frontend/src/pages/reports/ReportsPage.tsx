@@ -140,7 +140,7 @@ const ReportsPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 2, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* Header unificado */}
       <PageHeader
         title="Reportes Administrativos"

@@ -37,7 +37,8 @@ import {
   KPI_CATEGORIES
 } from '@/types/reports.types';
 import reportsService from '@/services/reportsService';
-import { LineChart, MetricCard } from '@/components/reports/ReportChart';
+import { LineChart } from '@/components/reports/ReportChart';
+import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
 
 interface ExecutiveDashboardTabProps {
   filters: ReportFilters;
@@ -189,160 +190,150 @@ const ExecutiveDashboardTab: React.FC<ExecutiveDashboardTabProps> = ({
     const { resumenEjecutivo } = executiveSummary;
 
     return (
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Tooltip 
-            title={
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  Ingresos Totales
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 0.5 }}>
-                  {reportsService.formatCurrency(resumenEjecutivo.ingresosTotales)}
-                </Typography>
-                <Typography variant="caption">
-                  Incluye todos los ingresos del hospital en el período seleccionado
-                </Typography>
-              </Box>
-            }
-            arrow
-            placement="top"
-          >
-            <div>
-              <MetricCard
-                title="Ingresos Totales"
-                value={reportsService.formatCurrency(resumenEjecutivo.ingresosTotales)}
-                subtitle={reportsService.formatDateRange(
-                  executiveSummary.periodo.fechaInicio,
-                  executiveSummary.periodo.fechaFin
-                )}
-                icon={<MoneyIcon sx={{ fontSize: 40 }} />}
-                color="success"
-              />
-            </div>
-          </Tooltip>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Tooltip 
-            title={
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  Utilidad Neta
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 0.5 }}>
-                  {reportsService.formatCurrency(resumenEjecutivo.utilidadNeta)}
-                </Typography>
-                <Typography variant="caption">
-                  Ingresos menos gastos operativos. Margen: {resumenEjecutivo.ingresosTotales > 0 ? ((Number(resumenEjecutivo.utilidadNeta) / Number(resumenEjecutivo.ingresosTotales)) * 100).toFixed(1) : 0}%
-                </Typography>
-              </Box>
-            }
-            arrow
-            placement="top"
-          >
-            <div>
-              <MetricCard
-                title="Utilidad Neta"
-                value={reportsService.formatCurrency(resumenEjecutivo.utilidadNeta)}
-                subtitle={`${resumenEjecutivo.ingresosTotales > 0 ? ((Number(resumenEjecutivo.utilidadNeta) / Number(resumenEjecutivo.ingresosTotales)) * 100).toFixed(1) : 0}% margen`}
-                icon={<TrendingUpIcon sx={{ fontSize: 40 }} />}
-                color="primary"
-              />
-            </div>
-          </Tooltip>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Tooltip 
-            title={
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  Pacientes Atendidos
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 0.5 }}>
-                  {resumenEjecutivo.pacientesAtendidos.toLocaleString()}
-                </Typography>
-                <Typography variant="caption">
-                  Total de pacientes únicos atendidos en consultas, emergencias y hospitalización
-                </Typography>
-              </Box>
-            }
-            arrow
-            placement="top"
-          >
-            <div>
-              <MetricCard
-                title="Pacientes Atendidos"
-                value={resumenEjecutivo.pacientesAtendidos}
-                subtitle="En el período"
-                icon={<PeopleIcon sx={{ fontSize: 40 }} />}
-                color="info"
-              />
-            </div>
-          </Tooltip>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Tooltip 
-            title={
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  Ocupación Promedio
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 0.5 }}>
-                  {resumenEjecutivo.ocupacionPromedio}%
-                </Typography>
-                <Typography variant="caption">
-                  Porcentaje promedio de habitaciones ocupadas. Meta: 85% para rentabilidad óptima
-                </Typography>
-              </Box>
-            }
-            arrow
-            placement="top"
-          >
-            <div>
-              <MetricCard
-                title="Ocupación Promedio"
-                value={`${resumenEjecutivo.ocupacionPromedio}%`}
-                subtitle="Habitaciones"
-                icon={<HotelIcon sx={{ fontSize: 40 }} />}
-                color="warning"
-              />
-            </div>
-          </Tooltip>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={4} lg={3}>
-          <Tooltip 
-            title={
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  Satisfacción General
-                </Typography>
-                <Typography variant="body1" sx={{ mb: 0.5 }}>
-                  {resumenEjecutivo.satisfaccionGeneral}/5.0 ★
-                </Typography>
-                <Typography variant="caption">
-                  Calificación promedio de pacientes en encuestas de satisfacción post-atención
-                </Typography>
-              </Box>
-            }
-            arrow
-            placement="top"
-          >
-            <div>
-              <MetricCard
-                title="Satisfacción General"
-                value={`${resumenEjecutivo.satisfaccionGeneral}/5.0`}
-                subtitle="Calificación promedio"
-                icon={<StarIcon sx={{ fontSize: 40 }} />}
-                color="success"
-              />
-            </div>
-          </Tooltip>
-        </Grid>
-      </Grid>
+      <StatCardsGrid columns={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+        <Tooltip
+          title={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Ingresos Totales
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 0.5 }}>
+                {reportsService.formatCurrency(resumenEjecutivo.ingresosTotales)}
+              </Typography>
+              <Typography variant="caption">
+                Incluye todos los ingresos del hospital en el período seleccionado
+              </Typography>
+            </Box>
+          }
+          arrow
+          placement="top"
+        >
+          <div>
+            <StatCard
+              title="Ingresos Totales"
+              value={reportsService.formatCurrency(resumenEjecutivo.ingresosTotales)}
+              subtitle={reportsService.formatDateRange(
+                executiveSummary.periodo.fechaInicio,
+                executiveSummary.periodo.fechaFin
+              )}
+              icon={<MoneyIcon />}
+              color="success"
+            />
+          </div>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Utilidad Neta
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 0.5 }}>
+                {reportsService.formatCurrency(resumenEjecutivo.utilidadNeta)}
+              </Typography>
+              <Typography variant="caption">
+                Ingresos menos gastos operativos. Margen: {resumenEjecutivo.ingresosTotales > 0 ? ((Number(resumenEjecutivo.utilidadNeta) / Number(resumenEjecutivo.ingresosTotales)) * 100).toFixed(1) : 0}%
+              </Typography>
+            </Box>
+          }
+          arrow
+          placement="top"
+        >
+          <div>
+            <StatCard
+              title="Utilidad Neta"
+              value={reportsService.formatCurrency(resumenEjecutivo.utilidadNeta)}
+              subtitle={`${resumenEjecutivo.ingresosTotales > 0 ? ((Number(resumenEjecutivo.utilidadNeta) / Number(resumenEjecutivo.ingresosTotales)) * 100).toFixed(1) : 0}% margen`}
+              icon={<TrendingUpIcon />}
+              color="primary"
+            />
+          </div>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Pacientes Atendidos
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 0.5 }}>
+                {resumenEjecutivo.pacientesAtendidos.toLocaleString()}
+              </Typography>
+              <Typography variant="caption">
+                Total de pacientes únicos atendidos en consultas, emergencias y hospitalización
+              </Typography>
+            </Box>
+          }
+          arrow
+          placement="top"
+        >
+          <div>
+            <StatCard
+              title="Pacientes Atendidos"
+              value={resumenEjecutivo.pacientesAtendidos}
+              subtitle="En el período"
+              icon={<PeopleIcon />}
+              color="info"
+            />
+          </div>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Ocupación Promedio
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 0.5 }}>
+                {resumenEjecutivo.ocupacionPromedio}%
+              </Typography>
+              <Typography variant="caption">
+                Porcentaje promedio de habitaciones ocupadas. Meta: 85% para rentabilidad óptima
+              </Typography>
+            </Box>
+          }
+          arrow
+          placement="top"
+        >
+          <div>
+            <StatCard
+              title="Ocupación Promedio"
+              value={`${resumenEjecutivo.ocupacionPromedio}%`}
+              subtitle="Habitaciones"
+              icon={<HotelIcon />}
+              color="warning"
+            />
+          </div>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Satisfacción General
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 0.5 }}>
+                {resumenEjecutivo.satisfaccionGeneral}/5.0 ★
+              </Typography>
+              <Typography variant="caption">
+                Calificación promedio de pacientes en encuestas de satisfacción post-atención
+              </Typography>
+            </Box>
+          }
+          arrow
+          placement="top"
+        >
+          <div>
+            <StatCard
+              title="Satisfacción General"
+              value={`${resumenEjecutivo.satisfaccionGeneral}/5.0`}
+              subtitle="Calificación promedio"
+              icon={<StarIcon />}
+              color="success"
+            />
+          </div>
+        </Tooltip>
+      </StatCardsGrid>
     );
   };
 
