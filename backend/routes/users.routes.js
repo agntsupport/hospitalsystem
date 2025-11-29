@@ -9,8 +9,56 @@ const logger = require('../utils/logger');
 
 const prisma = new PrismaClient();
 
+// GET /api/users/stats/summary - Obtener estadísticas de usuarios (solo admin)
+// IMPORTANTE: Esta ruta debe estar ANTES de /:id para evitar conflictos
+router.get('/stats/summary',
+  authenticateToken,
+  authorizeRoles(['administrador']),
+  async (req, res) => {
+    try {
+      const [
+        totalUsuarios,
+        usuariosActivos,
+        usuariosPorRol,
+        usuariosCreados30Dias
+      ] = await Promise.all([
+        prisma.usuario.count(),
+        prisma.usuario.count({ where: { activo: true } }),
+        prisma.usuario.groupBy({
+          by: ['rol'],
+          _count: true
+        }),
+        prisma.usuario.count({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            }
+          }
+        })
+      ]);
+
+      res.json({
+        totalUsuarios,
+        usuariosActivos,
+        usuariosInactivos: totalUsuarios - usuariosActivos,
+        usuariosPorRol: usuariosPorRol.map(item => ({
+          rol: item.rol,
+          cantidad: item._count
+        })),
+        usuariosCreados30Dias
+      });
+    } catch (error) {
+      logger.logError('GET_USERS_STATS', error);
+      res.status(500).json({
+        error: 'Error al obtener estadísticas',
+        details: error.message
+      });
+    }
+  }
+);
+
 // GET /api/users - Obtener todos los usuarios (solo admin)
-router.get('/', 
+router.get('/',
   authenticateToken, 
   authorizeRoles(['administrador']),
   async (req, res) => {
@@ -536,53 +584,6 @@ router.get('/:id/role-history',
       logger.logError('GET_ROLE_HISTORY', error, { userId: req.params.id });
       res.status(500).json({ 
         error: 'Error al obtener historial de roles',
-        details: error.message 
-      });
-    }
-  }
-);
-
-// GET /api/users/stats - Obtener estadísticas de usuarios (solo admin)
-router.get('/stats/summary',
-  authenticateToken,
-  authorizeRoles(['administrador']),
-  async (req, res) => {
-    try {
-      const [
-        totalUsuarios,
-        usuariosActivos,
-        usuariosPorRol,
-        usuariosCreados30Dias
-      ] = await Promise.all([
-        prisma.usuario.count(),
-        prisma.usuario.count({ where: { activo: true } }),
-        prisma.usuario.groupBy({
-          by: ['rol'],
-          _count: true
-        }),
-        prisma.usuario.count({
-          where: {
-            createdAt: {
-              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            }
-          }
-        })
-      ]);
-
-      res.json({
-        totalUsuarios,
-        usuariosActivos,
-        usuariosInactivos: totalUsuarios - usuariosActivos,
-        usuariosPorRol: usuariosPorRol.map(item => ({
-          rol: item.rol,
-          cantidad: item._count
-        })),
-        usuariosCreados30Dias
-      });
-    } catch (error) {
-      logger.logError('GET_USERS_STATS', error);
-      res.status(500).json({ 
-        error: 'Error al obtener estadísticas',
         details: error.message 
       });
     }
