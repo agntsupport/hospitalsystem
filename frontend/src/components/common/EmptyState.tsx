@@ -1,7 +1,7 @@
 // ABOUTME: Componente EmptyState unificado del Design System
 // ABOUTME: Muestra estados vacíos consistentes en tablas, listas y búsquedas
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Box, Typography, Button, useTheme, alpha } from '@mui/material';
 import InboxIcon from '@mui/icons-material/Inbox';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
@@ -133,7 +133,7 @@ const sizeConfigs = {
  *   }}
  * />
  */
-const EmptyState: React.FC<EmptyStateProps> = ({
+const EmptyState: React.FC<EmptyStateProps> = memo(({
   type = 'empty',
   title,
   description,
@@ -262,7 +262,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       )}
     </Box>
   );
-};
+});
+
+EmptyState.displayName = 'EmptyState';
 
 /**
  * TableEmptyState - Versión optimizada para tablas

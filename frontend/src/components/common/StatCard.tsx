@@ -1,7 +1,7 @@
 // ABOUTME: Componente StatCard unificado del Design System
 // ABOUTME: Reemplaza MetricCard, BillingStatsCards, CPCStatsCards y POSStatsCards
 
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Card,
   CardContent,
@@ -109,7 +109,7 @@ const formatValue = (
  *   trend={{ value: 12, direction: 'up', label: 'vs ayer' }}
  * />
  */
-const StatCard: React.FC<StatCardProps> = ({
+const StatCard: React.FC<StatCardProps> = memo(({
   title,
   value,
   subtitle,
@@ -266,7 +266,9 @@ const StatCard: React.FC<StatCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+StatCard.displayName = 'StatCard';
 
 /**
  * StatCardSkeleton - Skeleton para estado de carga
@@ -295,7 +297,7 @@ export interface StatCardsGridProps {
   sx?: object;
 }
 
-export const StatCardsGrid: React.FC<StatCardsGridProps> = ({
+export const StatCardsGrid: React.FC<StatCardsGridProps> = memo(({
   children,
   columns = { xs: 12, sm: 6, md: 4, lg: 3 },
   sx = {},
@@ -317,6 +319,8 @@ export const StatCardsGrid: React.FC<StatCardsGridProps> = ({
       {children}
     </Box>
   );
-};
+});
+
+StatCardsGrid.displayName = 'StatCardsGrid';
 
 export default StatCard;

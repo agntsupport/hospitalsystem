@@ -1,7 +1,7 @@
 // ABOUTME: Componente PageHeader unificado del Design System
 // ABOUTME: Proporciona un header consistente para todas las páginas del sistema
 
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Box,
   Typography,
@@ -109,7 +109,7 @@ export interface PageHeaderProps {
  *   showBackButton
  * />
  */
-const PageHeader: React.FC<PageHeaderProps> = ({
+const PageHeader: React.FC<PageHeaderProps> = memo(({
   title,
   subtitle,
   icon,
@@ -320,6 +320,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
       {children && <Box sx={{ mt: spacing.sm }}>{children}</Box>}
     </Box>
   );
-};
+});
+
+PageHeader.displayName = 'PageHeader';
 
 export default PageHeader;

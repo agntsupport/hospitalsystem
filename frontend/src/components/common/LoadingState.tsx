@@ -1,7 +1,7 @@
 // ABOUTME: Componente LoadingState unificado del Design System
 // ABOUTME: Proporciona estados de carga consistentes para contenido, tablas y cards
 
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Box,
   CircularProgress,
@@ -72,7 +72,7 @@ const sizeConfig = {
  * // Skeleton de tabla
  * <LoadingState type="table" count={5} />
  */
-const LoadingState: React.FC<LoadingStateProps> = ({
+const LoadingState: React.FC<LoadingStateProps> = memo(({
   type = 'spinner',
   message,
   size = 'medium',
@@ -238,7 +238,9 @@ const LoadingState: React.FC<LoadingStateProps> = ({
   }
 
   return null;
-};
+});
+
+LoadingState.displayName = 'LoadingState';
 
 /**
  * FullPageLoader - Loader de página completa
