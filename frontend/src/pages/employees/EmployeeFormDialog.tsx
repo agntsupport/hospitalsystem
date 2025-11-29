@@ -142,12 +142,6 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
   }, [editingEmployee, open, reset]);
 
   const onSubmit = async (data: EmployeeFormValues) => {
-    console.log('=== FORM SUBMISSION DEBUG ===');
-    console.log('Form data received:', data);
-    console.log('Form errors:', errors);
-    console.log('Is submitting:', isSubmitting);
-    console.log('Is editing:', isEditing);
-    
     try {
       // Mapear los datos del schema al formato esperado por el servicio
       const mappedData: EmployeeFormData = {
@@ -618,13 +612,7 @@ const EmployeeFormDialog: React.FC<EmployeeFormDialogProps> = ({
           Cancelar
         </Button>
         <Button
-          onClick={(e) => {
-            console.log('=== BUTTON CLICK DEBUG ===');
-            console.log('Button clicked');
-            console.log('Form errors:', errors);
-            console.log('isSubmitting:', isSubmitting);
-            handleSubmit(onSubmit)(e);
-          }}
+          onClick={handleSubmit(onSubmit)}
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={20} /> : (isEditing ? <EditIcon /> : <PersonAddIcon />)}

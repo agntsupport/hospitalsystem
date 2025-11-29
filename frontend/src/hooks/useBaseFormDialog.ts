@@ -70,11 +70,9 @@ export const useBaseFormDialog = <T extends FieldValues = any>({
       
       if (entity) {
         // Modo edición: cargar datos del entity
-        console.log('🔄 Cargando datos para edición:', entity);
         reset(entity as T);
       } else {
         // Modo creación: usar valores por defecto
-        console.log('➕ Modo creación, usando valores por defecto');
         reset(defaultValues);
       }
     } else {
@@ -92,11 +90,7 @@ export const useBaseFormDialog = <T extends FieldValues = any>({
       setError(null);
 
       try {
-        console.log('📤 Enviando datos del formulario:', data);
-        
         const response = await apiCall(data);
-        
-        console.log('✅ Respuesta exitosa:', response);
 
         if (response.success) {
           const actionText = isEditing ? 'actualizado' : 'creado';

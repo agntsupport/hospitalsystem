@@ -140,21 +140,18 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
     try {
       // Cargar pacientes - corregido para usar response.data.items
       const patientsResponse = await patientsService.getPatients({ activo: true });
-      console.log('Patients response:', patientsResponse);
       if (patientsResponse.success) {
         setPatients(patientsResponse.data?.items || []);
       }
 
       // Cargar médicos - corregido para usar response.data.items
       const employeesResponse = await employeeService.getEmployees({ limit: 100 });
-      console.log('Employees response:', employeesResponse);
       if (employeesResponse.success && employeesResponse.data) {
         // Filtrar solo médicos activos
         const allEmployees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
         const medicos = allEmployees.filter(
           (emp: any) => emp.activo && (emp.tipoEmpleado === 'medico_especialista' || emp.tipoEmpleado === 'medico_residente')
         ) || [];
-        console.log('Filtered doctors:', medicos);
         setDoctors(medicos);
       }
 
@@ -174,8 +171,6 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
         roomsService.getOffices({ estado: 'disponible' }),
         quirofanosService.getQuirofanos({ estado: 'disponible' })
       ]);
-
-      console.log('Spaces response:', { roomsResponse, officesResponse, quirofanosResponse });
 
       if (roomsResponse.success) {
         let filteredRooms = roomsResponse.data?.rooms || [];
@@ -219,7 +214,6 @@ const AdmissionFormDialog: React.FC<AdmissionFormDialogProps> = ({
 
         if (consultorioGeneral) {
           setValue('habitacionId', `consultorio_${consultorioGeneral.id}`);
-          console.log('Consultorio General preseleccionado:', consultorioGeneral.numero);
         }
       }
     } catch (error) {

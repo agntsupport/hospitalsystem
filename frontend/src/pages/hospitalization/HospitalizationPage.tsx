@@ -196,13 +196,8 @@ const HospitalizationPage: React.FC = () => {
   };
 
   const handleOpenDischarge = (admission: HospitalAdmission) => {
-    console.log('=== DEBUG handleOpenDischarge ===');
-    console.log('Admission:', admission);
-    console.log('User:', user);
-    console.log('puedeDarAlta:', puedeDarAlta);
     setSelectedAdmissionForDischarge(admission);
     setDischargeDialogOpen(true);
-    console.log('DischargeDialog should open now');
   };
 
   const handleOpenTransfer = (admission: HospitalAdmission) => {

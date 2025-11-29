@@ -124,23 +124,17 @@ class HospitalizationService {
    */
   async createAdmission(admissionData: HospitalAdmissionForm): Promise<HospitalizationResponse<HospitalAdmission>> {
     try {
-      console.log('📊 Creating admission with data:', admissionData);
-      
       // Validaciones del lado cliente
       const validation = this.validateAdmissionForm(admissionData);
-      console.log('📋 Validation result:', validation);
-      
+
       if (!validation.valid) {
-        console.error('❌ Validation failed:', validation.errors);
         return {
           success: false,
           message: validation.errors.join(', ')
         };
       }
-      
-      console.log('🚀 Sending POST request to /hospitalization/admissions');
+
       const response = await api.post('/hospitalization/admissions', admissionData);
-      console.log('✅ Response received:', response.data);
       
       return {
         success: true,
@@ -260,7 +254,6 @@ class HospitalizationService {
         ].filter(Boolean).join('\n\n')
       };
 
-      console.log('Sending mapped data to backend:', mappedData);
       const response = await api.post(`/hospitalization/admissions/${admissionId}/notes`, mappedData);
       
       return {

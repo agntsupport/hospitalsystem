@@ -69,13 +69,11 @@ export const usePatientForm = (
 
   useEffect(() => {
     if (open) {
-      console.log('Dialog abierto, reseteando formulario');
       setActiveStep(0);
       setError(null);
       setUseAddressAutocomplete(!editingPatient);
 
       if (editingPatient) {
-        console.log('Modo edición, cargando datos del paciente:', editingPatient);
         const editingData: PatientFormValues = {
           nombre: editingPatient.nombre || '',
           apellidoPaterno: editingPatient.apellidoPaterno || '',
@@ -110,9 +108,7 @@ export const usePatientForm = (
           }
         };
         reset(editingData);
-        console.log('Datos de edición aplicados');
       } else {
-        console.log('Modo creación, usando valores por defecto');
         reset(defaultValues);
       }
     }
@@ -162,27 +158,15 @@ export const usePatientForm = (
   }, []);
 
   const handleNext = useCallback(async () => {
-    console.log('Navegando al siguiente step. Step actual:', activeStep);
-    console.log('Valores antes de validar:', JSON.stringify(watchedValues, null, 2));
-
     const isStepValid = await validateStep(activeStep);
-    console.log('Step válido:', isStepValid);
 
     if (isStepValid) {
-      setActiveStep((prevActiveStep) => {
-        const nextStep = prevActiveStep + 1;
-        console.log('Cambiando de step', prevActiveStep, 'a', nextStep);
-        return nextStep;
-      });
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
       setError(null);
-
-      setTimeout(() => {
-        console.log('Valores después de cambiar step:', JSON.stringify(watch(), null, 2));
-      }, 100);
     } else {
       setError('Por favor complete los campos requeridos y corrija los errores');
     }
-  }, [activeStep, validateStep, watchedValues, watch]);
+  }, [activeStep, validateStep]);
 
   const handleBack = useCallback(() => {
     setActiveStep((prevActiveStep) => Math.max(0, prevActiveStep - 1));
@@ -190,7 +174,6 @@ export const usePatientForm = (
   }, []);
 
   const onFormSubmit = useCallback(async (data: PatientFormValues) => {
-    console.log('onFormSubmit ejecutándose con data:', data);
     setLoading(true);
     setError(null);
 
@@ -205,18 +188,12 @@ export const usePatientForm = (
         delete cleanFormData.seguroMedico;
       }
 
-      console.log('Datos limpiados para enviar:', cleanFormData);
-
       let response;
       if (editingPatient) {
-        console.log('Actualizando paciente existente');
         response = await patientsService.updatePatient(editingPatient.id, cleanFormData);
       } else {
-        console.log('Creando nuevo paciente');
         response = await patientsService.createPatient(cleanFormData);
       }
-
-      console.log('Respuesta del servidor:', response);
 
       if (response.success) {
         toast.success(editingPatient ? 'Paciente actualizado exitosamente' : 'Paciente creado exitosamente');

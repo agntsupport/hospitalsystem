@@ -144,8 +144,6 @@ const PatientFormDialog: React.FC<PatientFormDialogProps> = ({
           <Button
             variant="contained"
             onClick={handleSubmit(async (validatedData) => {
-              console.log('Botón Guardar Paciente clickeado');
-              console.log('Datos validados por react-hook-form:', validatedData);
               await onFormSubmit(validatedData);
             })}
             disabled={loading}
