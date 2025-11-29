@@ -5,6 +5,7 @@ const { validatePagination, validateRequired, validateDateRange } = require('../
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { auditMiddleware, criticalOperationAudit, captureOriginalData } = require('../middleware/audit.middleware');
 const { generateInvoiceNumber } = require('../utils/helpers');
+const { extractIdParam, parseIntSafe } = require('../utils/parseHelpers');
 const logger = require('../utils/logger');
 
 // ==============================================
@@ -208,12 +209,12 @@ router.get('/stats', validateDateRange, async (req, res) => {
 // GET /invoices/:id/payments - Obtener pagos de una factura
 router.get('/invoices/:id/payments', async (req, res) => {
   try {
-    const facturaId = parseInt(req.params.id);
-    
-    if (!facturaId) {
+    const { valid, value: facturaId, error } = extractIdParam(req);
+
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: 'ID de factura inválido'
+        message: error
       });
     }
 
@@ -257,13 +258,13 @@ router.get('/invoices/:id/payments', async (req, res) => {
 // POST /invoices/:id/payments - Registrar pago para una factura
 router.post('/invoices/:id/payments', authenticateToken, auditMiddleware('facturacion'), validateRequired(['monto', 'metodoPago']), async (req, res) => {
   try {
-    const facturaId = parseInt(req.params.id);
+    const { valid, value: facturaId, error } = extractIdParam(req);
     const { monto, metodoPago, referencia, autorizacion, observaciones, cajeroId } = req.body;
-    
-    if (!facturaId) {
+
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: 'ID de factura inválido'
+        message: error
       });
     }
 
@@ -511,12 +512,12 @@ router.get('/accounts-receivable', validateDateRange, async (req, res) => {
 // GET /invoices/:id - Obtener factura específica
 router.get('/invoices/:id', async (req, res) => {
   try {
-    const facturaId = parseInt(req.params.id);
+    const { valid, value: facturaId, error } = extractIdParam(req);
 
-    if (!facturaId || isNaN(facturaId)) {
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: 'ID de factura inválido'
+        message: error
       });
     }
 
@@ -587,13 +588,13 @@ router.get('/invoices/:id', async (req, res) => {
 // PUT /invoices/:id - Actualizar estado de factura
 router.put('/invoices/:id', authenticateToken, auditMiddleware('facturacion'), async (req, res) => {
   try {
-    const facturaId = parseInt(req.params.id);
+    const { valid, value: facturaId, error } = extractIdParam(req);
     const { estado, observaciones } = req.body;
 
-    if (!facturaId || isNaN(facturaId)) {
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: 'ID de factura inválido'
+        message: error
       });
     }
 
@@ -652,12 +653,12 @@ router.put('/invoices/:id', authenticateToken, auditMiddleware('facturacion'), a
 // DELETE /invoices/:id - Cancelar factura (solo si no está pagada)
 router.delete('/invoices/:id', authenticateToken, auditMiddleware('facturacion'), async (req, res) => {
   try {
-    const facturaId = parseInt(req.params.id);
+    const { valid, value: facturaId, error } = extractIdParam(req);
 
-    if (!facturaId || isNaN(facturaId)) {
+    if (!valid) {
       return res.status(400).json({
         success: false,
-        message: 'ID de factura inválido'
+        message: error
       });
     }
 
