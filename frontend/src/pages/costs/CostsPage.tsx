@@ -31,7 +31,8 @@ import {
   Alert,
   Tooltip,
   InputAdornment,
-  Divider
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -43,32 +44,29 @@ import {
   Inventory as InventoryIcon,
   Description as DescriptionIcon,
   Settings as SettingsIcon,
-  TrendingUp as TrendingUpIcon,
   AttachMoney as MoneyIcon,
-  Percent as PercentIcon,
-  Save as SaveIcon
+  Save as SaveIcon,
+  Home as HomeIcon,
+  Shield as ShieldIcon,
+  TrendingDown as TrendingDownIcon,
+  Campaign as CampaignIcon,
+  School as SchoolIcon
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import costsService, { CostoOperativo, CostoOperativoFormData } from '@/services/costsService';
 
+// Categorías que coinciden con el enum del backend
 const CATEGORIAS = [
-  { value: 'servicios_basicos', label: 'Servicios Básicos', icon: <LightbulbIcon /> },
   { value: 'nomina', label: 'Nómina', icon: <PeopleIcon /> },
+  { value: 'servicios_publicos', label: 'Servicios Públicos', icon: <LightbulbIcon /> },
   { value: 'mantenimiento', label: 'Mantenimiento', icon: <BuildIcon /> },
-  { value: 'suministros', label: 'Suministros', icon: <InventoryIcon /> },
-  { value: 'administrativo', label: 'Administrativo', icon: <DescriptionIcon /> },
-  { value: 'otro', label: 'Otro', icon: <SettingsIcon /> }
-];
-
-const PERIODICIDADES = [
-  { value: 'diario', label: 'Diario' },
-  { value: 'semanal', label: 'Semanal' },
-  { value: 'quincenal', label: 'Quincenal' },
-  { value: 'mensual', label: 'Mensual' },
-  { value: 'bimestral', label: 'Bimestral' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'semestral', label: 'Semestral' },
-  { value: 'anual', label: 'Anual' }
+  { value: 'insumos_generales', label: 'Insumos Generales', icon: <InventoryIcon /> },
+  { value: 'renta_inmueble', label: 'Renta de Inmueble', icon: <HomeIcon /> },
+  { value: 'seguros', label: 'Seguros', icon: <ShieldIcon /> },
+  { value: 'depreciacion', label: 'Depreciación', icon: <TrendingDownIcon /> },
+  { value: 'marketing', label: 'Marketing', icon: <CampaignIcon /> },
+  { value: 'capacitacion', label: 'Capacitación', icon: <SchoolIcon /> },
+  { value: 'otros', label: 'Otros', icon: <SettingsIcon /> }
 ];
 
 const CostsPage: React.FC = () => {
@@ -85,20 +83,21 @@ const CostsPage: React.FC = () => {
   const [porcentajeCosto, setPorcentajeCosto] = useState<number>(60);
   const [savingConfig, setSavingConfig] = useState(false);
 
-  // Form state
+  // Form state - usando campos reales del backend
   const [formData, setFormData] = useState<CostoOperativoFormData>({
-    nombre: '',
-    categoria: 'servicios_basicos',
+    concepto: '',
+    categoria: 'servicios_publicos',
     monto: 0,
-    periodicidad: 'mensual',
+    periodo: costsService.getCurrentPeriodo(),
     descripcion: '',
-    activo: true
+    recurrente: true
   });
 
   // Stats
   const [stats, setStats] = useState({
-    totalMensual: 0,
-    totalAnual: 0
+    totalMes: 0,
+    totalGeneral: 0,
+    totalesPorCategoria: {} as Record<string, number>
   });
 
   const fetchCostos = useCallback(async () => {
@@ -106,18 +105,17 @@ const CostsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await costsService.getCostosOperativos();
-      setCostos(response.data || []);
+      const costosData = response.data?.items || [];
+      setCostos(costosData);
 
-      // Calculate stats
-      let totalMensual = 0;
-      (response.data || []).forEach((costo: CostoOperativo) => {
-        if (costo.activo) {
-          totalMensual += costsService.calcularMontoMensual(costo.monto, costo.periodicidad);
-        }
-      });
+      // Stats vienen del backend
+      const totales = response.data?.totalesPorCategoria || {};
+      const totalGeneral = Object.values(totales).reduce((sum: number, val: any) => sum + (parseFloat(val) || 0), 0);
+
       setStats({
-        totalMensual,
-        totalAnual: totalMensual * 12
+        totalMes: totalGeneral,
+        totalGeneral: totalGeneral * 12,
+        totalesPorCategoria: totales
       });
     } catch (err: any) {
       setError(err.message || 'Error al cargar costos operativos');
@@ -144,22 +142,22 @@ const CostsPage: React.FC = () => {
     if (costo) {
       setEditingCosto(costo);
       setFormData({
-        nombre: costo.nombre,
+        concepto: costo.concepto,
         categoria: costo.categoria,
         monto: costo.monto,
-        periodicidad: costo.periodicidad,
+        periodo: costo.periodo.split('T')[0], // Convertir ISO a YYYY-MM-DD
         descripcion: costo.descripcion || '',
-        activo: costo.activo
+        recurrente: costo.recurrente
       });
     } else {
       setEditingCosto(null);
       setFormData({
-        nombre: '',
-        categoria: 'servicios_basicos',
+        concepto: '',
+        categoria: 'servicios_publicos',
         monto: 0,
-        periodicidad: 'mensual',
+        periodo: costsService.getCurrentPeriodo(),
         descripcion: '',
-        activo: true
+        recurrente: true
       });
     }
     setDialogOpen(true);
@@ -171,8 +169,8 @@ const CostsPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.nombre || formData.monto <= 0) {
-      toast.error('Nombre y monto son requeridos');
+    if (!formData.concepto || formData.monto <= 0) {
+      toast.error('Concepto y monto son requeridos');
       return;
     }
 
@@ -247,7 +245,7 @@ const CostsPage: React.FC = () => {
         Costos Operativos
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Gestiona los costos fijos del hospital: servicios básicos, nómina, mantenimiento, etc.
+        Gestiona los costos fijos del hospital: servicios públicos, nómina, mantenimiento, etc.
       </Typography>
 
       {error && (
@@ -262,10 +260,10 @@ const CostsPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>
-                Total Mensual
+                Total del Mes
               </Typography>
               <Typography variant="h5" color="primary">
-                {formatCurrency(stats.totalMensual)}
+                {formatCurrency(stats.totalMes)}
               </Typography>
             </CardContent>
           </Card>
@@ -274,10 +272,10 @@ const CostsPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>
-                Total Anual Estimado
+                Proyección Anual
               </Typography>
               <Typography variant="h5" color="secondary">
-                {formatCurrency(stats.totalAnual)}
+                {formatCurrency(stats.totalGeneral)}
               </Typography>
             </CardContent>
           </Card>
@@ -344,11 +342,11 @@ const CostsPage: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Nombre</TableCell>
+              <TableCell>Concepto</TableCell>
               <TableCell>Categoría</TableCell>
               <TableCell align="right">Monto</TableCell>
-              <TableCell>Periodicidad</TableCell>
-              <TableCell align="right">Mensual Eq.</TableCell>
+              <TableCell>Periodo</TableCell>
+              <TableCell>Recurrente</TableCell>
               <TableCell>Estado</TableCell>
               <TableCell align="center">Acciones</TableCell>
             </TableRow>
@@ -370,7 +368,7 @@ const CostsPage: React.FC = () => {
                       {getCategoriaIcon(costo.categoria)}
                       <Box>
                         <Typography variant="body2" fontWeight="medium">
-                          {costo.nombre}
+                          {costo.concepto}
                         </Typography>
                         {costo.descripcion && (
                           <Typography variant="caption" color="text.secondary">
@@ -393,12 +391,14 @@ const CostsPage: React.FC = () => {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {costsService.getPeriodicidadLabel(costo.periodicidad)}
+                    {costsService.formatPeriodo(costo.periodo)}
                   </TableCell>
-                  <TableCell align="right">
-                    <Typography color="primary">
-                      {formatCurrency(costsService.calcularMontoMensual(costo.monto, costo.periodicidad))}
-                    </Typography>
+                  <TableCell>
+                    <Chip
+                      label={costo.recurrente ? 'Sí' : 'No'}
+                      color={costo.recurrente ? 'info' : 'default'}
+                      size="small"
+                    />
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -448,10 +448,10 @@ const CostsPage: React.FC = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Nombre"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                placeholder="Ej: Electricidad, Agua, Nómina médicos"
+                label="Concepto"
+                value={formData.concepto}
+                onChange={(e) => setFormData({ ...formData, concepto: e.target.value })}
+                placeholder="Ej: Electricidad CFE, Agua potable, Salario enfermeros"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -474,20 +474,14 @@ const CostsPage: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Periodicidad</InputLabel>
-                <Select
-                  value={formData.periodicidad}
-                  label="Periodicidad"
-                  onChange={(e) => setFormData({ ...formData, periodicidad: e.target.value })}
-                >
-                  {PERIODICIDADES.map((per) => (
-                    <MenuItem key={per.value} value={per.value}>
-                      {per.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                label="Periodo (Mes/Año)"
+                type="date"
+                value={formData.periodo}
+                onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -502,17 +496,15 @@ const CostsPage: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Estado</InputLabel>
-                <Select
-                  value={formData.activo ? 'true' : 'false'}
-                  label="Estado"
-                  onChange={(e) => setFormData({ ...formData, activo: e.target.value === 'true' })}
-                >
-                  <MenuItem value="true">Activo</MenuItem>
-                  <MenuItem value="false">Inactivo</MenuItem>
-                </Select>
-              </FormControl>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.recurrente}
+                    onChange={(e) => setFormData({ ...formData, recurrente: e.target.checked })}
+                  />
+                }
+                label="Costo recurrente mensual"
+              />
             </Grid>
             <Grid item xs={12}>
               <TextField
@@ -547,7 +539,7 @@ const CostsPage: React.FC = () => {
         <DialogTitle>Confirmar Eliminación</DialogTitle>
         <DialogContent>
           <Typography>
-            ¿Está seguro de eliminar el costo "{costoToDelete?.nombre}"?
+            ¿Está seguro de eliminar el costo "{costoToDelete?.concepto}"?
           </Typography>
         </DialogContent>
         <DialogActions>

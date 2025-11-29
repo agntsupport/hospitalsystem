@@ -3,24 +3,27 @@
 
 import { api } from '@/utils/api';
 
+// Tipo que coincide con el modelo real del backend (Prisma)
 export interface CostoOperativo {
   id: number;
-  nombre: string;
-  categoria: 'servicios_basicos' | 'nomina' | 'mantenimiento' | 'suministros' | 'administrativo' | 'otro';
-  monto: number;
-  periodicidad: 'diario' | 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual';
+  categoria: string;
+  concepto: string;
   descripcion?: string;
+  monto: number;
+  periodo: string; // ISO date string
+  recurrente: boolean;
   activo: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CostoOperativoFormData {
-  nombre: string;
   categoria: string;
-  monto: number;
-  periodicidad: string;
+  concepto: string;
   descripcion?: string;
+  monto: number;
+  periodo: string; // ISO date string (YYYY-MM-DD)
+  recurrente?: boolean;
   activo?: boolean;
 }
 
@@ -44,7 +47,7 @@ export interface CostosStats {
 
 class CostsService {
   // Obtener lista de costos operativos
-  async getCostosOperativos(filters: { categoria?: string; activo?: boolean } = {}) {
+  async getCostosOperativos(filters: { categoria?: string; activo?: boolean; periodo?: string } = {}) {
     try {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
@@ -108,17 +111,25 @@ class CostsService {
   async getConfig(): Promise<CostosConfig> {
     try {
       const response = await api.get('/costs/config');
-      return response.data;
+      // La config viene como array, buscar el porcentaje
+      const configArray = response.data || [];
+      const porcentajeConfig = configArray.find((c: any) => c.clave === 'porcentaje_costo_servicio');
+      return {
+        porcentajeCostoServicio: porcentajeConfig ? parseFloat(porcentajeConfig.valor) : 60
+      };
     } catch (error: any) {
       console.error('Error al obtener configuración:', error);
-      throw new Error(error.response?.data?.message || 'Error al obtener configuración');
+      // Retornar valor por defecto en caso de error
+      return { porcentajeCostoServicio: 60 };
     }
   }
 
   // Actualizar configuración de costos
   async updateConfig(config: Partial<CostosConfig>) {
     try {
-      const response = await api.put('/costs/config', config);
+      const response = await api.put('/costs/config/porcentaje_costo_servicio', {
+        valor: config.porcentajeCostoServicio
+      });
       return response;
     } catch (error: any) {
       console.error('Error al actualizar configuración:', error);
@@ -129,55 +140,46 @@ class CostsService {
   // Utilidades para el frontend
   getCategoriaLabel(categoria: string): string {
     const categorias: Record<string, string> = {
-      servicios_basicos: 'Servicios Básicos',
       nomina: 'Nómina',
+      servicios_publicos: 'Servicios Públicos',
       mantenimiento: 'Mantenimiento',
-      suministros: 'Suministros',
-      administrativo: 'Administrativo',
-      otro: 'Otro'
+      insumos_generales: 'Insumos Generales',
+      renta_inmueble: 'Renta de Inmueble',
+      seguros: 'Seguros',
+      depreciacion: 'Depreciación',
+      marketing: 'Marketing',
+      capacitacion: 'Capacitación',
+      otros: 'Otros'
     };
     return categorias[categoria] || categoria;
   }
 
-  getPeriodicidadLabel(periodicidad: string): string {
-    const periodicidades: Record<string, string> = {
-      diario: 'Diario',
-      semanal: 'Semanal',
-      quincenal: 'Quincenal',
-      mensual: 'Mensual',
-      bimestral: 'Bimestral',
-      trimestral: 'Trimestral',
-      semestral: 'Semestral',
-      anual: 'Anual'
-    };
-    return periodicidades[periodicidad] || periodicidad;
-  }
-
   getCategoriaIcon(categoria: string): string {
     const iconos: Record<string, string> = {
-      servicios_basicos: '💡',
       nomina: '👥',
+      servicios_publicos: '💡',
       mantenimiento: '🔧',
-      suministros: '📦',
-      administrativo: '📋',
-      otro: '📌'
+      insumos_generales: '📦',
+      renta_inmueble: '🏠',
+      seguros: '🛡️',
+      depreciacion: '📉',
+      marketing: '📢',
+      capacitacion: '📚',
+      otros: '📌'
     };
     return iconos[categoria] || '📌';
   }
 
-  // Calcular monto mensual equivalente
-  calcularMontoMensual(monto: number, periodicidad: string): number {
-    const factores: Record<string, number> = {
-      diario: 30,
-      semanal: 4.33,
-      quincenal: 2,
-      mensual: 1,
-      bimestral: 0.5,
-      trimestral: 0.333,
-      semestral: 0.167,
-      anual: 0.083
-    };
-    return monto * (factores[periodicidad] || 1);
+  // Formatear fecha de periodo para mostrar
+  formatPeriodo(periodoISO: string): string {
+    const date = new Date(periodoISO);
+    return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long' });
+  }
+
+  // Obtener fecha actual para nuevo costo
+  getCurrentPeriodo(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   }
 }
 
