@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   Paper,
   Grid,
   Box,
@@ -193,15 +192,14 @@ const QuirofanosPage: React.FC = () => {
 
   if (loading && quirofanos.length === 0) {
     return (
-      <Container maxWidth="xl">
+      <Box sx={{ p: 3 }}>
         <FullPageLoader message="Cargando quirófanos..." />
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ py: 3 }}>
+    <Box sx={{ p: 3 }}>
         {/* Header unificado */}
         <PageHeader
           title="Gestión de Quirófanos"
@@ -447,7 +445,6 @@ const QuirofanosPage: React.FC = () => {
             )}
           </Box>
         )}
-      </Box>
 
       {/* Diálogos */}
       <QuirofanoFormDialog
@@ -499,7 +496,7 @@ const QuirofanosPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Box>
   );
 };
 

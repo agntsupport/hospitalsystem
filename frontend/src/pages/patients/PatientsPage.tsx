@@ -4,13 +4,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Tab,
   Tabs,
   Paper,
   Grid,
-  Card,
-  CardContent,
   Alert,
   useTheme,
   useMediaQuery,
@@ -119,14 +116,14 @@ const PatientsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ p: 3 }}>
         <FullPageLoader message="Cargando pacientes..." />
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Gestión de Pacientes"
@@ -211,7 +208,7 @@ const PatientsPage: React.FC = () => {
         onClose={handleClosePatientForm}
         onPatientCreated={handlePatientCreated}
       />
-    </Container>
+    </Box>
   );
 };
 

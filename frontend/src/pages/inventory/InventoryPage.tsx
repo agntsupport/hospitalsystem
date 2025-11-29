@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Tabs,
   Tab,
   Alert,
@@ -179,7 +178,7 @@ const InventoryPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Módulo de Inventario"
@@ -297,7 +296,7 @@ const InventoryPage: React.FC = () => {
         onClose={() => setMovementDialogOpen(false)}
         onMovementCreated={handleDataChange}
       />
-    </Container>
+    </Box>
   );
 };
 

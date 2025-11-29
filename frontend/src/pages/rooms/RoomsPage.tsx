@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Tab,
   Tabs,
   Paper,
@@ -108,14 +107,14 @@ const RoomsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ p: 3 }}>
         <FullPageLoader message="Cargando habitaciones..." />
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Gestión de Habitaciones y Consultorios"
@@ -180,7 +179,7 @@ const RoomsPage: React.FC = () => {
           <OfficesTab onStatsChange={refreshStats} />
         </TabPanel>
       </Paper>
-    </Container>
+    </Box>
   );
 };
 

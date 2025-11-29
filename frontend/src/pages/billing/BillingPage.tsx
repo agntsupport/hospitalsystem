@@ -85,7 +85,7 @@ const BillingPage: React.FC = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Facturación y Cuentas por Cobrar"

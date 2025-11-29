@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   Paper,
   Typography,
   Box,
@@ -252,7 +251,7 @@ const SolicitudesPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl">
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Solicitudes de Productos"
@@ -573,7 +572,7 @@ const SolicitudesPage: React.FC = () => {
           {notification.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 

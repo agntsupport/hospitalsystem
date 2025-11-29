@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Container,
   Tabs,
   Tab,
   Paper,
@@ -131,16 +130,16 @@ const ReportsPage: React.FC = () => {
 
   if (!canViewFinancial && !canViewOperational && !canViewExecutive) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ p: 3 }}>
         <Alert severity="warning">
           No tiene permisos para acceder a los reportes administrativos.
         </Alert>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Reportes Administrativos"
@@ -336,7 +335,7 @@ const ReportsPage: React.FC = () => {
           </TabPanel>
         )}
       </Paper>
-    </Container>
+    </Box>
   );
 };
 

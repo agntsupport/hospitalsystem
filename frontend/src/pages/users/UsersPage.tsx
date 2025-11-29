@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   Paper,
   Box,
   Button,
@@ -234,7 +233,7 @@ const UsersPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="xl">
+    <Box sx={{ p: 3 }}>
       {/* Header unificado */}
       <PageHeader
         title="Gestión de Usuarios"
@@ -539,7 +538,7 @@ const UsersPage: React.FC = () => {
           {notification.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 
