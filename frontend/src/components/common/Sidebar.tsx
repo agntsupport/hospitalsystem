@@ -31,6 +31,9 @@ import {
   Assignment,
   AccountBalance,
   AttachMoney,
+  Payments,
+  AssignmentReturn,
+  LocalOffer,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -106,6 +109,35 @@ const menuItems: MenuItem[] = [
     icon: <PointOfSale />,
     path: '/pos',
     roles: ['cajero', 'administrador'],
+  },
+  {
+    id: 'caja',
+    text: 'Caja Diaria',
+    icon: <Payments />,
+    path: '/caja',
+    roles: ['cajero', 'administrador'],
+  },
+  {
+    id: 'devoluciones',
+    text: 'Devoluciones',
+    icon: <AssignmentReturn />,
+    path: '/devoluciones',
+    roles: ['cajero', 'administrador', 'socio'],
+  },
+  {
+    id: 'descuentos',
+    text: 'Descuentos',
+    icon: <LocalOffer />,
+    path: '/descuentos',
+    roles: ['cajero', 'administrador', 'socio'],
+  },
+  {
+    id: 'depositos',
+    text: 'Depósitos Bancarios',
+    icon: <AccountBalance />,
+    path: '/depositos',
+    roles: ['cajero', 'administrador', 'socio'],
+    divider: true,
   },
   {
     id: 'inventory',

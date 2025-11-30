@@ -33,6 +33,10 @@ const CirugiasPage = lazy(() => import('@/pages/quirofanos/CirugiasPage'));
 const UsersPage = lazy(() => import('@/pages/users/UsersPage'));
 const SolicitudesPage = lazy(() => import('@/pages/solicitudes/SolicitudesPage'));
 const CostsPage = lazy(() => import('@/pages/costs/CostsPage'));
+const CajaDiariaPage = lazy(() => import('@/pages/caja/CajaDiariaPage'));
+const DevolucionesPage = lazy(() => import('@/pages/devoluciones/DevolucionesPage'));
+const DescuentosPage = lazy(() => import('@/pages/descuentos/DescuentosPage'));
+const DepositosPage = lazy(() => import('@/pages/depositos/DepositosPage'));
 
 // Componente de loading para Lazy Loading
 const PageLoader: React.FC = () => (
@@ -132,7 +136,39 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
-            
+
+            <Route path="/caja" element={
+              <ProtectedRoute roles={['cajero', 'administrador']}>
+                <Layout>
+                  <CajaDiariaPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/devoluciones" element={
+              <ProtectedRoute roles={['cajero', 'administrador', 'socio']}>
+                <Layout>
+                  <DevolucionesPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/descuentos" element={
+              <ProtectedRoute roles={['cajero', 'administrador', 'socio']}>
+                <Layout>
+                  <DescuentosPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/depositos" element={
+              <ProtectedRoute roles={['cajero', 'administrador', 'socio']}>
+                <Layout>
+                  <DepositosPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/inventory" element={
               <ProtectedRoute roles={['almacenista', 'administrador']}>
                 <Layout>

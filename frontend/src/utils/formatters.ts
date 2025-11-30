@@ -66,3 +66,12 @@ export const formatMarginPercentage = (
   const margin = ((utilidad / ingresos) * 100).toFixed(1);
   return `${margin}% margen`;
 };
+
+/**
+ * Atajo para formatear valores como moneda
+ * @param value - Valor numérico a formatear
+ * @returns String formateado como moneda MXN
+ */
+export const formatCurrency = (value: number | string): string => {
+  return formatMetricValue(value, 'currency');
+};
