@@ -280,7 +280,7 @@ const MedicalNotesDialog: React.FC<MedicalNotesDialogProps> = ({
                       <Typography><strong>Género:</strong> {admission.paciente.genero}</Typography>
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <Typography><strong>Días de estancia:</strong> {admission.diasEstancia}</Typography>
+                      <Typography><strong>Días de estancia:</strong> {admission.diasEstancia ?? hospitalizationService.calculateStayDays(admission.fechaIngreso, admission.fechaAlta)}</Typography>
                       <Typography><strong>Diagnóstico de ingreso:</strong> {admission.diagnosticoIngreso}</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography><strong>Estado general:</strong></Typography>

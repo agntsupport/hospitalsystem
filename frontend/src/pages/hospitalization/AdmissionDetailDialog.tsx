@@ -76,7 +76,7 @@ const AdmissionDetailDialog: React.FC<AdmissionDetailDialogProps> = ({
             <Typography><strong>Tipo:</strong> {hospitalizationService.formatAdmissionType(admission.tipoHospitalizacion)}</Typography>
             <Typography><strong>Especialidad:</strong> {admission.especialidad}</Typography>
             <Typography><strong>Estado General:</strong> {hospitalizationService.formatGeneralStatus(admission.estadoGeneral)}</Typography>
-            <Typography><strong>Días de Estancia:</strong> {admission.diasEstancia}</Typography>
+            <Typography><strong>Días de Estancia:</strong> {admission.diasEstancia ?? hospitalizationService.calculateStayDays(admission.fechaIngreso, admission.fechaAlta)}</Typography>
 
             <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
               Habitación y Médico

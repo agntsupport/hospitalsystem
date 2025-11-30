@@ -343,7 +343,7 @@ const DischargeDialog: React.FC<DischargeDialogProps> = ({
                       <Alert severity="info">
                         <Typography variant="body2">
                           <strong>Paciente:</strong> {admission.paciente.nombre} • 
-                          <strong> Días de estancia:</strong> {admission.diasEstancia} • 
+                          <strong> Días de estancia:</strong> {admission.diasEstancia ?? hospitalizationService.calculateStayDays(admission.fechaIngreso, admission.fechaAlta)} • 
                           <strong> Diagnóstico de ingreso:</strong> {admission.diagnosticoIngreso}
                         </Typography>
                       </Alert>

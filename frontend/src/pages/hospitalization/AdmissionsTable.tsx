@@ -253,7 +253,10 @@ const AdmissionsTable: React.FC<AdmissionsTableProps> = ({
 
                         <TableCell>
                           <Typography variant="body2" fontWeight="medium">
-                            {admission.diasEstancia === 0 ? '< 1 día' : `${admission.diasEstancia} día${admission.diasEstancia > 1 ? 's' : ''}`}
+                            {(() => {
+                              const dias = admission.diasEstancia ?? hospitalizationService.calculateStayDays(admission.fechaIngreso, admission.fechaAlta);
+                              return dias === 0 ? '< 1 día' : `${dias} día${dias > 1 ? 's' : ''}`;
+                            })()}
                           </Typography>
                           <Typography variant="caption" color="textSecondary">
                             {hospitalizationService.formatAdmissionType(admission.tipoHospitalizacion)}
