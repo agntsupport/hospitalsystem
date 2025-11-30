@@ -10,67 +10,148 @@ const logger = require('../utils/logger');
 // ENDPOINTS DE REPORTES
 // ==============================================
 
-// GET /financial - Reporte financiero (solo admin y socio)
+// GET /financial - Reporte financiero completo (solo admin y socio)
 router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'socio']), validateDateRange, async (req, res) => {
   try {
     const { dateRange } = req;
-    const where = {};
-    
+    const whereDate = {};
+
     if (dateRange?.start || dateRange?.end) {
-      where.fechaFactura = {};
-      if (dateRange.start) where.fechaFactura.gte = dateRange.start;
-      if (dateRange.end) where.fechaFactura.lte = dateRange.end;
+      if (dateRange.start) whereDate.gte = dateRange.start;
+      if (dateRange.end) whereDate.lte = dateRange.end;
     }
 
     const [
-      ingresosTotales,
-      facturasPendientes,
-      ventasRapidas,
-      distribucionMetodosPago
+      // Ingresos de transacciones de cuentas
+      transaccionesCuentas,
+      // Cuentas cerradas (pagadas)
+      cuentasCerradas,
+      // Cuentas por cobrar
+      cuentasPorCobrar,
+      // Devoluciones
+      devolucionesAprobadas,
+      // Descuentos aplicados
+      descuentosAutorizados,
+      // Depósitos bancarios
+      depositosBancarios,
+      // Caja diaria
+      cajasDiarias
     ] = await Promise.all([
-      // Simular facturas pagadas (no hay modelo Factura)
-      Promise.resolve({ _sum: { total: 0 }, _count: 0 }),
-      // Simular facturas pendientes 
-      Promise.resolve({ _sum: { total: 0 }, _count: 0 }),
-      prisma.ventaRapida.aggregate({
-        where: dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {},
-        _sum: { total: true },
+      // Transacciones de cuentas (servicios + productos)
+      prisma.transaccionCuenta.aggregate({
+        where: {
+          tipo: { in: ['servicio', 'producto'] },
+          ...(Object.keys(whereDate).length > 0 ? { fechaTransaccion: whereDate } : {})
+        },
+        _sum: { subtotal: true },
         _count: { id: true }
       }),
-      // Simular distribución por método de pago
-      prisma.ventaRapida.groupBy({
-        by: ['metodoPago'],
-        _sum: { total: true },
-        _count: { metodoPago: true },
-        where: dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {}
+      // Cuentas cerradas
+      prisma.cuentaPaciente.aggregate({
+        where: {
+          estado: 'cerrada',
+          ...(Object.keys(whereDate).length > 0 ? { fechaCierre: whereDate } : {})
+        },
+        _sum: { totalCuenta: true },
+        _count: { id: true }
+      }),
+      // Cuentas por cobrar
+      prisma.cuentaPaciente.aggregate({
+        where: {
+          cuentaPorCobrar: true,
+          estado: 'abierta'
+        },
+        _sum: { saldoPendiente: true },
+        _count: { id: true }
+      }),
+      // Devoluciones aprobadas
+      prisma.devolucion.aggregate({
+        where: {
+          estado: 'aprobada',
+          ...(Object.keys(whereDate).length > 0 ? { fechaDevolucion: whereDate } : {})
+        },
+        _sum: { monto: true },
+        _count: { id: true }
+      }),
+      // Descuentos autorizados
+      prisma.descuentoAplicado.aggregate({
+        where: {
+          estado: 'autorizado',
+          ...(Object.keys(whereDate).length > 0 ? { fechaAplicacion: whereDate } : {})
+        },
+        _sum: { montoDescuento: true },
+        _count: { id: true }
+      }),
+      // Depósitos bancarios
+      prisma.depositoBancario.aggregate({
+        where: {
+          estado: 'confirmado',
+          ...(Object.keys(whereDate).length > 0 ? { fechaDeposito: whereDate } : {})
+        },
+        _sum: { monto: true },
+        _count: { id: true }
+      }),
+      // Cajas diarias cerradas
+      prisma.cajaDiaria.findMany({
+        where: {
+          estado: 'cerrada',
+          ...(Object.keys(whereDate).length > 0 ? { fechaCierre: whereDate } : {})
+        },
+        select: {
+          totalIngresos: true,
+          totalEgresos: true,
+          diferencia: true
+        }
       })
     ]);
+
+    // Calcular totales de caja
+    const totalIngresosCaja = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.totalIngresos || 0), 0);
+    const totalEgresosCaja = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.totalEgresos || 0), 0);
+    const diferenciaCaja = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.diferencia || 0), 0);
+
+    const ingresosBrutos = parseFloat(transaccionesCuentas._sum.subtotal || 0);
+    const devoluciones = parseFloat(devolucionesAprobadas._sum.monto || 0);
+    const descuentos = parseFloat(descuentosAutorizados._sum.montoDescuento || 0);
+    const ingresosNetos = ingresosBrutos - devoluciones - descuentos;
 
     res.json({
       success: true,
       data: {
         ingresos: {
-          facturasPagadas: {
-            monto: parseFloat(ingresosTotales._sum.total || 0),
-            cantidad: ingresosTotales._count || 0
-          },
-          ventasRapidas: {
-            monto: parseFloat(ventasRapidas._sum.total || 0),
-            cantidad: ventasRapidas._count.id || 0
-          },
-          total: parseFloat(ingresosTotales._sum.total || 0) + parseFloat(ventasRapidas._sum.total || 0)
+          brutos: ingresosBrutos,
+          transacciones: transaccionesCuentas._count.id,
+          cuentasCerradas: {
+            monto: parseFloat(cuentasCerradas._sum.totalCuenta || 0),
+            cantidad: cuentasCerradas._count.id
+          }
         },
+        deducciones: {
+          devoluciones: {
+            monto: devoluciones,
+            cantidad: devolucionesAprobadas._count.id
+          },
+          descuentos: {
+            monto: descuentos,
+            cantidad: descuentosAutorizados._count.id
+          },
+          total: devoluciones + descuentos
+        },
+        ingresosNetos,
         cuentasPorCobrar: {
-          monto: parseFloat(facturasPendientes._sum.total || 0),
-          cantidad: facturasPendientes._count || 0
+          monto: Math.abs(parseFloat(cuentasPorCobrar._sum.saldoPendiente || 0)),
+          cantidad: cuentasPorCobrar._count.id
         },
-        distribucionMetodosPago: distribucionMetodosPago.reduce((acc, item) => {
-          acc[item.metodoPago] = {
-            monto: parseFloat(item._sum.total || 0),
-            cantidad: item._count.metodoPago || 0
-          };
-          return acc;
-        }, {})
+        bancos: {
+          depositados: parseFloat(depositosBancarios._sum.monto || 0),
+          cantidadDepositos: depositosBancarios._count.id
+        },
+        caja: {
+          ingresos: totalIngresosCaja,
+          egresos: totalEgresosCaja,
+          diferencia: diferenciaCaja,
+          cajasAnalizadas: cajasDiarias.length
+        }
       },
       message: 'Reporte financiero generado correctamente'
     });
@@ -145,11 +226,21 @@ router.get('/executive', authenticateToken, authorizeRoles(['administrador', 'so
     ] = await Promise.all([
       // Resumen financiero
       Promise.all([
-        // Simular facturas (no hay modelo Factura)
-        Promise.resolve({ _sum: { total: 0 } }),
-        prisma.ventaRapida.aggregate({
-          where: dateRange ? { createdAt: { gte: dateRange.start, lte: dateRange.end } } : {},
-          _sum: { total: true }
+        // Transacciones de cuentas (servicios + productos)
+        prisma.transaccionCuenta.aggregate({
+          where: dateRange ? {
+            fechaTransaccion: { gte: dateRange.start, lte: dateRange.end },
+            tipo: { in: ['servicio', 'producto'] }
+          } : { tipo: { in: ['servicio', 'producto'] } },
+          _sum: { subtotal: true }
+        }),
+        // Cuentas cerradas
+        prisma.cuentaPaciente.aggregate({
+          where: {
+            estado: 'cerrada',
+            ...(dateRange ? { fechaCierre: { gte: dateRange.start, lte: dateRange.end } } : {})
+          },
+          _sum: { totalCuenta: true }
         })
       ]),
       // Resumen operacional
@@ -172,8 +263,9 @@ router.get('/executive', authenticateToken, authorizeRoles(['administrador', 'so
       `
     ]);
 
-    const [facturas, ventas] = resumenFinanciero;
+    const [transacciones, cuentasCerradas] = resumenFinanciero;
     const [nuevosPacientes, nuevasAdmisiones] = resumenOperacional;
+    const ingresosTotales = parseFloat(transacciones._sum.subtotal || 0) + parseFloat(cuentasCerradas._sum.totalCuenta || 0);
 
     // Convert BigInt values to numbers in tendencias
     const tendenciasNormalized = tendencias.map(item => ({
@@ -185,7 +277,7 @@ router.get('/executive', authenticateToken, authorizeRoles(['administrador', 'so
       success: true,
       data: {
         resumenEjecutivo: {
-          ingresosTotales: parseFloat(facturas._sum.total || 0) + parseFloat(ventas._sum.total || 0),
+          ingresosTotales,
           nuevosPacientes,
           nuevasAdmisiones,
           tendenciaPacientes: tendenciasNormalized
@@ -226,20 +318,23 @@ router.get('/managerial/executive-summary', authenticateToken, authorizeRoles(['
 
     // Obtener datos reales de la base de datos
     const [ingresosTotales, pacientesAtendidos, habitacionesStats] = await Promise.all([
-      // Ingresos totales (ventas rápidas + transacciones de cuentas)
+      // Ingresos totales (transacciones de cuentas + cuentas cerradas)
       Promise.all([
-        // Ventas rápidas
-        prisma.ventaRapida.aggregate({
-          where: { createdAt: { gte: startDate, lte: endDate } },
-          _sum: { total: true }
-        }),
-        // Transacciones de cuentas (servicios + productos, excluyendo anticipos)
+        // Transacciones de cuentas (servicios + productos)
         prisma.transaccionCuenta.aggregate({
           where: {
             fechaTransaccion: { gte: startDate, lte: endDate },
             tipo: { in: ['servicio', 'producto'] }
           },
           _sum: { subtotal: true }
+        }),
+        // Cuentas cerradas
+        prisma.cuentaPaciente.aggregate({
+          where: {
+            estado: 'cerrada',
+            fechaCierre: { gte: startDate, lte: endDate }
+          },
+          _sum: { totalCuenta: true }
         })
       ]),
       // Pacientes atendidos
@@ -253,10 +348,10 @@ router.get('/managerial/executive-summary', authenticateToken, authorizeRoles(['
       ])
     ]);
 
-    const [ventas, transacciones] = ingresosTotales;
+    const [transacciones, cuentasCerradas] = ingresosTotales;
     const [totalHabitaciones, habitacionesOcupadas] = habitacionesStats;
 
-    const ingresosTotalesCalc = parseFloat(ventas._sum.total?.toString() || '0') + parseFloat(transacciones._sum.subtotal?.toString() || '0');
+    const ingresosTotalesCalc = parseFloat(transacciones._sum.subtotal?.toString() || '0') + parseFloat(cuentasCerradas._sum.totalCuenta?.toString() || '0');
     const ocupacionPromedio = totalHabitaciones > 0 ? (habitacionesOcupadas / totalHabitaciones) * 100 : 0;
 
     const utilidadNetaCalc = isNaN(ingresosTotalesCalc) ? 0 : ingresosTotalesCalc * 0.25;
@@ -310,21 +405,31 @@ router.get('/managerial/kpis', authenticateToken, authorizeRoles(['administrador
 
     // Obtener datos de KPIs
     const [financialData, operationalData, inventoryData] = await Promise.all([
-      // Datos financieros (corregido para usar modelos reales)
+      // Datos financieros
       Promise.all([
-        // Simular facturas con 0 (no hay modelo Factura)
-        Promise.resolve({ _sum: { total: 0 } }),
-        prisma.ventaRapida.aggregate({
-          where: { createdAt: { gte: startDate, lte: endDate } },
-          _sum: { total: true }
-        }),
-        // Cuentas por cobrar desde TransaccionCuenta
+        // Transacciones de cuentas
         prisma.transaccionCuenta.aggregate({
-          where: { 
-            tipo: 'servicio',
-            fechaTransaccion: { gte: startDate, lte: endDate }
+          where: {
+            fechaTransaccion: { gte: startDate, lte: endDate },
+            tipo: { in: ['servicio', 'producto'] }
           },
           _sum: { subtotal: true }
+        }),
+        // Cuentas cerradas
+        prisma.cuentaPaciente.aggregate({
+          where: {
+            estado: 'cerrada',
+            fechaCierre: { gte: startDate, lte: endDate }
+          },
+          _sum: { totalCuenta: true }
+        }),
+        // Cuentas por cobrar
+        prisma.cuentaPaciente.aggregate({
+          where: {
+            cuentaPorCobrar: true,
+            estado: 'abierta'
+          },
+          _sum: { saldoPendiente: true }
         })
       ]),
       // Datos operacionales
@@ -1475,11 +1580,24 @@ router.get('/revenue', authenticateToken, authorizeRoles(['administrador', 'soci
       createdAt: { gte: startDate, lte: endDate }
     } : {};
 
-    // Ingresos por ventas rápidas + facturas
-    const [ventasRapidas, facturas, servicios] = await Promise.all([
-      prisma.ventaRapida.aggregate({
-        where: whereDate,
-        _sum: { total: true },
+    // Ingresos por transacciones de cuentas + cuentas cerradas
+    const [transaccionesCuentas, cuentasCerradas, facturas, servicios] = await Promise.all([
+      // Transacciones de cuentas (productos + servicios)
+      prisma.transaccionCuenta.aggregate({
+        where: {
+          tipo: { in: ['servicio', 'producto'] },
+          ...(whereDate.createdAt ? { fechaTransaccion: whereDate.createdAt } : {})
+        },
+        _sum: { subtotal: true },
+        _count: { id: true }
+      }),
+      // Cuentas cerradas (pagadas)
+      prisma.cuentaPaciente.aggregate({
+        where: {
+          estado: 'cerrada',
+          ...(whereDate.createdAt ? { fechaCierre: whereDate.createdAt } : {})
+        },
+        _sum: { totalCuenta: true },
         _count: { id: true }
       }),
       prisma.factura.aggregate({
@@ -1487,27 +1605,35 @@ router.get('/revenue', authenticateToken, authorizeRoles(['administrador', 'soci
         _sum: { total: true },
         _count: { id: true }
       }),
-      // Transacciones de servicios
+      // Transacciones de servicios por concepto
       prisma.transaccionCuenta.groupBy({
         by: ['concepto'],
         where: {
           tipo: 'servicio',
-          fechaTransaccion: whereDate.createdAt || {}
+          ...(whereDate.createdAt ? { fechaTransaccion: whereDate.createdAt } : {})
         },
         _sum: { subtotal: true },
         _count: { concepto: true }
       })
     ]);
 
+    const ingresosCuentas = parseFloat(transaccionesCuentas._sum.subtotal || 0);
+    const ingresosCuentasCerradas = parseFloat(cuentasCerradas._sum.totalCuenta || 0);
+    const ingresosFacturas = parseFloat(facturas._sum.total || 0);
+
     const data = {
       resumen: {
-        totalIngresos: parseFloat(ventasRapidas._sum.total || 0) + parseFloat(facturas._sum.total || 0),
-        ventasRapidas: {
-          monto: parseFloat(ventasRapidas._sum.total || 0),
-          cantidad: ventasRapidas._count.id
+        totalIngresos: ingresosCuentas + ingresosFacturas,
+        transaccionesCuentas: {
+          monto: ingresosCuentas,
+          cantidad: transaccionesCuentas._count.id
+        },
+        cuentasCerradas: {
+          monto: ingresosCuentasCerradas,
+          cantidad: cuentasCerradas._count.id
         },
         facturas: {
-          monto: parseFloat(facturas._sum.total || 0),
+          monto: ingresosFacturas,
           cantidad: facturas._count.id
         }
       }
@@ -1739,7 +1865,6 @@ router.get('/services', authenticateToken, authorizeRoles(['administrador', 'soc
         _count: {
           select: {
             transacciones: true,
-            itemsVentaRapida: true,
             detallesFactura: true
           }
         }
@@ -1747,14 +1872,14 @@ router.get('/services', authenticateToken, authorizeRoles(['administrador', 'soc
       where: { activo: true }
     });
 
-    // Calcular uso total de cada servicio
+    // Calcular uso total de cada servicio (transacciones de cuentas + detalles de facturas)
     let serviciosConUso = servicios.map(s => ({
       id: s.id,
       codigo: s.codigo,
       nombre: s.nombre,
       tipo: s.tipo,
       precio: parseFloat(s.precio),
-      cantidadUsos: s._count.transacciones + s._count.itemsVentaRapida + s._count.detallesFactura
+      cantidadUsos: s._count.transacciones + s._count.detallesFactura
     }));
 
     // Ordenar si se solicita
@@ -1983,9 +2108,17 @@ router.get('/export/:tipo', authenticateToken, authorizeRoles(['administrador', 
 
     // Por ahora, solo implementamos financial como ejemplo
     if (tipo === 'financial') {
-      const [ventasRapidas, facturas] = await Promise.all([
-        prisma.ventaRapida.aggregate({
-          _sum: { total: true },
+      const [transaccionesCuentas, cuentasCerradas, facturas] = await Promise.all([
+        // Transacciones de cuentas (productos + servicios)
+        prisma.transaccionCuenta.aggregate({
+          where: { tipo: { in: ['servicio', 'producto'] } },
+          _sum: { subtotal: true },
+          _count: { id: true }
+        }),
+        // Cuentas cerradas
+        prisma.cuentaPaciente.aggregate({
+          where: { estado: 'cerrada' },
+          _sum: { totalCuenta: true },
           _count: { id: true }
         }),
         prisma.factura.aggregate({
@@ -1994,12 +2127,17 @@ router.get('/export/:tipo', authenticateToken, authorizeRoles(['administrador', 
         })
       ]);
 
+      const ingresosTransacciones = parseFloat(transaccionesCuentas._sum.subtotal || 0);
+      const ingresosCuentas = parseFloat(cuentasCerradas._sum.totalCuenta || 0);
+      const ingresosFacturas = parseFloat(facturas._sum.total || 0);
+
       reportData = {
         tipo: 'Reporte Financiero',
         ingresos: {
-          ventasRapidas: parseFloat(ventasRapidas._sum.total || 0),
-          facturas: parseFloat(facturas._sum.total || 0),
-          total: parseFloat(ventasRapidas._sum.total || 0) + parseFloat(facturas._sum.total || 0)
+          transaccionesCuentas: ingresosTransacciones,
+          cuentasCerradas: ingresosCuentas,
+          facturas: ingresosFacturas,
+          total: ingresosTransacciones + ingresosFacturas
         }
       };
     }
@@ -2022,7 +2160,7 @@ router.get('/export/:tipo', authenticateToken, authorizeRoles(['administrador', 
 
       case 'csv':
         // Generar CSV simple
-        const csvData = `Tipo,Valor\nVentas Rápidas,${reportData.ingresos?.ventasRapidas || 0}\nFacturas,${reportData.ingresos?.facturas || 0}\nTotal,${reportData.ingresos?.total || 0}`;
+        const csvData = `Tipo,Valor\nTransacciones Cuentas,${reportData.ingresos?.transaccionesCuentas || 0}\nCuentas Cerradas,${reportData.ingresos?.cuentasCerradas || 0}\nFacturas,${reportData.ingresos?.facturas || 0}\nTotal,${reportData.ingresos?.total || 0}`;
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=reporte-${tipo}.csv`);
         res.send(csvData);
@@ -2037,6 +2175,583 @@ router.get('/export/:tipo', authenticateToken, authorizeRoles(['administrador', 
 
   } catch (error) {
     logger.logError('EXPORT_REPORT', error, { tipo: req.params.tipo, format: req.query.format });
+    handlePrismaError(error, res);
+  }
+});
+
+// ==============================================
+// REPORTES FINANCIEROS AVANZADOS - FASES 1-4
+// ==============================================
+
+// GET /caja-diaria - Reporte de caja diaria (Admin, Cajero, Socio)
+router.get('/caja-diaria', authenticateToken, authorizeRoles(['administrador', 'cajero', 'socio']), async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin, estado, cajeroId } = req.query;
+
+    const where = {};
+
+    if (fechaInicio || fechaFin) {
+      where.fechaApertura = {};
+      if (fechaInicio) where.fechaApertura.gte = new Date(fechaInicio);
+      if (fechaFin) where.fechaApertura.lte = new Date(fechaFin);
+    }
+
+    if (estado) {
+      where.estado = estado;
+    }
+
+    if (cajeroId) {
+      where.cajeroId = parseInt(cajeroId);
+    }
+
+    const [cajas, resumen] = await Promise.all([
+      prisma.cajaDiaria.findMany({
+        where,
+        include: {
+          cajero: {
+            select: {
+              id: true,
+              username: true,
+              apellidos: true
+            }
+          }
+        },
+        orderBy: { fechaApertura: 'desc' },
+        take: 100
+      }),
+      prisma.cajaDiaria.aggregate({
+        where,
+        _sum: {
+          saldoInicial: true,
+          saldoFinalSistema: true,
+          saldoFinalContado: true,
+          diferencia: true
+        },
+        _count: { id: true }
+      })
+    ]);
+
+    // Calcular métricas adicionales
+    const cajasConDiferencia = cajas.filter(c => c.diferencia && parseFloat(c.diferencia) !== 0);
+    const diferenciaPromedio = cajasConDiferencia.length > 0
+      ? cajasConDiferencia.reduce((sum, c) => sum + parseFloat(c.diferencia || 0), 0) / cajasConDiferencia.length
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        cajas: cajas.map(c => ({
+          id: c.id,
+          numero: c.numero,
+          cajero: c.cajero,
+          turno: c.turno,
+          fechaApertura: c.fechaApertura,
+          fechaCierre: c.fechaCierre,
+          estado: c.estado,
+          saldoInicial: parseFloat(c.saldoInicial),
+          saldoFinalSistema: parseFloat(c.saldoFinalSistema || 0),
+          saldoFinalContado: parseFloat(c.saldoFinalContado || 0),
+          diferencia: parseFloat(c.diferencia || 0),
+          observaciones: c.observaciones,
+          justificacionDif: c.justificacionDif
+        })),
+        resumen: {
+          totalCajas: resumen._count.id,
+          saldoInicialTotal: parseFloat(resumen._sum.saldoInicial || 0),
+          saldoFinalSistemaTotal: parseFloat(resumen._sum.saldoFinalSistema || 0),
+          saldoFinalContadoTotal: parseFloat(resumen._sum.saldoFinalContado || 0),
+          diferenciaTotal: parseFloat(resumen._sum.diferencia || 0),
+          cajasConDiferencia: cajasConDiferencia.length,
+          diferenciaPromedio: parseFloat(diferenciaPromedio.toFixed(2))
+        }
+      },
+      message: 'Reporte de caja diaria generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_CAJA_DIARIA_REPORT', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /devoluciones - Reporte de devoluciones (Admin, Cajero, Socio)
+router.get('/devoluciones', authenticateToken, authorizeRoles(['administrador', 'cajero', 'socio']), async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin, estado, tipo } = req.query;
+
+    const where = {};
+
+    if (fechaInicio || fechaFin) {
+      where.fechaSolicitud = {};
+      if (fechaInicio) where.fechaSolicitud.gte = new Date(fechaInicio);
+      if (fechaFin) where.fechaSolicitud.lte = new Date(fechaFin);
+    }
+
+    if (estado) {
+      where.estado = estado;
+    }
+
+    if (tipo) {
+      where.tipo = tipo;
+    }
+
+    const [devoluciones, resumenEstado, resumenTipo] = await Promise.all([
+      prisma.devolucion.findMany({
+        where,
+        include: {
+          cuenta: {
+            include: {
+              paciente: {
+                select: { id: true, nombre: true, apellidoPaterno: true }
+              }
+            }
+          },
+          cajeroSolicita: {
+            select: { id: true, username: true, apellidos: true }
+          },
+          autorizador: {
+            select: { id: true, username: true, apellidos: true }
+          },
+          motivo: {
+            select: { id: true, codigo: true, descripcion: true }
+          }
+        },
+        orderBy: { fechaSolicitud: 'desc' },
+        take: 100
+      }),
+      prisma.devolucion.groupBy({
+        by: ['estado'],
+        where,
+        _sum: { montoDevolucion: true },
+        _count: { id: true }
+      }),
+      prisma.devolucion.groupBy({
+        by: ['tipo'],
+        where,
+        _sum: { montoDevolucion: true },
+        _count: { id: true }
+      })
+    ]);
+
+    const totalMonto = devoluciones.reduce((sum, d) => sum + parseFloat(d.montoDevolucion), 0);
+
+    res.json({
+      success: true,
+      data: {
+        devoluciones: devoluciones.map(d => ({
+          id: d.id,
+          numero: d.numero,
+          cuenta: d.cuenta ? {
+            id: d.cuenta.id,
+            paciente: d.cuenta.paciente
+          } : null,
+          tipo: d.tipo,
+          monto: parseFloat(d.montoDevolucion),
+          motivo: d.motivo,
+          motivoDetalle: d.motivoDetalle,
+          estado: d.estado,
+          fechaSolicitud: d.fechaSolicitud,
+          fechaAutorizacion: d.fechaAutorizacion,
+          fechaProceso: d.fechaProceso,
+          cajeroSolicita: d.cajeroSolicita,
+          autorizador: d.autorizador,
+          metodoPago: d.metodoPagoDevolucion,
+          observaciones: d.observaciones
+        })),
+        resumen: {
+          totalDevoluciones: devoluciones.length,
+          montoTotal: totalMonto,
+          porEstado: resumenEstado.reduce((acc, item) => {
+            acc[item.estado] = {
+              cantidad: item._count.id,
+              monto: parseFloat(item._sum.montoDevolucion || 0)
+            };
+            return acc;
+          }, {}),
+          porTipo: resumenTipo.reduce((acc, item) => {
+            acc[item.tipo] = {
+              cantidad: item._count.id,
+              monto: parseFloat(item._sum.montoDevolucion || 0)
+            };
+            return acc;
+          }, {})
+        }
+      },
+      message: 'Reporte de devoluciones generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_DEVOLUCIONES_REPORT', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /depositos-bancarios - Reporte de depósitos bancarios (Admin, Socio)
+router.get('/depositos-bancarios', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin, cuentaBancariaId, estado } = req.query;
+
+    const where = {};
+
+    if (fechaInicio || fechaFin) {
+      where.fechaPreparacion = {};
+      if (fechaInicio) where.fechaPreparacion.gte = new Date(fechaInicio);
+      if (fechaFin) where.fechaPreparacion.lte = new Date(fechaFin);
+    }
+
+    if (cuentaBancariaId) {
+      where.cuentaBancariaId = parseInt(cuentaBancariaId);
+    }
+
+    if (estado) {
+      where.estado = estado;
+    }
+
+    const [depositos, resumenCuenta, resumenEstado] = await Promise.all([
+      prisma.depositoBancario.findMany({
+        where,
+        include: {
+          cuentaBancaria: {
+            select: { id: true, banco: true, numeroCuenta: true, alias: true }
+          },
+          caja: {
+            select: { id: true, numero: true, fechaApertura: true }
+          },
+          cajero: {
+            select: { id: true, username: true, apellidos: true }
+          },
+          confirmadoPor: {
+            select: { id: true, username: true, apellidos: true }
+          }
+        },
+        orderBy: { fechaPreparacion: 'desc' },
+        take: 100
+      }),
+      prisma.depositoBancario.groupBy({
+        by: ['cuentaBancariaId'],
+        where,
+        _sum: { montoTotal: true },
+        _count: { id: true }
+      }),
+      prisma.depositoBancario.groupBy({
+        by: ['estado'],
+        where,
+        _sum: { montoTotal: true },
+        _count: { id: true }
+      })
+    ]);
+
+    const totalMonto = depositos.reduce((sum, d) => sum + parseFloat(d.montoTotal), 0);
+
+    res.json({
+      success: true,
+      data: {
+        depositos: depositos.map(d => ({
+          id: d.id,
+          numero: d.numero,
+          cuentaBancaria: d.cuentaBancaria,
+          montoEfectivo: parseFloat(d.montoEfectivo),
+          montoCheques: parseFloat(d.montoCheques),
+          montoTotal: parseFloat(d.montoTotal),
+          fechaPreparacion: d.fechaPreparacion,
+          fechaDeposito: d.fechaDeposito,
+          referenciaBanco: d.referenciaBanco,
+          estado: d.estado,
+          caja: d.caja,
+          cajero: d.cajero,
+          confirmadoPor: d.confirmadoPor,
+          fechaConfirmacion: d.fechaConfirmacion,
+          comprobante: d.comprobante,
+          observaciones: d.observaciones
+        })),
+        resumen: {
+          totalDepositos: depositos.length,
+          montoTotal: totalMonto,
+          porCuenta: resumenCuenta.map(item => ({
+            cuentaBancariaId: item.cuentaBancariaId,
+            cantidad: item._count.id,
+            monto: parseFloat(item._sum.montoTotal || 0)
+          })),
+          porEstado: resumenEstado.reduce((acc, item) => {
+            acc[item.estado] = {
+              cantidad: item._count.id,
+              monto: parseFloat(item._sum.montoTotal || 0)
+            };
+            return acc;
+          }, {})
+        }
+      },
+      message: 'Reporte de depósitos bancarios generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_DEPOSITOS_BANCARIOS_REPORT', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /descuentos - Reporte de descuentos aplicados (Admin, Socio)
+router.get('/descuentos', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { fechaInicio, fechaFin, estado, politicaId } = req.query;
+
+    const where = {};
+
+    if (fechaInicio || fechaFin) {
+      where.fechaAplicacion = {};
+      if (fechaInicio) where.fechaAplicacion.gte = new Date(fechaInicio);
+      if (fechaFin) where.fechaAplicacion.lte = new Date(fechaFin);
+    }
+
+    if (estado) {
+      where.estado = estado;
+    }
+
+    if (politicaId) {
+      where.politicaId = parseInt(politicaId);
+    }
+
+    const [descuentos, resumenEstado, resumenPolitica] = await Promise.all([
+      prisma.descuentoAplicado.findMany({
+        where,
+        include: {
+          cuenta: {
+            include: {
+              paciente: {
+                select: { id: true, nombre: true, apellidoPaterno: true }
+              }
+            }
+          },
+          politica: {
+            select: { id: true, nombre: true, tipo: true }
+          },
+          aplicadoPor: {
+            select: { id: true, username: true, apellidos: true }
+          },
+          autorizadoPor: {
+            select: { id: true, username: true, apellidos: true }
+          }
+        },
+        orderBy: { fechaAplicacion: 'desc' },
+        take: 100
+      }),
+      prisma.descuentoAplicado.groupBy({
+        by: ['estado'],
+        where,
+        _sum: { montoDescuento: true },
+        _count: { id: true }
+      }),
+      // Agrupar por política usando Prisma
+      prisma.descuentoAplicado.groupBy({
+        by: ['politicaId'],
+        where,
+        _sum: { montoDescuento: true },
+        _count: { id: true }
+      })
+    ]);
+
+    const totalDescuento = descuentos.reduce((sum, d) => sum + parseFloat(d.montoDescuento), 0);
+    const totalMontoOriginal = descuentos.reduce((sum, d) => sum + parseFloat(d.montoOriginal), 0);
+    const totalMontoFinal = descuentos.reduce((sum, d) => sum + parseFloat(d.montoFinal), 0);
+
+    res.json({
+      success: true,
+      data: {
+        descuentos: descuentos.map(d => ({
+          id: d.id,
+          cuenta: d.cuenta ? {
+            id: d.cuenta.id,
+            paciente: d.cuenta.paciente
+          } : null,
+          politica: d.politica,
+          tipoCalculo: d.tipoCalculo,
+          porcentaje: parseFloat(d.porcentaje || 0),
+          montoOriginal: parseFloat(d.montoOriginal),
+          montoDescuento: parseFloat(d.montoDescuento),
+          montoFinal: parseFloat(d.montoFinal),
+          motivo: d.motivo,
+          estado: d.estado,
+          fechaAplicacion: d.fechaAplicacion,
+          fechaAutorizacion: d.fechaAutorizacion,
+          aplicadoPor: d.aplicadoPor,
+          autorizadoPor: d.autorizadoPor
+        })),
+        resumen: {
+          totalDescuentos: descuentos.length,
+          montoDescuentoTotal: totalDescuento,
+          montoOriginalTotal: totalMontoOriginal,
+          montoFinalTotal: totalMontoFinal,
+          porcentajeAhorroPromedio: totalMontoOriginal > 0
+            ? ((totalDescuento / totalMontoOriginal) * 100).toFixed(2)
+            : 0,
+          porEstado: resumenEstado.reduce((acc, item) => {
+            acc[item.estado] = {
+              cantidad: item._count.id,
+              monto: parseFloat(item._sum.montoDescuento || 0)
+            };
+            return acc;
+          }, {}),
+          porPolitica: resumenPolitica.map(p => ({
+            politicaId: p.politicaId,
+            cantidad: p._count.id,
+            montoTotal: parseFloat(p._sum.montoDescuento || 0)
+          }))
+        }
+      },
+      message: 'Reporte de descuentos generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_DESCUENTOS_REPORT', error);
+    handlePrismaError(error, res);
+  }
+});
+
+// GET /flujo-caja - Reporte consolidado de flujo de caja (Admin, Socio)
+router.get('/flujo-caja', authenticateToken, authorizeRoles(['administrador', 'socio']), async (req, res) => {
+  try {
+    const { periodo = 'mes', fechaInicio, fechaFin } = req.query;
+
+    // Calcular fechas basadas en el período
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (periodo === 'dia') {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (periodo === 'semana') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (periodo === 'mes') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (periodo === 'trimestre') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (periodo === 'año') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    if (fechaInicio) startDate = new Date(fechaInicio);
+    if (fechaFin) endDate = new Date(fechaFin);
+
+    const [
+      ingresosCuentas,
+      pagosRecibidos,
+      devoluciones,
+      descuentos,
+      depositosBancarios,
+      cajasDiarias
+    ] = await Promise.all([
+      // Ingresos por transacciones
+      prisma.transaccionCuenta.aggregate({
+        where: {
+          tipo: { in: ['servicio', 'producto'] },
+          fechaTransaccion: { gte: startDate, lte: endDate }
+        },
+        _sum: { subtotal: true },
+        _count: { id: true }
+      }),
+      // Pagos recibidos (transacciones tipo pago)
+      prisma.transaccionCuenta.aggregate({
+        where: {
+          tipo: 'pago',
+          fechaTransaccion: { gte: startDate, lte: endDate }
+        },
+        _sum: { subtotal: true },
+        _count: { id: true }
+      }),
+      // Devoluciones autorizadas
+      prisma.devolucion.aggregate({
+        where: {
+          estado: 'autorizada',
+          fechaSolicitud: { gte: startDate, lte: endDate }
+        },
+        _sum: { montoDevolucion: true },
+        _count: { id: true }
+      }),
+      // Descuentos autorizados
+      prisma.descuentoAplicado.aggregate({
+        where: {
+          estado: 'autorizado',
+          fechaAplicacion: { gte: startDate, lte: endDate }
+        },
+        _sum: { montoDescuento: true },
+        _count: { id: true }
+      }),
+      // Depósitos bancarios confirmados
+      prisma.depositoBancario.aggregate({
+        where: {
+          estado: 'confirmado',
+          fechaConfirmacion: { gte: startDate, lte: endDate }
+        },
+        _sum: { montoTotal: true },
+        _count: { id: true }
+      }),
+      // Cajas cerradas
+      prisma.cajaDiaria.findMany({
+        where: {
+          estado: 'cerrada',
+          fechaCierre: { gte: startDate, lte: endDate }
+        },
+        select: {
+          saldoInicial: true,
+          saldoFinalSistema: true,
+          saldoFinalContado: true,
+          diferencia: true
+        }
+      })
+    ]);
+
+    // Calcular totales de caja (saldoFinalContado es lo que realmente hay, saldoFinalSistema es lo calculado)
+    const totalSaldoSistema = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.saldoFinalSistema || 0), 0);
+    const totalSaldoContado = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.saldoFinalContado || 0), 0);
+
+    const ingresosBrutos = parseFloat(ingresosCuentas._sum.subtotal || 0);
+    const pagos = parseFloat(pagosRecibidos._sum.subtotal || 0);
+    const devolucionesTotal = parseFloat(devoluciones._sum.montoDevolucion || 0);
+    const descuentosTotal = parseFloat(descuentos._sum.montoDescuento || 0);
+    const depositadoBanco = parseFloat(depositosBancarios._sum.montoTotal || 0);
+
+    const ingresosNetos = ingresosBrutos - devolucionesTotal - descuentosTotal;
+    const efectivoNeto = pagos - devolucionesTotal;
+
+    res.json({
+      success: true,
+      data: {
+        periodo: {
+          inicio: startDate.toISOString(),
+          fin: endDate.toISOString(),
+          tipo: periodo
+        },
+        ingresos: {
+          brutos: ingresosBrutos,
+          transacciones: ingresosCuentas._count.id,
+          pagosRecibidos: pagos,
+          cantidadPagos: pagosRecibidos._count.id
+        },
+        egresos: {
+          devoluciones: devolucionesTotal,
+          cantidadDevoluciones: devoluciones._count.id,
+          descuentos: descuentosTotal,
+          cantidadDescuentos: descuentos._count.id
+        },
+        neto: {
+          ingresos: ingresosNetos,
+          efectivo: efectivoNeto
+        },
+        bancos: {
+          depositado: depositadoBanco,
+          cantidadDepositos: depositosBancarios._count.id
+        },
+        caja: {
+          saldoFinalSistema: totalSaldoSistema,
+          saldoFinalContado: totalSaldoContado,
+          diferencia: totalSaldoContado - totalSaldoSistema,
+          cajasAnalizadas: cajasDiarias.length
+        }
+      },
+      message: 'Reporte de flujo de caja generado correctamente'
+    });
+
+  } catch (error) {
+    logger.logError('GET_FLUJO_CAJA_REPORT', error);
     handlePrismaError(error, res);
   }
 });
