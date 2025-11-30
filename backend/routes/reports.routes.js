@@ -64,13 +64,13 @@ router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'so
         _sum: { saldoPendiente: true },
         _count: { id: true }
       }),
-      // Devoluciones aprobadas
+      // Devoluciones procesadas (completadas)
       prisma.devolucion.aggregate({
         where: {
-          estado: 'aprobada',
-          ...(Object.keys(whereDate).length > 0 ? { fechaDevolucion: whereDate } : {})
+          estado: 'procesada',
+          ...(Object.keys(whereDate).length > 0 ? { fechaProceso: whereDate } : {})
         },
-        _sum: { monto: true },
+        _sum: { montoDevolucion: true },
         _count: { id: true }
       }),
       // Descuentos autorizados
@@ -88,7 +88,7 @@ router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'so
           estado: 'confirmado',
           ...(Object.keys(whereDate).length > 0 ? { fechaDeposito: whereDate } : {})
         },
-        _sum: { monto: true },
+        _sum: { montoTotal: true },
         _count: { id: true }
       }),
       // Cajas diarias cerradas
@@ -98,20 +98,30 @@ router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'so
           ...(Object.keys(whereDate).length > 0 ? { fechaCierre: whereDate } : {})
         },
         select: {
-          totalIngresos: true,
-          totalEgresos: true,
+          saldoInicial: true,
+          saldoFinalSistema: true,
+          saldoFinalContado: true,
           diferencia: true
         }
       })
     ]);
 
-    // Calcular totales de caja
-    const totalIngresosCaja = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.totalIngresos || 0), 0);
-    const totalEgresosCaja = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.totalEgresos || 0), 0);
-    const diferenciaCaja = cajasDiarias.reduce((sum, c) => sum + parseFloat(c.diferencia || 0), 0);
+    // Calcular totales de caja (ingresos = saldoFinalContado - saldoInicial cuando es positivo)
+    const cajaStats = cajasDiarias.reduce((acc, c) => {
+      const inicial = parseFloat(c.saldoInicial || 0);
+      const finalContado = parseFloat(c.saldoFinalContado || c.saldoFinalSistema || 0);
+      const neto = finalContado - inicial;
+      if (neto > 0) acc.ingresos += neto;
+      else acc.egresos += Math.abs(neto);
+      acc.diferencia += parseFloat(c.diferencia || 0);
+      return acc;
+    }, { ingresos: 0, egresos: 0, diferencia: 0 });
+    const totalIngresosCaja = cajaStats.ingresos;
+    const totalEgresosCaja = cajaStats.egresos;
+    const diferenciaCaja = cajaStats.diferencia;
 
     const ingresosBrutos = parseFloat(transaccionesCuentas._sum.subtotal || 0);
-    const devoluciones = parseFloat(devolucionesAprobadas._sum.monto || 0);
+    const devoluciones = parseFloat(devolucionesAprobadas._sum.montoDevolucion || 0);
     const descuentos = parseFloat(descuentosAutorizados._sum.montoDescuento || 0);
     const ingresosNetos = ingresosBrutos - devoluciones - descuentos;
 
@@ -143,7 +153,7 @@ router.get('/financial', authenticateToken, authorizeRoles(['administrador', 'so
           cantidad: cuentasPorCobrar._count.id
         },
         bancos: {
-          depositados: parseFloat(depositosBancarios._sum.monto || 0),
+          depositados: parseFloat(depositosBancarios._sum.montoTotal || 0),
           cantidadDepositos: depositosBancarios._count.id
         },
         caja: {
