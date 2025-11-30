@@ -47,6 +47,18 @@ model Usuario {
   notificaciones            NotificacionSolicitud[]
   pagosProcesados           Pago[]                     @relation("PagosCajero")
   historialCPCAutorizados   HistorialCuentaPorCobrar[] @relation("AutorizadorCPC_Historial")
+  // Relaciones Fase 1-6: Finanzas
+  cajasAbiertas             CajaDiaria[]               @relation("CajaDiariaCajero")
+  cajasAutorizadas          CajaDiaria[]               @relation("CajaDiariaAutorizador")
+  movimientosCaja           MovimientoCaja[]           @relation("MovimientosCajaCajero")
+  devolucionesSolicitadas   Devolucion[]               @relation("DevolucionSolicitada")
+  devolucionesAutorizadas   Devolucion[]               @relation("DevolucionAutorizada")
+  depositosPreparados       DepositoBancario[]         @relation("DepositoPreparado")
+  depositosConfirmados      DepositoBancario[]         @relation("DepositoConfirmado")
+  descuentosAplicados       DescuentoAplicado[]        @relation("DescuentoAplicado")
+  descuentosAutorizados     DescuentoAplicado[]        @relation("DescuentoAutorizado")
+  recibosEmitidos           Recibo[]                   @relation("ReciboEmitido")
+  recibosCancelados         Recibo[]                   @relation("ReciboCancelado")
 
   @@index([rol])
   @@index([activo])
@@ -129,6 +141,8 @@ model Paciente {
   cirugias    CirugiaQuirofano[]
   // Relación con solicitudes de productos
   solicitudesProductos SolicitudProductos[]
+  // Fase 6: Recibos
+  recibos              Recibo[]
 
   @@index([activo])
   @@index([apellidoPaterno, nombre])
@@ -394,6 +408,8 @@ model Producto {
   alertas          AlertaInventario[]
   // Relación con solicitudes de productos
   detallesSolicitud DetalleSolicitudProducto[]
+  // Fase 2: Devoluciones
+  productosDevueltos ProductoDevuelto[]
 
   @@index([categoria])
   @@index([activo])
@@ -476,6 +492,11 @@ model CuentaPaciente {
   solicitudesProductos    SolicitudProductos[]
   pagos                   Pago[]
   historialCPC            HistorialCuentaPorCobrar[]
+  // Fase 1-6: Finanzas
+  movimientosCaja         MovimientoCaja[]
+  devoluciones            Devolucion[]
+  descuentos              DescuentoAplicado[]
+  recibos                 Recibo[]
 
   @@index([pacienteId])
   @@index([estado])
@@ -1386,4 +1407,384 @@ model ConfiguracionReportes {
   updatedAt                 DateTime @updatedAt @map("updated_at")
 
   @@map("configuracion_reportes")
+}
+
+// ==============================================
+// FASE 1: SISTEMA DE CAJA DIARIA
+// ==============================================
+
+model CajaDiaria {
+  id                Int           @id @default(autoincrement())
+  numero            String        @unique // AUTO: CAJA-{fecha}-{consecutivo}
+  cajeroId          Int           @map("cajero_id")
+  turno             TurnoCaja
+  saldoInicial      Decimal       @map("saldo_inicial") @db.Decimal(12, 2)
+  saldoFinalSistema Decimal?      @map("saldo_final_sistema") @db.Decimal(12, 2)
+  saldoFinalContado Decimal?      @map("saldo_final_contado") @db.Decimal(12, 2)
+  diferencia        Decimal?      @db.Decimal(12, 2)
+  estado            EstadoCaja    @default(abierta)
+  fechaApertura     DateTime      @default(now()) @map("fecha_apertura")
+  fechaCierre       DateTime?     @map("fecha_cierre")
+  observaciones     String?
+  justificacionDif  String?       @map("justificacion_diferencia")
+  autorizadorId     Int?          @map("autorizador_id")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  // Relaciones
+  cajero         Usuario          @relation("CajaDiariaCajero", fields: [cajeroId], references: [id])
+  autorizador    Usuario?         @relation("CajaDiariaAutorizador", fields: [autorizadorId], references: [id])
+  movimientos    MovimientoCaja[]
+  depositos      DepositoBancario[]
+
+  @@index([cajeroId])
+  @@index([estado])
+  @@index([fechaApertura])
+  @@map("cajas_diarias")
+}
+
+model MovimientoCaja {
+  id            Int                @id @default(autoincrement())
+  cajaId        Int                @map("caja_id")
+  tipo          TipoMovimientoCaja
+  monto         Decimal            @db.Decimal(12, 2)
+  concepto      String
+  referencia    String?
+  metodoPago    MetodoPago?        @map("metodo_pago")
+  cuentaId      Int?               @map("cuenta_id")
+  pagoId        Int?               @map("pago_id")
+  cajeroId      Int                @map("cajero_id")
+  fecha         DateTime           @default(now())
+  observaciones String?
+
+  // Relaciones
+  caja    CajaDiaria      @relation(fields: [cajaId], references: [id])
+  cajero  Usuario         @relation("MovimientosCajaCajero", fields: [cajeroId], references: [id])
+  cuenta  CuentaPaciente? @relation(fields: [cuentaId], references: [id])
+
+  @@index([cajaId])
+  @@index([tipo])
+  @@index([fecha])
+  @@map("movimientos_caja")
+}
+
+enum EstadoCaja {
+  abierta
+  cerrada
+  arqueo_pendiente
+  cerrada_con_diferencia
+}
+
+enum TurnoCaja {
+  matutino
+  vespertino
+  nocturno
+}
+
+enum TipoMovimientoCaja {
+  ingreso_efectivo
+  ingreso_tarjeta
+  ingreso_transferencia
+  egreso_devolucion
+  egreso_gasto_menor
+  egreso_deposito
+  ajuste_positivo
+  ajuste_negativo
+}
+
+// ==============================================
+// FASE 2: SISTEMA DE DEVOLUCIONES
+// ==============================================
+
+model Devolucion {
+  id                   Int              @id @default(autoincrement())
+  numero               String           @unique // AUTO: DEV-{timestamp}
+  cuentaId             Int              @map("cuenta_id")
+  transaccionId        Int?             @map("transaccion_id")
+  tipo                 TipoDevolucion
+  estado               EstadoDevolucion @default(solicitada)
+  montoDevolucion      Decimal          @map("monto_devolucion") @db.Decimal(10, 2)
+  motivoId             Int              @map("motivo_id")
+  motivoDetalle        String?          @map("motivo_detalle")
+  cajeroSolicitaId     Int              @map("cajero_solicita_id")
+  autorizadorId        Int?             @map("autorizador_id")
+  fechaSolicitud       DateTime         @default(now()) @map("fecha_solicitud")
+  fechaAutorizacion    DateTime?        @map("fecha_autorizacion")
+  fechaProceso         DateTime?        @map("fecha_proceso")
+  metodoPagoDevolucion MetodoPago?      @map("metodo_pago_devolucion")
+  observaciones        String?
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  // Relaciones
+  cuenta             CuentaPaciente     @relation(fields: [cuentaId], references: [id])
+  motivo             MotivoDevolucion   @relation(fields: [motivoId], references: [id])
+  cajeroSolicita     Usuario            @relation("DevolucionSolicitada", fields: [cajeroSolicitaId], references: [id])
+  autorizador        Usuario?           @relation("DevolucionAutorizada", fields: [autorizadorId], references: [id])
+  productosDevueltos ProductoDevuelto[]
+
+  @@index([estado])
+  @@index([fechaSolicitud])
+  @@index([cuentaId])
+  @@map("devoluciones")
+}
+
+model ProductoDevuelto {
+  id                Int                    @id @default(autoincrement())
+  devolucionId      Int                    @map("devolucion_id")
+  productoId        Int                    @map("producto_id")
+  cantidadOriginal  Int                    @map("cantidad_original")
+  cantidadDevuelta  Int                    @map("cantidad_devuelta")
+  precioUnitario    Decimal                @map("precio_unitario") @db.Decimal(8, 2)
+  subtotal          Decimal                @db.Decimal(10, 2)
+  estadoProducto    EstadoProductoDevuelto @default(bueno)
+  regresaInventario Boolean                @default(true) @map("regresa_inventario")
+
+  // Relaciones
+  devolucion Devolucion @relation(fields: [devolucionId], references: [id])
+  producto   Producto   @relation(fields: [productoId], references: [id])
+
+  @@map("productos_devueltos")
+}
+
+model MotivoDevolucion {
+  id                   Int             @id @default(autoincrement())
+  codigo               String          @unique
+  descripcion          String
+  categoria            CategoriaMotivo
+  requiereAutorizacion Boolean         @default(true) @map("requiere_autorizacion")
+  activo               Boolean         @default(true)
+
+  // Relaciones
+  devoluciones Devolucion[]
+
+  @@map("motivos_devolucion")
+}
+
+enum TipoDevolucion {
+  producto
+  servicio
+  total_cuenta
+}
+
+enum EstadoDevolucion {
+  solicitada
+  pendiente_autorizacion
+  autorizada
+  rechazada
+  procesada
+  cancelada
+}
+
+enum EstadoProductoDevuelto {
+  bueno
+  danado
+  caducado
+}
+
+enum CategoriaMotivo {
+  error_captura
+  error_medico
+  paciente_rechaza
+  producto_defectuoso
+  duplicado
+  otro
+}
+
+// ==============================================
+// FASE 3: SISTEMA DE DEPÓSITOS BANCARIOS
+// ==============================================
+
+model CuentaBancaria {
+  id           Int                @id @default(autoincrement())
+  banco        String
+  numeroCuenta String             @unique @map("numero_cuenta")
+  clabe        String?            @unique
+  alias        String
+  tipo         TipoCuentaBancaria
+  moneda       String             @default("MXN")
+  activa       Boolean            @default(true)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  // Relaciones
+  depositos DepositoBancario[]
+
+  @@map("cuentas_bancarias")
+}
+
+model DepositoBancario {
+  id                Int            @id @default(autoincrement())
+  numero            String         @unique // AUTO: DEP-{fecha}-{consecutivo}
+  cuentaBancariaId  Int            @map("cuenta_bancaria_id")
+  cajaId            Int            @map("caja_id")
+  cajeroId          Int            @map("cajero_id")
+  montoEfectivo     Decimal        @map("monto_efectivo") @db.Decimal(12, 2)
+  montoCheques      Decimal        @default(0) @map("monto_cheques") @db.Decimal(12, 2)
+  montoTotal        Decimal        @map("monto_total") @db.Decimal(12, 2)
+  estado            EstadoDeposito @default(preparado)
+  referenciaBanco   String?        @map("referencia_banco")
+  comprobante       String?
+  fechaPreparacion  DateTime       @default(now()) @map("fecha_preparacion")
+  fechaDeposito     DateTime?      @map("fecha_deposito")
+  fechaConfirmacion DateTime?      @map("fecha_confirmacion")
+  confirmadoPorId   Int?           @map("confirmado_por_id")
+  observaciones     String?
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  // Relaciones
+  cuentaBancaria CuentaBancaria @relation(fields: [cuentaBancariaId], references: [id])
+  caja           CajaDiaria     @relation(fields: [cajaId], references: [id])
+  cajero         Usuario        @relation("DepositoPreparado", fields: [cajeroId], references: [id])
+  confirmadoPor  Usuario?       @relation("DepositoConfirmado", fields: [confirmadoPorId], references: [id])
+
+  @@index([estado])
+  @@index([fechaDeposito])
+  @@index([cuentaBancariaId])
+  @@map("depositos_bancarios")
+}
+
+enum TipoCuentaBancaria {
+  corriente
+  ahorro
+  inversion
+}
+
+enum EstadoDeposito {
+  preparado
+  en_transito
+  depositado
+  confirmado
+  rechazado
+  con_diferencia
+}
+
+// ==============================================
+// FASE 4: SISTEMA DE DESCUENTOS AUTORIZADOS
+// ==============================================
+
+model PoliticaDescuento {
+  id                   Int            @id @default(autoincrement())
+  nombre               String
+  tipo                 TipoDescuento
+  porcentajeMaximo     Decimal        @map("porcentaje_maximo") @db.Decimal(5, 2)
+  montoMaximo          Decimal?       @map("monto_maximo") @db.Decimal(10, 2)
+  rolesPermitidos      String[]       @map("roles_permitidos")
+  requiereAutorizacion Boolean        @default(true) @map("requiere_autorizacion")
+  rolesAutorizadores   String[]       @map("roles_autorizadores")
+  activo               Boolean        @default(true)
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  // Relaciones
+  descuentos DescuentoAplicado[]
+
+  @@map("politicas_descuento")
+}
+
+model DescuentoAplicado {
+  id                Int                  @id @default(autoincrement())
+  cuentaId          Int                  @map("cuenta_id")
+  transaccionId     Int?                 @map("transaccion_id")
+  politicaId        Int                  @map("politica_id")
+  tipoCalculo       TipoCalculoDescuento @map("tipo_calculo")
+  porcentaje        Decimal?             @db.Decimal(5, 2)
+  montoDescuento    Decimal              @map("monto_descuento") @db.Decimal(10, 2)
+  montoOriginal     Decimal              @map("monto_original") @db.Decimal(10, 2)
+  montoFinal        Decimal              @map("monto_final") @db.Decimal(10, 2)
+  motivo            String
+  aplicadoPorId     Int                  @map("aplicado_por_id")
+  autorizadoPorId   Int?                 @map("autorizado_por_id")
+  estado            EstadoDescuento      @default(pendiente)
+  fechaAplicacion   DateTime             @default(now()) @map("fecha_aplicacion")
+  fechaAutorizacion DateTime?            @map("fecha_autorizacion")
+  createdAt         DateTime             @default(now()) @map("created_at")
+
+  // Relaciones
+  cuenta        CuentaPaciente    @relation(fields: [cuentaId], references: [id])
+  politica      PoliticaDescuento @relation(fields: [politicaId], references: [id])
+  aplicadoPor   Usuario           @relation("DescuentoAplicado", fields: [aplicadoPorId], references: [id])
+  autorizadoPor Usuario?          @relation("DescuentoAutorizado", fields: [autorizadoPorId], references: [id])
+
+  @@index([cuentaId])
+  @@index([estado])
+  @@index([fechaAplicacion])
+  @@map("descuentos_aplicados")
+}
+
+enum TipoDescuento {
+  cortesia_medica
+  empleado_hospital
+  convenio_empresa
+  promocion_temporal
+  ajuste_precio
+  redondeo
+  otro
+}
+
+enum TipoCalculoDescuento {
+  porcentaje
+  monto_fijo
+}
+
+enum EstadoDescuento {
+  pendiente
+  autorizado
+  rechazado
+  aplicado
+  revertido
+}
+
+// ==============================================
+// FASE 6: RECIBOS Y COMPROBANTES FORMALES
+// ==============================================
+
+model Recibo {
+  id                Int          @id @default(autoincrement())
+  folio             String       @unique // AUTO: REC-{año}-{consecutivo}
+  serie             String       @default("A")
+  tipo              TipoRecibo
+  cuentaId          Int          @map("cuenta_id")
+  pagoId            Int?         @map("pago_id")
+  pacienteId        Int          @map("paciente_id")
+  cajeroId          Int          @map("cajero_id")
+  montoRecibido     Decimal      @map("monto_recibido") @db.Decimal(12, 2)
+  cambio            Decimal      @default(0) @db.Decimal(12, 2)
+  metodoPago        MetodoPago   @map("metodo_pago")
+  conceptos         Json
+  subtotal          Decimal      @db.Decimal(12, 2)
+  iva               Decimal      @default(0) @db.Decimal(12, 2)
+  total             Decimal      @db.Decimal(12, 2)
+  fechaEmision      DateTime     @default(now()) @map("fecha_emision")
+  fechaCancelacion  DateTime?    @map("fecha_cancelacion")
+  canceladoPorId    Int?         @map("cancelado_por_id")
+  motivoCancelacion String?      @map("motivo_cancelacion")
+  estado            EstadoRecibo @default(emitido)
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  // Relaciones
+  cuenta       CuentaPaciente @relation(fields: [cuentaId], references: [id])
+  paciente     Paciente       @relation(fields: [pacienteId], references: [id])
+  cajero       Usuario        @relation("ReciboEmitido", fields: [cajeroId], references: [id])
+  canceladoPor Usuario?       @relation("ReciboCancelado", fields: [canceladoPorId], references: [id])
+
+  @@index([folio])
+  @@index([pacienteId])
+  @@index([fechaEmision])
+  @@index([estado])
+  @@map("recibos")
+}
+
+enum TipoRecibo {
+  cobro_cuenta
+  pago_parcial
+  anticipo
+  devolucion
+}
+
+enum EstadoRecibo {
+  emitido
+  cancelado
+  reimpreso
 }

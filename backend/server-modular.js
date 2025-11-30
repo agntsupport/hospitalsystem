@@ -223,6 +223,11 @@ const notificacionesRoutes = require('./routes/notificaciones.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const costsRoutes = require('./routes/costs.routes');
 
+// Rutas Financiero-Administrativas (FASE 2025)
+const cajaRoutes = require('./routes/caja.routes');
+const devolucionesRoutes = require('./routes/devoluciones.routes');
+const bancosRoutes = require('./routes/bancos.routes');
+
 // ==============================================
 // RATE LIMITING ESPECÍFICO PARA LOGIN
 // ==============================================
@@ -299,6 +304,30 @@ app.use('/api/solicitudes',
 
 // Rutas de notificaciones
 app.use('/api/notificaciones', notificacionesRoutes);
+
+// ==============================================
+// RUTAS FINANCIERO-ADMINISTRATIVAS (FASE 2025)
+// ==============================================
+// Sistema de caja diaria con auditoría crítica
+app.use('/api/caja',
+  criticalOperationAudit,
+  auditMiddleware('caja_diaria'),
+  cajaRoutes
+);
+
+// Sistema de devoluciones y reembolsos con auditoría crítica
+app.use('/api/devoluciones',
+  criticalOperationAudit,
+  auditMiddleware('devoluciones'),
+  devolucionesRoutes
+);
+
+// Sistema de depósitos bancarios con auditoría crítica
+app.use('/api/bancos',
+  criticalOperationAudit,
+  auditMiddleware('depositos_bancarios'),
+  bancosRoutes
+);
 
 // ==============================================
 // ENDPOINTS LEGACY (COMPATIBILIDAD POS)

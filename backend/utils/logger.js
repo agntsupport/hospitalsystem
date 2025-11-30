@@ -178,6 +178,10 @@ logger.logDatabase = (operation, data = {}) => {
   logger.debug(`Database: ${operation}`, safeData);
 };
 
+logger.logInfo = (operation, message, data = {}) => {
+  logger.info(`${operation}: ${message}`, sanitizeObject(data));
+};
+
 // Stream para Morgan (HTTP logging)
 logger.stream = {
   write: (message) => {
