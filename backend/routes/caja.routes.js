@@ -127,8 +127,10 @@ router.get('/actual', authenticateToken, authorizeRoles(['cajero', 'administrado
     });
 
     if (!caja) {
-      return res.status(404).json({
-        success: false,
+      return res.json({
+        success: true,
+        data: null,
+        tieneCajaAbierta: false,
         message: 'No tienes una caja abierta actualmente'
       });
     }

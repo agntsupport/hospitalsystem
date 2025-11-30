@@ -261,7 +261,7 @@ export const OcupacionTable = () => {
                       </TableCell>
                       <TableCell>
                         {consultorio.pacienteActual ? (
-                          <Tooltip title={`Exp: ${consultorio.pacienteActual.expediente}`}>
+                          <Tooltip title={consultorio.pacienteActual.expediente ? `Exp: ${consultorio.pacienteActual.expediente}` : consultorio.pacienteActual.nombre}>
                             <Box display="flex" alignItems="center" gap={0.5}>
                               <PersonIcon fontSize="small" color="action" />
                               <Typography variant="body2" noWrap maxWidth={200}>
@@ -333,7 +333,7 @@ export const OcupacionTable = () => {
                       </TableCell>
                       <TableCell>
                         {habitacion.pacienteActual ? (
-                          <Tooltip title={`Exp: ${habitacion.pacienteActual.expediente}`}>
+                          <Tooltip title={habitacion.pacienteActual.expediente ? `Exp: ${habitacion.pacienteActual.expediente}` : habitacion.pacienteActual.nombre}>
                             <Box display="flex" alignItems="center" gap={0.5}>
                               <PersonIcon fontSize="small" color="action" />
                               <Typography variant="body2" noWrap maxWidth={200}>

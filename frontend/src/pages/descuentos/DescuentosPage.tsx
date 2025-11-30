@@ -367,7 +367,7 @@ const DescuentosPage: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell align="right">
-                          {desc.valorDescuento}%
+                          {desc.valorDescuento != null ? `${desc.valorDescuento}%` : '-'}
                         </TableCell>
                         <TableCell align="right">
                           <Typography color="error.main" fontWeight="medium">
@@ -382,7 +382,7 @@ const DescuentosPage: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          {new Date(desc.fechaSolicitud).toLocaleDateString()}
+                          {desc.fechaSolicitud ? new Date(desc.fechaSolicitud).toLocaleDateString() : '-'}
                         </TableCell>
                         <TableCell>
                           <Tooltip title="Ver detalle">
