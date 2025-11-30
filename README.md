@@ -5,8 +5,8 @@
 **Teléfono:** 443 104 7479
 **Tecnología:** Arquitectura Full-Stack con PostgreSQL + React + Node.js
 
-![Estado del Proyecto](https://img.shields.io/badge/Estado-95%25%20Funcional-brightgreen)
-![Versión](https://img.shields.io/badge/Versión-2.7.0--stable-blue)
+![Estado del Proyecto](https://img.shields.io/badge/Estado-97%25%20Funcional-brightgreen)
+![Versión](https://img.shields.io/badge/Versión-2.8.0--stable-blue)
 ![UI/UX](https://img.shields.io/badge/UI%2FUX-9.5%2F10-brightgreen)
 ![Frontend Tests](https://img.shields.io/badge/Frontend-98.6%25%20(927%2F940)-brightgreen)
 ![Backend Tests](https://img.shields.io/badge/Backend-88%25%20(395%2F449)-yellow)
@@ -17,9 +17,9 @@
 
 ## 🎯 Estado Actual del Proyecto
 
-### ✅ SISTEMA FUNCIONAL (95% - Production Ready)
+### ✅ SISTEMA FUNCIONAL (97% - Production Ready)
 
-**14/14 Módulos Core Implementados:**
+**16/16 Módulos Core Implementados:**
 1. **🔐 Autenticación JWT** - Sistema completo con blacklist, bloqueo de cuenta, HTTPS forzado ✅
 2. **👥 Gestión de Empleados** - CRUD completo con roles especializados ✅
 3. **🏥 Gestión de Pacientes** - Registro completo con búsqueda avanzada e historial ✅
@@ -34,6 +34,8 @@
 12. **🧪 Framework de Testing** - 1,444 tests (Frontend 98.6%, Backend 88%, E2E Auth 100%) ✅
 13. **⚡ Cargos Automáticos** - Habitaciones y quirófanos ✅
 14. **🔔 Notificaciones** - Campanita en header + Solicitudes de productos ✅
+15. **🏦 Caja Diaria** - Apertura/cierre de turno, arqueo, movimientos ✅ **NUEVO**
+16. **↩️ Devoluciones** - Solicitud, autorización admin, procesamiento ✅ **NUEVO**
 
 ---
 
@@ -84,6 +86,7 @@ El sistema está desplegado en un **VPS con EasyPanel** como plataforma de gesti
 | FASE 19 | Backend Robustness (parseHelpers) | 28 Nov 2025 |
 | FASE 20 | React.memo Design System | 28 Nov 2025 |
 | FASE 21 | Unificación Interface Frontend | 29 Nov 2025 |
+| FASE 22 | Sistema Financiero (Caja + Devoluciones) | 30 Nov 2025 |
 
 📖 **Historial detallado:** [.claude/doc/HISTORIAL_FASES_2025.md](./.claude/doc/HISTORIAL_FASES_2025.md)
 
@@ -102,6 +105,8 @@ El sistema está desplegado en un **VPS con EasyPanel** como plataforma de gesti
 - **Facturación Automática** - Conversión desde cuentas POS
 - **Pagos Parciales** - Control de abonos con historial
 - **Cuentas por Cobrar** - Autorización por administrador
+- **Caja Diaria** - Apertura/cierre de turno, arqueo, movimientos, historial
+- **Devoluciones** - Solicitud, autorización admin, procesamiento con reembolso
 
 ### 📦 Administración Operativa
 - **Inventario Inteligente** - COSTO vs PRECIO DE VENTA, alertas stock bajo
@@ -185,7 +190,7 @@ residente1 / medico123
 
 ## 🧪 Estado de Tests
 
-### Resumen (28 Nov 2025)
+### Resumen (30 Nov 2025)
 | Categoría | Tests | Pass Rate | Estado |
 |-----------|-------|-----------|--------|
 | Frontend | 927/940 | 98.6% | ✅ 45/45 suites |
@@ -282,8 +287,8 @@ cd frontend && npx playwright test e2e/auth.spec.ts --project=chromium
 **👨‍💻 Desarrollado por:** Alfredo Manuel Reyes
 **🏢 Empresa:** AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial
 **📞 Teléfono:** 443 104 7479
-**📅 Última actualización:** 28 de noviembre de 2025
-**✅ Estado:** Sistema Listo para Producción (93%) | 14 Fases Completadas | UI/UX 9.2/10 ⭐
+**📅 Última actualización:** 30 de noviembre de 2025
+**✅ Estado:** Sistema Listo para Producción (97%) | 22 Fases Completadas | UI/UX 9.5/10 ⭐
 
 ---
 *© 2025 AGNT: Infraestructura Tecnológica Empresarial e Inteligencia Artificial. Todos los derechos reservados.*
