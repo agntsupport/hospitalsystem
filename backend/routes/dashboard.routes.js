@@ -181,15 +181,15 @@ router.get('/metrics', authenticateToken, async (req, res) => {
         prisma.hospitalizacion.count({
           where: { estado: { in: ['en_observacion', 'estable', 'critico'] } }
         }),
-        prisma.solicitudProducto.count({
+        prisma.solicitudProductos.count({
           where: {
-            estado: { in: ['pendiente', 'en_proceso'] },
-            solicitanteId: req.user.userId
+            estado: { in: ['SOLICITADO', 'NOTIFICADO', 'PREPARANDO', 'LISTO_ENTREGA'] },
+            solicitanteId: req.user.id
           }
         }),
-        prisma.notificacion.count({
+        prisma.notificacionSolicitud.count({
           where: {
-            usuarioId: req.user.userId,
+            usuarioId: req.user.id,
             leida: false
           }
         })
@@ -209,9 +209,9 @@ router.get('/metrics', authenticateToken, async (req, res) => {
         solicitudesPendientes,
         movimientosHoy
       ] = await Promise.all([
-        prisma.$queryRaw`SELECT COUNT(*)::int as count FROM "Producto" WHERE "stock_actual" <= "stock_minimo" AND "activo" = true`,
-        prisma.solicitudProducto.count({
-          where: { estado: { in: ['pendiente', 'en_proceso'] } }
+        prisma.$queryRaw`SELECT COUNT(*)::int as count FROM "productos" WHERE "stock_actual" <= "stock_minimo" AND "activo" = true`,
+        prisma.solicitudProductos.count({
+          where: { estado: { in: ['SOLICITADO', 'NOTIFICADO', 'PREPARANDO', 'LISTO_ENTREGA'] } }
         }),
         prisma.movimientoInventario.count({
           where: {
@@ -228,62 +228,29 @@ router.get('/metrics', authenticateToken, async (req, res) => {
     }
 
     if (['medico_residente', 'medico_especialista'].includes(userRole)) {
-      // Métricas para médicos
-      const empleadoId = req.user.empleadoId;
+      // Métricas para médicos - mostrar datos generales del hospital
+      const [pacientesActivos, cirugiasProgramadas, notasHoy] = await Promise.all([
+        prisma.hospitalizacion.count({
+          where: { estado: { in: ['en_observacion', 'estable', 'critico'] } }
+        }),
+        prisma.cirugiaQuirofano.count({
+          where: {
+            estado: 'programada',
+            fechaInicio: { gte: startOfDay }
+          }
+        }),
+        prisma.notaHospitalizacion.count({
+          where: {
+            fechaNota: { gte: startOfDay }
+          }
+        })
+      ]);
 
-      // Si no tiene empleadoId, mostrar datos generales
-      if (!empleadoId) {
-        const [pacientesActivos, cirugiasProgramadas, notasHoy] = await Promise.all([
-          prisma.hospitalizacion.count({
-            where: { estado: { in: ['en_observacion', 'estable', 'critico'] } }
-          }),
-          prisma.cirugia.count({
-            where: {
-              estado: 'programada',
-              fechaInicio: { gte: startOfDay }
-            }
-          }),
-          prisma.notaMedica.count({
-            where: {
-              fechaNota: { gte: startOfDay }
-            }
-          })
-        ]);
-
-        roleMetrics = {
-          pacientesAsignados: pacientesActivos,
-          cirugiasProgramadas,
-          notasHoy
-        };
-      } else {
-        const [pacientesAsignados, cirugiasProgramadas, notasHoy] = await Promise.all([
-          prisma.hospitalizacion.count({
-            where: {
-              medicoEspecialistaId: empleadoId,
-              estado: { in: ['en_observacion', 'estable', 'critico'] }
-            }
-          }),
-          prisma.cirugia.count({
-            where: {
-              medicoId: empleadoId,
-              estado: 'programada',
-              fechaInicio: { gte: startOfDay }
-            }
-          }),
-          prisma.notaMedica.count({
-            where: {
-              medicoId: empleadoId,
-              fechaNota: { gte: startOfDay }
-            }
-          })
-        ]);
-
-        roleMetrics = {
-          pacientesAsignados,
-          cirugiasProgramadas,
-          notasHoy
-        };
-      }
+      roleMetrics = {
+        pacientesAsignados: pacientesActivos,
+        cirugiasProgramadas,
+        notasHoy
+      };
     }
 
     res.status(200).json({
