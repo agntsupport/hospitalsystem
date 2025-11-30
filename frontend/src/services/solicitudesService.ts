@@ -170,7 +170,7 @@ class SolicitudesService {
   // Obtener estadísticas de solicitudes
   async getSolicitudStats(): Promise<SolicitudStats> {
     const response = await api.get('/solicitudes/stats/resumen');
-    return response.data as SolicitudStats;
+    return response as unknown as SolicitudStats;
   }
 
   // Validar disponibilidad de productos
