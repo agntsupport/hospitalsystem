@@ -227,6 +227,7 @@ const costsRoutes = require('./routes/costs.routes');
 const cajaRoutes = require('./routes/caja.routes');
 const devolucionesRoutes = require('./routes/devoluciones.routes');
 const bancosRoutes = require('./routes/bancos.routes');
+const descuentosRoutes = require('./routes/descuentos.routes');
 
 // ==============================================
 // RATE LIMITING ESPECÍFICO PARA LOGIN
@@ -327,6 +328,13 @@ app.use('/api/bancos',
   criticalOperationAudit,
   auditMiddleware('depositos_bancarios'),
   bancosRoutes
+);
+
+// Sistema de descuentos autorizados con auditoría crítica
+app.use('/api/descuentos',
+  criticalOperationAudit,
+  auditMiddleware('descuentos'),
+  descuentosRoutes
 );
 
 // ==============================================
