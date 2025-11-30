@@ -172,7 +172,7 @@ const menuItems: MenuItem[] = [
     text: 'Reportes',
     icon: <Assessment />,
     path: '/reports',
-    roles: ['administrador', 'socio', 'almacenista'],
+    roles: ['administrador', 'socio'],
   },
   {
     id: 'costs',
