@@ -228,6 +228,7 @@ const cajaRoutes = require('./routes/caja.routes');
 const devolucionesRoutes = require('./routes/devoluciones.routes');
 const bancosRoutes = require('./routes/bancos.routes');
 const descuentosRoutes = require('./routes/descuentos.routes');
+const recibosRoutes = require('./routes/recibos.routes');
 
 // ==============================================
 // RATE LIMITING ESPECÍFICO PARA LOGIN
@@ -335,6 +336,13 @@ app.use('/api/descuentos',
   criticalOperationAudit,
   auditMiddleware('descuentos'),
   descuentosRoutes
+);
+
+// Sistema de recibos y comprobantes formales con auditoría crítica
+app.use('/api/recibos',
+  criticalOperationAudit,
+  auditMiddleware('recibos'),
+  recibosRoutes
 );
 
 // ==============================================
