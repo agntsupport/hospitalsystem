@@ -152,8 +152,10 @@ describe('CPCStatsCards - Unit Tests', () => {
 
       renderWithTheme(<CPCStatsCards stats={zeroStats} />);
 
-      // Should show 0 for activas
-      expect(screen.getByText('0')).toBeInTheDocument();
+      // Should show 0 for activas and distribution quantities
+      // Multiple elements show "0" (main stat + 4 distribution quantities)
+      const zeros = screen.getAllByText('0');
+      expect(zeros.length).toBeGreaterThanOrEqual(5); // 1 main + 4 distribution
 
       // Should show $0.00 for amounts (6 total: 2 main + 4 distribution)
       const zeroAmounts = screen.getAllByText(/\$0\.00/);

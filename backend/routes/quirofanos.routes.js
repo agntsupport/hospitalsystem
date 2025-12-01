@@ -798,10 +798,12 @@ router.put('/cirugias/:id/estado', authenticateToken, auditMiddleware('cirugias'
             }
           });
 
-          // Buscar hospitalización activa del paciente
+          // Buscar hospitalización activa del paciente (a través de cuentaPaciente)
           const hospitalizacionActiva = await prisma.hospitalizacion.findFirst({
             where: {
-              pacienteId: cirugiaCompleta.pacienteId,
+              cuentaPaciente: {
+                pacienteId: cirugiaCompleta.pacienteId
+              },
               estado: {
                 notIn: ['alta_medica', 'alta_voluntaria']
               }

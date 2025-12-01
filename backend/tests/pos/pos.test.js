@@ -100,12 +100,12 @@ describe('POS Routes Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('items');
+      expect(response.body.data).toHaveProperty('services');
       expect(response.body.data).toHaveProperty('total');
-      expect(Array.isArray(response.body.data.items)).toBe(true);
+      expect(Array.isArray(response.body.data.services)).toBe(true);
 
       // Verificar que incluye el servicio de prueba
-      const servicioEncontrado = response.body.data.items.find(s => s.id === testServicio.id);
+      const servicioEncontrado = response.body.data.services.find(s => s.id === testServicio.id);
       expect(servicioEncontrado).toBeDefined();
       expect(servicioEncontrado.nombre).toBe(testServicio.nombre);
       expect(servicioEncontrado.precio).toBe(500);
@@ -135,7 +135,7 @@ describe('POS Routes Tests', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
-      const servicioEncontrado = response.body.data.items.find(s => s.id === servicioInactivo.id);
+      const servicioEncontrado = response.body.data.services.find(s => s.id === servicioInactivo.id);
       expect(servicioEncontrado).toBeUndefined();
     });
 
@@ -156,7 +156,7 @@ describe('POS Routes Tests', () => {
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data.items.length).toBeGreaterThanOrEqual(2);
+      expect(response.body.data.services.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -696,7 +696,7 @@ describe('POS Routes Tests', () => {
           cajeroAperturaId: testUser.id,
           cajeroCierreId: testUser.id,
           estado: 'cerrada',
-          anticipo: 0.00, // Sin anticipo automático
+          anticipo: 10000.00, // Anticipo de $10,000 para que saldo = 10000 - 5000 = 5000
           totalServicios: 3000.00,
           totalProductos: 2000.00,
           totalCuenta: 5000.00,
@@ -743,7 +743,7 @@ describe('POS Routes Tests', () => {
           tipoAtencion: 'hospitalizacion',
           cajeroAperturaId: testUser.id,
           estado: 'abierta',
-          anticipo: 0.00, // Sin anticipo automático
+          anticipo: 10000.00, // Anticipo de $10,000 para calcular saldo = 10000 - 1000 = 9000
           totalServicios: 0.00,
           totalProductos: 0.00,
           totalCuenta: 0.00,

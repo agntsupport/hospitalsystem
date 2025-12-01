@@ -18,16 +18,17 @@ describe('Hospitalization Module - Critical Tests', () => {
   let testMedico;
   let testCuentaPaciente;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
     const testHelpers = global.testHelpers;
 
-    // Crear admin para autenticación usando testHelpers (solo una vez)
+    // Crear admin para autenticación usando testHelpers (en cada test para evitar FK issues)
     adminUser = await testHelpers.createTestUser({
-      username: `hosp_admin_${timestamp}`,
+      username: `hosp_admin_${timestamp}_${randomSuffix}`,
       password: 'admin123',
       rol: 'administrador',
-      email: `hosp_admin_${timestamp}@test.com`
+      email: `hosp_admin_${timestamp}_${randomSuffix}@test.com`
     });
 
     // Login para obtener token
@@ -35,12 +36,6 @@ describe('Hospitalization Module - Critical Tests', () => {
       .post('/api/auth/login')
       .send({ username: adminUser.username, password: 'admin123' });
     adminToken = loginRes.body.data.token;
-  });
-
-  beforeEach(async () => {
-    const timestamp = Date.now();
-    const randomSuffix = Math.floor(Math.random() * 1000);
-    const testHelpers = global.testHelpers;
 
     // Crear paciente de prueba
     testPatient = await prisma.paciente.create({
@@ -73,9 +68,10 @@ describe('Hospitalization Module - Critical Tests', () => {
     });
 
     // Crear cuenta paciente de prueba (sin anticipo automático)
+    // Nota: No pasamos cajeroAperturaId para que createTestCuentaPaciente cree su propio cajero
+    // Esto evita problemas de FK cuando el adminUser ya no existe después del cleanTestData global
     const { cuenta } = await testHelpers.createTestCuentaPaciente({
       paciente: testPatient,
-      cajeroAperturaId: adminUser.id,
       anticipo: 0 // $0.00 - Anticipo ya no es automático
     });
     testCuentaPaciente = cuenta;
@@ -673,20 +669,21 @@ describe('Hospitalization Module - Critical Tests', () => {
     let enfermeroToken;
     let cajeroToken;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       const timestamp = Date.now();
+      const randomSuffix = Math.floor(Math.random() * 1000);
       const testHelpers = global.testHelpers;
 
-      // Crear enfermero
+      // Crear enfermero (en cada test para evitar FK issues después del cleanTestData)
       const enfermero = await testHelpers.createTestUser({
-        username: `hosp_enfermero_${timestamp}`,
+        username: `hosp_enfermero_${timestamp}_${randomSuffix}`,
         password: 'enfermero123',
         rol: 'enfermero'
       });
 
       // Crear cajero
       const cajero = await testHelpers.createTestUser({
-        username: `hosp_cajero_${timestamp}`,
+        username: `hosp_cajero_${timestamp}_${randomSuffix}`,
         password: 'cajero123',
         rol: 'cajero'
       });
@@ -1375,16 +1372,13 @@ describe('Hospitalization Module - Critical Tests', () => {
     });
 
     it('should handle accounts without advance payment (saldo negativo expected)', async () => {
-      // Crear cuenta SIN anticipo (nuevo flujo - anticipo ya no es automático)
-      const timestamp = Date.now();
-      const noAnticipoCuenta = await prisma.cuentaPaciente.create({
-        data: {
-          pacienteId: testPatient.id,
-          anticipo: 0, // $0.00 - Sin anticipo (nuevo estándar)
-          cajeroAperturaId: adminUser.id,
-          tipoAtencion: 'hospitalizacion',
-          estado: 'abierta'
-        }
+      // Crear cuenta SIN anticipo usando el helper para evitar problemas de FK
+      const testHelpers = global.testHelpers;
+      const { cuenta: noAnticipoCuenta } = await testHelpers.createTestCuentaPaciente({
+        paciente: testPatient,
+        anticipo: 0, // $0.00 - Sin anticipo (nuevo estándar)
+        tipoAtencion: 'hospitalizacion',
+        estado: 'abierta'
       });
 
       const admission = await prisma.hospitalizacion.create({

@@ -1318,7 +1318,7 @@ router.post('/cuentas/:id/pago-parcial', authenticateToken, async (req, res) => 
       // 1. Obtener cuenta con lock FOR UPDATE (previene race conditions)
       // Usamos query raw para obtener lock explícito en PostgreSQL
       const cuentas = await tx.$queryRaw`
-        SELECT * FROM "CuentaPaciente"
+        SELECT * FROM "cuentas_pacientes"
         WHERE id = ${parseInt(id)}
         FOR UPDATE
       `;
@@ -1333,10 +1333,11 @@ router.post('/cuentas/:id/pago-parcial', authenticateToken, async (req, res) => 
         throw new Error('No se pueden registrar pagos en una cuenta cerrada');
       }
 
-      // Obtener paciente para el log
-      const paciente = await tx.paciente.findUnique({
-        where: { id: cuenta.pacienteId }
-      });
+      // Obtener paciente para el log (raw query devuelve snake_case)
+      const pacienteId = cuenta.paciente_id || cuenta.pacienteId;
+      const paciente = pacienteId ? await tx.paciente.findUnique({
+        where: { id: pacienteId }
+      }) : null;
 
       // 2. Registrar pago parcial
       const pago = await tx.pago.create({
@@ -1828,12 +1829,13 @@ router.post('/cuentas-por-cobrar/:id/pago', authenticateToken, async (req, res) 
       timeout: 10000
     });
 
+    const saldoFinal = parseFloat(result.cpcActualizado.saldoPendiente.toString());
     res.json({
       success: true,
       data: result,
-      message: nuevoSaldo === 0
+      message: saldoFinal === 0
         ? `Cuenta por cobrar pagada completamente`
-        : `Pago de ${parseFloat(monto).toFixed(2)} registrado. Saldo pendiente: ${result.cpcActualizado.saldoPendiente.toFixed(2)}`
+        : `Pago de ${parseFloat(monto).toFixed(2)} registrado. Saldo pendiente: ${saldoFinal.toFixed(2)}`
     });
 
   } catch (error) {

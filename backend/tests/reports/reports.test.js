@@ -36,7 +36,8 @@ describe('Reports Endpoints', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data).toHaveProperty('ingresos');
       expect(response.body.data).toHaveProperty('cuentasPorCobrar');
-      expect(response.body.data).toHaveProperty('distribucionMetodosPago');
+      expect(response.body.data).toHaveProperty('deducciones');
+      expect(response.body.data).toHaveProperty('ingresosNetos');
     });
 
     it('should filter by date range', async () => {

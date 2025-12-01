@@ -10,11 +10,15 @@ app.use('/api/auth', authRoutes);
 
 describe('Account Locking (Anti Brute-Force)', () => {
   let testUser;
-  const TEST_USERNAME = 'test_account_lock_user';
+  let TEST_USERNAME;
   const TEST_PASSWORD = 'correct_password_123';
 
-  beforeAll(async () => {
-    // Crear usuario de prueba
+  beforeEach(async () => {
+    // Crear usuario de prueba en cada test para evitar FK issues después del cleanTestData
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    TEST_USERNAME = `test_account_lock_user_${timestamp}_${randomSuffix}`;
+
     const hashedPassword = await bcrypt.hash(TEST_PASSWORD, 12);
     testUser = await prisma.usuario.create({
       data: {
@@ -23,24 +27,14 @@ describe('Account Locking (Anti Brute-Force)', () => {
         email: `${TEST_USERNAME}@test.com`,
         rol: 'cajero',
         activo: true,
-        intentosFallidos: 0
+        intentosFallidos: 0,
+        bloqueadoHasta: null
       }
     });
   });
 
   afterAll(async () => {
-    // Limpiar datos de prueba
-    await prisma.usuario.deleteMany({
-      where: { username: TEST_USERNAME }
-    });
-  });
-
-  beforeEach(async () => {
-    // Resetear intentos antes de cada test
-    await prisma.usuario.update({
-      where: { id: testUser.id },
-      data: { intentosFallidos: 0, bloqueadoHasta: null }
-    });
+    // Cleanup is handled by global cleanTestData
   });
 
   it('should increment intentos fallidos on wrong password', async () => {
@@ -196,10 +190,15 @@ describe('Account Unlock Endpoint', () => {
   let adminUser;
   let blockedUser;
   let adminToken;
-  const ADMIN_USERNAME = 'test_admin_unlock';
-  const BLOCKED_USERNAME = 'test_blocked_user';
+  let ADMIN_USERNAME;
+  let BLOCKED_USERNAME;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    ADMIN_USERNAME = `test_admin_unlock_${timestamp}_${randomSuffix}`;
+    BLOCKED_USERNAME = `test_blocked_user_${timestamp}_${randomSuffix}`;
+
     // Crear admin
     const adminHash = await bcrypt.hash('admin123', 12);
     adminUser = await prisma.usuario.create({
@@ -234,11 +233,7 @@ describe('Account Unlock Endpoint', () => {
   });
 
   afterAll(async () => {
-    await prisma.usuario.deleteMany({
-      where: {
-        username: { in: [ADMIN_USERNAME, BLOCKED_USERNAME] }
-      }
-    });
+    // Cleanup handled by global cleanTestData
   });
 
   it('should allow admin to unlock account', async () => {
