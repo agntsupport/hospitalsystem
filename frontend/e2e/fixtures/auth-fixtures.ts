@@ -13,16 +13,32 @@ type AuthFixtures = {
 
 /**
  * Helper para hacer login con credenciales específicas
+ * Usa locators específicos para Material-UI TextField que pone data-testid en el input nativo
  */
 async function doLogin(page: Page, username: string, password: string) {
   await page.goto('http://localhost:3000/login');
 
-  // Llenar credenciales usando data-testid
-  await page.getByTestId('username-input').fill(username);
-  await page.getByTestId('password-input').fill(password);
+  // Esperar a que el formulario de login esté visible
+  await page.waitForLoadState('networkidle');
+
+  // En Material-UI, inputProps.data-testid se aplica al input nativo
+  // Usamos locator con CSS selector para mayor precisión
+  const usernameInput = page.locator('[data-testid="username-input"]');
+  const passwordInput = page.locator('[data-testid="password-input"]');
+  const loginButton = page.locator('[data-testid="login-button"]');
+
+  // Esperar a que los campos estén visibles
+  await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
+
+  // Llenar credenciales
+  await usernameInput.fill(username);
+  await passwordInput.fill(password);
+
+  // Esperar un momento para que el formulario se valide
+  await page.waitForTimeout(500);
 
   // Click en botón de login
-  await page.getByTestId('login-button').click();
+  await loginButton.click();
 
   // Esperar redirección al dashboard
   await page.waitForURL(/.*dashboard/, { timeout: 15000 });

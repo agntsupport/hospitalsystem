@@ -22,18 +22,33 @@ export function generateUniqueData() {
 export async function createTestPatient(page: Page) {
   const { suffix } = generateUniqueData();
 
-  await page.goto('http://localhost:3000/patients');
+  // Navegar a pacientes usando sidebar (Material-UI ListItemButton con texto "Pacientes")
+  // El sidebar usa nav#navigation con ListItemButton que contiene el texto del módulo
+  const sidebarButton = page.locator('#navigation').getByRole('button', { name: 'Pacientes' });
 
-  // Click en botón de nuevo paciente
-  await page.click('button:has-text("Nuevo"), button:has-text("Agregar")');
+  if (await sidebarButton.count() > 0) {
+    await sidebarButton.click();
+    // Esperar a que la URL cambie a /patients
+    await page.waitForURL(/.*patients/, { timeout: 15000 });
+  } else {
+    // Fallback: usar goto directo
+    await page.goto('http://localhost:3000/patients');
+  }
+
+  await page.waitForLoadState('networkidle');
+
+  // Click en botón de nuevo paciente (el botón tiene el texto "Nuevo Paciente")
+  await page.click('button:has-text("Nuevo Paciente")');
 
   // Esperar a que se abra el formulario
   await page.waitForSelector('input[name="nombre"]', { timeout: 10000 });
 
-  // Datos del paciente
+  // Datos del paciente - solo letras en nombre y apellidos (validación del formulario)
+  const randomLetter = () => String.fromCharCode(65 + Math.floor(Math.random() * 26));
+  const randomSuffix = `${randomLetter()}${randomLetter()}${randomLetter()}${randomLetter()}`;
   const patientData = {
-    nombre: `PacienteE2E`,
-    apellidoPaterno: `Test${suffix}`,
+    nombre: `PacienteTest`,
+    apellidoPaterno: `Prueba${randomSuffix}`,
     apellidoMaterno: `Playwright`,
     fechaNacimiento: '1990-01-15',
     genero: 'M',
@@ -43,32 +58,48 @@ export async function createTestPatient(page: Page) {
     curp: `PATE${suffix.slice(-6)}HMCRRR01`,
   };
 
-  // Llenar formulario
+  // === PASO 1: Datos Personales ===
   await page.fill('input[name="nombre"]', patientData.nombre);
   await page.fill('input[name="apellidoPaterno"]', patientData.apellidoPaterno);
   await page.fill('input[name="apellidoMaterno"]', patientData.apellidoMaterno);
-  await page.fill('input[name="fechaNacimiento"], input[type="date"]', patientData.fechaNacimiento);
 
-  // Género (puede ser select o radio)
-  const generoSelect = page.locator('select[name="genero"]');
-  const generoRadio = page.locator('input[value="M"]');
+  // Fecha de nacimiento - usar label para encontrar el textbox correcto
+  const fechaInput = page.getByRole('textbox', { name: /fecha de nacimiento/i });
+  await fechaInput.fill(patientData.fechaNacimiento);
 
-  if (await generoSelect.count() > 0) {
-    await generoSelect.selectOption('M');
-  } else if (await generoRadio.count() > 0) {
-    await generoRadio.click();
-  }
+  // Género ya viene seleccionado por defecto (Masculino), no necesitamos cambiarlo
 
+  // Click en "Siguiente" para ir al paso 2
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.waitForTimeout(500);
+
+  // === PASO 2: Información de Contacto ===
   await page.fill('input[name="telefono"]', patientData.telefono);
   await page.fill('input[name="email"]', patientData.email);
-  await page.fill('input[name="direccion"], textarea[name="direccion"]', patientData.direccion);
-  await page.fill('input[name="curp"]', patientData.curp);
 
-  // Guardar paciente
-  await page.click('button[type="submit"]:has-text("Guardar"), button:has-text("Crear"), button:has-text("Registrar")');
+  // Dirección puede ser input o textarea
+  const direccionInput = page.locator('input[name="direccion"], textarea[name="direccion"]');
+  if (await direccionInput.count() > 0) {
+    await direccionInput.fill(patientData.direccion);
+  }
+
+  // Click en "Siguiente" para ir al paso 3
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.waitForTimeout(500);
+
+  // === PASO 3: Información Médica ===
+  // CURP puede estar en paso 2 o paso 3, intentar llenarlo si existe
+  const curpInput = page.locator('input[name="curp"]');
+  if (await curpInput.count() > 0) {
+    await curpInput.fill(patientData.curp);
+  }
+
+  // Guardar paciente - buscar botón de guardar o registrar
+  const guardarBtn = page.getByRole('button', { name: /guardar|registrar|crear/i });
+  await guardarBtn.click();
 
   // Esperar confirmación
-  await page.waitForSelector('text=/éxito|success|creado|registrado/i', { timeout: 10000 });
+  await page.waitForSelector('text=/éxito|success|creado|registrado/i', { timeout: 15000 });
   await page.waitForTimeout(2000);
 
   return patientData;
@@ -80,7 +111,17 @@ export async function createTestPatient(page: Page) {
 export async function createTestProduct(page: Page) {
   const { suffix } = generateUniqueData();
 
-  await page.goto('http://localhost:3000/inventory');
+  // Navegar a inventario usando sidebar (Material-UI ListItemButton)
+  const sidebarButton = page.locator('#navigation').getByRole('button', { name: 'Inventario' });
+
+  if (await sidebarButton.count() > 0) {
+    await sidebarButton.click();
+    await page.waitForURL(/.*inventory/, { timeout: 15000 });
+  } else {
+    await page.goto('http://localhost:3000/inventory');
+  }
+
+  await page.waitForLoadState('networkidle');
 
   // Click en botón de nuevo producto
   await page.click('button:has-text("Nuevo"), button:has-text("Agregar")');
@@ -133,7 +174,17 @@ export async function createTestProduct(page: Page) {
  * Busca y selecciona un paciente por apellido
  */
 export async function findAndSelectPatient(page: Page, apellidoPaterno: string) {
-  await page.goto('http://localhost:3000/patients');
+  // Navegar a pacientes usando sidebar (Material-UI ListItemButton)
+  const sidebarButton = page.locator('#navigation').getByRole('button', { name: 'Pacientes' });
+
+  if (await sidebarButton.count() > 0) {
+    await sidebarButton.click();
+    await page.waitForURL(/.*patients/, { timeout: 15000 });
+  } else {
+    await page.goto('http://localhost:3000/patients');
+  }
+
+  await page.waitForLoadState('networkidle');
 
   // Buscar paciente
   const searchInput = page.locator('input[type="search"], input[placeholder*="Buscar"]');
@@ -149,31 +200,43 @@ export async function findAndSelectPatient(page: Page, apellidoPaterno: string) 
 
 /**
  * Navega a un módulo específico del sistema
+ * Usa click en sidebar (Material-UI ListItemButton) en lugar de goto directo
  */
 export async function navigateToModule(page: Page, moduleName: string) {
-  const moduleMap: Record<string, string> = {
-    'patients': '/patients',
-    'pacientes': '/patients',
-    'pos': '/pos',
-    'inventory': '/inventory',
-    'inventario': '/inventory',
-    'hospitalization': '/hospitalization',
-    'hospitalización': '/hospitalization',
-    'billing': '/billing',
-    'facturación': '/billing',
-    'reports': '/reports',
-    'reportes': '/reports',
-    'quirofanos': '/quirofanos',
-    'rooms': '/rooms',
-    'habitaciones': '/rooms',
+  const moduleMap: Record<string, { path: string; sidebarText: string }> = {
+    'patients': { path: '/patients', sidebarText: 'Pacientes' },
+    'pacientes': { path: '/patients', sidebarText: 'Pacientes' },
+    'pos': { path: '/pos', sidebarText: 'Punto de Venta' },
+    'inventory': { path: '/inventory', sidebarText: 'Inventario' },
+    'inventario': { path: '/inventory', sidebarText: 'Inventario' },
+    'hospitalization': { path: '/hospitalization', sidebarText: 'Hospitalización' },
+    'hospitalización': { path: '/hospitalization', sidebarText: 'Hospitalización' },
+    'billing': { path: '/billing', sidebarText: 'Facturación' },
+    'facturación': { path: '/billing', sidebarText: 'Facturación' },
+    'reports': { path: '/reports', sidebarText: 'Reportes' },
+    'reportes': { path: '/reports', sidebarText: 'Reportes' },
+    'quirofanos': { path: '/quirofanos', sidebarText: 'Quirófanos' },
+    'rooms': { path: '/rooms', sidebarText: 'Habitaciones' },
+    'habitaciones': { path: '/rooms', sidebarText: 'Habitaciones' },
   };
 
-  const path = moduleMap[moduleName.toLowerCase()];
-  if (!path) {
+  const module = moduleMap[moduleName.toLowerCase()];
+  if (!module) {
     throw new Error(`Módulo desconocido: ${moduleName}`);
   }
 
-  await page.goto(`http://localhost:3000${path}`);
+  // Usar click en el sidebar (Material-UI ListItemButton dentro de nav#navigation)
+  const sidebarButton = page.locator('#navigation').getByRole('button', { name: module.sidebarText });
+
+  if (await sidebarButton.count() > 0) {
+    await sidebarButton.click();
+  } else {
+    // Fallback: usar goto directo
+    await page.goto(`http://localhost:3000${module.path}`);
+  }
+
+  // Esperar a que la URL contenga el path esperado
+  await page.waitForURL(new RegExp(`.*${module.path.replace('/', '\\/')}`), { timeout: 15000 });
   await page.waitForLoadState('networkidle');
 }
 

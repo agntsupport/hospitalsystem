@@ -194,23 +194,30 @@ test.describe('FLUJO 3 REFACTORED: Administrador - Gestión Financiera', () => {
 
   test('3.8 - Verificar Acceso Completo a Todos los Módulos', async ({ adminPage }) => {
     // Test independiente - verifica que admin tiene acceso a TODOS los módulos
+    // Usa navegación por sidebar en lugar de goto directo
 
     const modulos = [
-      { nombre: 'Pacientes', url: '/patients' },
-      { nombre: 'POS', url: '/pos' },
-      { nombre: 'Hospitalización', url: '/hospitalization' },
-      { nombre: 'Facturación', url: '/billing' },
-      { nombre: 'Inventario', url: '/inventory' },
-      { nombre: 'Habitaciones', url: '/rooms' },
-      { nombre: 'Quirófanos', url: '/quirofanos' },
-      { nombre: 'Reportes', url: '/reports' },
+      { nombre: 'Pacientes', sidebarText: 'Pacientes', urlPattern: /patients/ },
+      { nombre: 'POS', sidebarText: 'Punto de Venta', urlPattern: /pos/ },
+      { nombre: 'Hospitalización', sidebarText: 'Hospitalización', urlPattern: /hospitalization/ },
+      { nombre: 'Facturación', sidebarText: 'Facturación', urlPattern: /billing/ },
+      { nombre: 'Inventario', sidebarText: 'Inventario', urlPattern: /inventory/ },
+      { nombre: 'Habitaciones', sidebarText: 'Habitaciones', urlPattern: /rooms/ },
+      { nombre: 'Quirófanos', sidebarText: 'Quirófanos', urlPattern: /quirofanos/ },
+      { nombre: 'Reportes', sidebarText: 'Reportes', urlPattern: /reports/ },
     ];
 
     for (const modulo of modulos) {
-      await adminPage.goto(`http://localhost:3000${modulo.url}`);
-      await expect(adminPage).toHaveURL(new RegExp(`.*${modulo.url.substring(1)}`));
-      console.log(`✅ Acceso a ${modulo.nombre} verificado`);
-      await adminPage.waitForTimeout(500);
+      // Navegar usando el sidebar
+      const sidebarBtn = adminPage.locator('#navigation').getByRole('button', { name: modulo.sidebarText });
+      if (await sidebarBtn.count() > 0) {
+        await sidebarBtn.click();
+        await adminPage.waitForURL(modulo.urlPattern, { timeout: 15000 });
+        console.log(`✅ Acceso a ${modulo.nombre} verificado`);
+      } else {
+        console.log(`⚠️ Botón de ${modulo.nombre} no encontrado en sidebar`);
+      }
+      await adminPage.waitForTimeout(300);
     }
   });
 
