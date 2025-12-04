@@ -182,7 +182,6 @@ router.post('/generar', authenticateToken, authorizeRoles('administrador'), asyn
 
     const comision = await prisma.comisionMedica.create({
       data: {
-        medicoId: parseInt(medicoId),
         fechaInicio: new Date(fechaInicio),
         fechaFin: new Date(fechaFin),
         nombreMedico,
@@ -193,7 +192,12 @@ router.post('/generar', authenticateToken, authorizeRoles('administrador'), asyn
         porcentaje: PORCENTAJE_COMISION,
         montoComision: parseFloat(montoComision),
         estado: 'PENDIENTE',
-        creadoPorId: req.user.userId
+        medico: {
+          connect: { id: parseInt(medicoId) }
+        },
+        creadoPor: {
+          connect: { id: req.user.id }
+        }
       }
     });
 
