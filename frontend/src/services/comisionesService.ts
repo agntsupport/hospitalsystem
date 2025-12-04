@@ -193,7 +193,9 @@ class ComisionesService {
    * Descargar PDF del comprobante
    */
   async downloadPdf(id: number): Promise<Blob> {
-    const response = await api.get(`/comisiones/${id}/pdf`, { responseType: 'blob' });
+    // Usar api.client directamente para peticiones blob ya que api.get retorna response.data
+    // y para blob necesitamos que response.data sea el blob directamente
+    const response = await api.client.get(`/comisiones/${id}/pdf`, { responseType: 'blob' });
     return response.data;
   }
 
