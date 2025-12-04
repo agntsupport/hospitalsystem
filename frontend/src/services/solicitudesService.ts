@@ -408,7 +408,9 @@ class SolicitudesService {
    * Descargar PDF del documento de entrega
    */
   async downloadDeliveryPdf(solicitudId: number): Promise<Blob> {
-    const response = await api.get(
+    // Usar api.client directamente para peticiones blob ya que api.get retorna response.data
+    // y para blob necesitamos que response.data sea el blob directamente
+    const response = await api.client.get(
       `/solicitudes/${solicitudId}/documento-entrega/pdf`,
       { responseType: 'blob' }
     );
