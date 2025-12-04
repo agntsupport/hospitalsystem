@@ -229,6 +229,7 @@ const devolucionesRoutes = require('./routes/devoluciones.routes');
 const bancosRoutes = require('./routes/bancos.routes');
 const descuentosRoutes = require('./routes/descuentos.routes');
 const recibosRoutes = require('./routes/recibos.routes');
+const comisionesRoutes = require('./routes/comisiones.routes');
 
 // ==============================================
 // RATE LIMITING ESPECÍFICO PARA LOGIN
@@ -343,6 +344,13 @@ app.use('/api/recibos',
   criticalOperationAudit,
   auditMiddleware('recibos'),
   recibosRoutes
+);
+
+// Sistema de comisiones médicas con auditoría crítica (FASE 26)
+app.use('/api/comisiones',
+  criticalOperationAudit,
+  auditMiddleware('comisiones_medicas'),
+  comisionesRoutes
 );
 
 // ==============================================

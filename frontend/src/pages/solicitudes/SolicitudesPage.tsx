@@ -45,7 +45,9 @@ import {
   Warning as WarningIcon,
   Inventory as InventoryIcon,
   Visibility as ViewIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  Description as DocIcon,
+  Draw as DrawIcon
 } from '@mui/icons-material';
 import PageHeader from '@/components/common/PageHeader';
 import StatCard, { StatCardsGrid } from '@/components/common/StatCard';
@@ -62,6 +64,9 @@ import solicitudesService, {
 } from '../../services/solicitudesService';
 import SolicitudFormDialog from './SolicitudFormDialog';
 import SolicitudDetailDialog from './SolicitudDetailDialog';
+import DeliveryChecklistDialog from '../../components/solicitudes/DeliveryChecklistDialog';
+import DeliverySignaturesDialog from '../../components/solicitudes/DeliverySignaturesDialog';
+import DeliveryDocumentViewer from '../../components/solicitudes/DeliveryDocumentViewer';
 
 const SolicitudesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -84,6 +89,20 @@ const SolicitudesPage: React.FC = () => {
   const [openFormDialog, setOpenFormDialog] = useState(false);
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [selectedSolicitud, setSelectedSolicitud] = useState<SolicitudProducto | null>(null);
+
+  // Diálogos de entrega con acta COFEPRIS
+  const [openChecklistDialog, setOpenChecklistDialog] = useState(false);
+  const [openSignaturesDialog, setOpenSignaturesDialog] = useState(false);
+  const [openDocumentViewer, setOpenDocumentViewer] = useState(false);
+  const [deliveryItems, setDeliveryItems] = useState<{
+    productoId: number;
+    codigo: string;
+    nombre: string;
+    cantidad: number;
+    verificado: boolean;
+    observacion: string;
+  }[]>([]);
+  const [deliverySolicitud, setDeliverySolicitud] = useState<SolicitudProducto | null>(null);
   
   // Menu de acciones
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -207,6 +226,39 @@ const SolicitudesPage: React.FC = () => {
       console.error('Error confirmando solicitud:', error);
       showNotification('Error al confirmar recepción', 'error');
     }
+    handleCloseMenu();
+  };
+
+  // Funciones para entrega con acta COFEPRIS
+  const handleEntregarConActa = (solicitud: SolicitudProducto) => {
+    setDeliverySolicitud(solicitud);
+    setOpenChecklistDialog(true);
+    handleCloseMenu();
+  };
+
+  const handleChecklistContinue = (items: typeof deliveryItems) => {
+    setDeliveryItems(items);
+    setOpenChecklistDialog(false);
+    setOpenSignaturesDialog(true);
+  };
+
+  const handleSignaturesBack = () => {
+    setOpenSignaturesDialog(false);
+    setOpenChecklistDialog(true);
+  };
+
+  const handleDeliverySuccess = () => {
+    setOpenSignaturesDialog(false);
+    setDeliverySolicitud(null);
+    setDeliveryItems([]);
+    loadSolicitudes();
+    loadStats();
+    showNotification('Acta de entrega generada exitosamente', 'success');
+  };
+
+  const handleViewActa = (solicitud: SolicitudProducto) => {
+    setDeliverySolicitud(solicitud);
+    setOpenDocumentViewer(true);
     handleCloseMenu();
   };
 
@@ -525,9 +577,22 @@ const SolicitudesPage: React.FC = () => {
           </MenuItem>
         )}
         {menuSolicitud && getAccionesDisponibles(menuSolicitud).includes('entregar') && (
-          <MenuItem onClick={() => menuSolicitud && handleEntregarSolicitud(menuSolicitud)}>
-            <ShippingIcon fontSize="small" sx={{ mr: 1 }} />
-            Marcar Entregado
+          <>
+            <MenuItem onClick={() => menuSolicitud && handleEntregarConActa(menuSolicitud)}>
+              <DrawIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />
+              Entregar con Acta COFEPRIS
+            </MenuItem>
+            <MenuItem onClick={() => menuSolicitud && handleEntregarSolicitud(menuSolicitud)}>
+              <ShippingIcon fontSize="small" sx={{ mr: 1 }} />
+              Marcar Entregado (Sin Acta)
+            </MenuItem>
+          </>
+        )}
+        {/* Ver Acta disponible para solicitudes ya entregadas/recibidas que tengan documento */}
+        {menuSolicitud && ['ENTREGADO', 'RECIBIDO', 'APLICADO'].includes(menuSolicitud.estado) && (
+          <MenuItem onClick={() => menuSolicitud && handleViewActa(menuSolicitud)}>
+            <DocIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+            Ver Acta de Entrega
           </MenuItem>
         )}
         {menuSolicitud && getAccionesDisponibles(menuSolicitud).includes('confirmar') && (
@@ -556,6 +621,39 @@ const SolicitudesPage: React.FC = () => {
         }}
         solicitud={selectedSolicitud}
         onRefresh={loadSolicitudes}
+      />
+
+      {/* Diálogos de entrega con acta COFEPRIS */}
+      <DeliveryChecklistDialog
+        open={openChecklistDialog}
+        onClose={() => {
+          setOpenChecklistDialog(false);
+          setDeliverySolicitud(null);
+        }}
+        onContinue={handleChecklistContinue}
+        solicitud={deliverySolicitud}
+      />
+
+      <DeliverySignaturesDialog
+        open={openSignaturesDialog}
+        onClose={() => {
+          setOpenSignaturesDialog(false);
+          setDeliverySolicitud(null);
+          setDeliveryItems([]);
+        }}
+        onBack={handleSignaturesBack}
+        onSuccess={handleDeliverySuccess}
+        solicitud={deliverySolicitud}
+        itemsVerificados={deliveryItems}
+      />
+
+      <DeliveryDocumentViewer
+        open={openDocumentViewer}
+        onClose={() => {
+          setOpenDocumentViewer(false);
+          setDeliverySolicitud(null);
+        }}
+        solicitudId={deliverySolicitud?.id || null}
       />
 
       {/* Notificaciones */}

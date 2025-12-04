@@ -1045,9 +1045,444 @@ router.get('/stats/resumen',
       });
     } catch (error) {
       logger.logError('GET_REQUESTS_STATS', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Error al obtener estadísticas',
-        details: error.message 
+        details: error.message
+      });
+    }
+  }
+);
+
+// ==============================================
+// ENDPOINTS DE DOCUMENTO DE ENTREGA (COFEPRIS)
+// ==============================================
+
+const { generateDeliveryActPdf } = require('../utils/pdfGenerator');
+
+// Generar siguiente folio de acta
+async function generateDeliveryFolio() {
+  const year = new Date().getFullYear();
+  const prefix = `ACTA-${year}-`;
+
+  const lastDocument = await prisma.documentoEntrega.findFirst({
+    where: {
+      folio: { startsWith: prefix }
+    },
+    orderBy: { folio: 'desc' }
+  });
+
+  if (!lastDocument) {
+    return `${prefix}0001`;
+  }
+
+  const lastNumber = parseInt(lastDocument.folio.split('-')[2]) || 0;
+  return `${prefix}${String(lastNumber + 1).padStart(4, '0')}`;
+}
+
+// POST /api/solicitudes/:id/documento-entrega - Crear documento de entrega con firmas
+router.post('/:id/documento-entrega',
+  authenticateToken,
+  authorizeRoles(['administrador', 'almacenista', 'enfermero', 'medico_especialista', 'medico_residente']),
+  auditMiddleware('SOLICITUDES', 'CREAR_DOCUMENTO_ENTREGA'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        itemsVerificados,
+        firmaAlmacenista,
+        nombreAlmacenista,
+        firmaEnfermero,
+        nombreEnfermero,
+        observaciones,
+      } = req.body;
+
+      // Validar datos requeridos
+      if (!itemsVerificados || !Array.isArray(itemsVerificados)) {
+        return res.status(400).json({ error: 'Items verificados son requeridos' });
+      }
+
+      if (!firmaAlmacenista || !firmaEnfermero) {
+        return res.status(400).json({ error: 'Ambas firmas son requeridas' });
+      }
+
+      if (!nombreAlmacenista || !nombreEnfermero) {
+        return res.status(400).json({ error: 'Los nombres de los firmantes son requeridos' });
+      }
+
+      // Verificar que todos los items estén verificados
+      const todosVerificados = itemsVerificados.every(item => item.verificado === true);
+      if (!todosVerificados) {
+        return res.status(400).json({ error: 'Todos los productos deben estar verificados antes de firmar' });
+      }
+
+      // Obtener solicitud con detalles
+      const solicitud = await prisma.solicitudProductos.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          paciente: true,
+          cuentaPaciente: true,
+          solicitante: {
+            select: { id: true, nombre: true, apellidos: true, rol: true }
+          },
+          almacenista: {
+            select: { id: true, nombre: true, apellidos: true }
+          },
+          detalles: {
+            include: {
+              producto: {
+                select: { id: true, codigo: true, nombre: true, precioVenta: true, stockActual: true }
+              }
+            }
+          },
+          documentoEntrega: true
+        }
+      });
+
+      if (!solicitud) {
+        return res.status(404).json({ error: 'Solicitud no encontrada' });
+      }
+
+      // Validar estado
+      if (!['PREPARANDO', 'LISTO_ENTREGA'].includes(solicitud.estado)) {
+        return res.status(400).json({
+          error: `No se puede generar documento para solicitud en estado ${solicitud.estado}`
+        });
+      }
+
+      // Verificar que no tenga documento previo
+      if (solicitud.documentoEntrega) {
+        return res.status(400).json({ error: 'Esta solicitud ya tiene un documento de entrega' });
+      }
+
+      // Verificar cuenta abierta
+      if (solicitud.cuentaPaciente.estado !== 'abierta') {
+        return res.status(400).json({ error: 'La cuenta del paciente debe estar abierta' });
+      }
+
+      // Generar folio único
+      const folio = await generateDeliveryFolio();
+
+      // Preparar datos para PDF
+      const pdfData = {
+        folio,
+        fechaEntrega: new Date(),
+        solicitudNumero: solicitud.numero,
+        paciente: solicitud.paciente,
+        solicitante: {
+          nombre: `${solicitud.solicitante.nombre || ''} ${solicitud.solicitante.apellidos || ''}`.trim()
+        },
+        almacenista: {
+          nombre: `${solicitud.almacenista?.nombre || ''} ${solicitud.almacenista?.apellidos || ''}`.trim()
+        },
+        items: itemsVerificados.map(item => ({
+          codigo: item.codigo,
+          nombre: item.nombre,
+          cantidad: item.cantidad,
+          verificado: item.verificado,
+          observacion: item.observacion || ''
+        })),
+        firmaAlmacenista,
+        nombreAlmacenista,
+        firmaEnfermero,
+        nombreEnfermero,
+        observaciones,
+      };
+
+      // Generar PDF
+      let pdfBase64 = null;
+      try {
+        pdfBase64 = await generateDeliveryActPdf(pdfData);
+      } catch (pdfError) {
+        logger.logError('GENERATE_DELIVERY_PDF', pdfError);
+        // Continuar sin PDF si falla
+      }
+
+      const now = new Date();
+
+      // Crear documento y actualizar solicitud en transacción
+      const result = await prisma.$transaction(async (tx) => {
+        // Crear documento de entrega
+        const documento = await tx.documentoEntrega.create({
+          data: {
+            solicitudId: parseInt(id),
+            folio,
+            itemsVerificados,
+            todosVerificados: true,
+            firmaAlmacenista,
+            nombreAlmacenista,
+            fechaFirmaAlmacenista: now,
+            firmaEnfermero,
+            nombreEnfermero,
+            fechaFirmaEnfermero: now,
+            pdfBase64,
+            observaciones,
+          }
+        });
+
+        // Actualizar estado de solicitud a ENTREGADO
+        await tx.solicitudProductos.update({
+          where: { id: parseInt(id) },
+          data: {
+            estado: 'ENTREGADO',
+            fechaEntrega: now
+          }
+        });
+
+        // Registrar en historial
+        await tx.historialSolicitud.create({
+          data: {
+            solicitudId: parseInt(id),
+            estadoAnterior: solicitud.estado,
+            estadoNuevo: 'ENTREGADO',
+            usuarioId: req.user.id,
+            observaciones: `Documento de entrega generado: ${folio}`
+          }
+        });
+
+        // Decrementar stock y registrar transacciones
+        for (const detalle of solicitud.detalles) {
+          const producto = detalle.producto;
+
+          // Verificar stock
+          if (producto.stockActual < detalle.cantidadSolicitada) {
+            throw new Error(`Stock insuficiente para ${producto.nombre}`);
+          }
+
+          // Decrementar stock
+          await tx.producto.update({
+            where: { id: producto.id },
+            data: {
+              stockActual: { decrement: detalle.cantidadSolicitada }
+            }
+          });
+
+          // Registrar movimiento de inventario
+          await tx.movimientoInventario.create({
+            data: {
+              productoId: producto.id,
+              tipoMovimiento: 'salida',
+              cantidad: detalle.cantidadSolicitada,
+              precioUnitario: producto.precioVenta,
+              motivo: `Entrega solicitud ${solicitud.numero} - Acta ${folio}`,
+              usuarioId: req.user.id,
+              cuentaPacienteId: solicitud.cuentaPacienteId
+            }
+          });
+
+          // Registrar transacción en cuenta
+          await tx.transaccionCuenta.create({
+            data: {
+              cuentaId: solicitud.cuentaPacienteId,
+              tipo: 'producto',
+              concepto: `${producto.nombre} - Solicitud ${solicitud.numero}`,
+              cantidad: detalle.cantidadSolicitada,
+              precioUnitario: producto.precioVenta,
+              subtotal: parseFloat(producto.precioVenta) * detalle.cantidadSolicitada,
+              productoId: producto.id,
+              empleadoCargoId: req.user.id
+            }
+          });
+        }
+
+        // Recalcular totales de cuenta
+        const totalProductos = await tx.transaccionCuenta.aggregate({
+          where: { cuentaId: solicitud.cuentaPacienteId, tipo: 'producto' },
+          _sum: { subtotal: true }
+        });
+
+        const totalServicios = await tx.transaccionCuenta.aggregate({
+          where: { cuentaId: solicitud.cuentaPacienteId, tipo: 'servicio' },
+          _sum: { subtotal: true }
+        });
+
+        const cuenta = await tx.cuentaPaciente.findUnique({
+          where: { id: solicitud.cuentaPacienteId }
+        });
+
+        const nuevoTotalProductos = parseFloat(totalProductos._sum.subtotal || 0);
+        const nuevoTotalServicios = parseFloat(totalServicios._sum.subtotal || 0);
+        const nuevoTotalCuenta = nuevoTotalProductos + nuevoTotalServicios;
+        const nuevoSaldoPendiente = parseFloat(cuenta.anticipo || 0) - nuevoTotalCuenta;
+
+        await tx.cuentaPaciente.update({
+          where: { id: solicitud.cuentaPacienteId },
+          data: {
+            totalProductos: nuevoTotalProductos,
+            totalServicios: nuevoTotalServicios,
+            totalCuenta: nuevoTotalCuenta,
+            saldoPendiente: nuevoSaldoPendiente
+          }
+        });
+
+        // Notificar al solicitante
+        await tx.notificacionSolicitud.create({
+          data: {
+            solicitudId: parseInt(id),
+            usuarioId: solicitud.solicitanteId,
+            tipo: 'ENTREGA_CONFIRMADA',
+            titulo: 'Productos entregados',
+            mensaje: `Su solicitud ${solicitud.numero} ha sido entregada. Acta: ${folio}`
+          }
+        });
+
+        return documento;
+      }, { timeout: 30000 });
+
+      logger.logAudit('DOCUMENTO_ENTREGA_CREADO', {
+        documentoId: result.id,
+        folio: result.folio,
+        solicitudId: id,
+        usuario: req.user.username
+      });
+
+      res.status(201).json({
+        message: 'Documento de entrega creado exitosamente',
+        documento: {
+          id: result.id,
+          folio: result.folio,
+          fechaCreacion: result.createdAt,
+          todosVerificados: result.todosVerificados,
+          tienePdf: !!result.pdfBase64
+        }
+      });
+    } catch (error) {
+      logger.logError('CREATE_DELIVERY_DOCUMENT', error);
+      res.status(500).json({
+        error: 'Error al crear documento de entrega',
+        details: error.message
+      });
+    }
+  }
+);
+
+// GET /api/solicitudes/:id/documento-entrega - Obtener documento de entrega
+router.get('/:id/documento-entrega',
+  authenticateToken,
+  authorizeRoles(['administrador', 'almacenista', 'enfermero', 'medico_especialista', 'medico_residente', 'socio']),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const documento = await prisma.documentoEntrega.findUnique({
+        where: { solicitudId: parseInt(id) },
+        include: {
+          solicitud: {
+            include: {
+              paciente: {
+                select: { id: true, nombre: true, apellidoPaterno: true, apellidoMaterno: true, numeroExpediente: true }
+              },
+              solicitante: {
+                select: { id: true, nombre: true, apellidos: true, rol: true }
+              },
+              almacenista: {
+                select: { id: true, nombre: true, apellidos: true }
+              }
+            }
+          }
+        }
+      });
+
+      if (!documento) {
+        return res.status(404).json({ error: 'Documento de entrega no encontrado' });
+      }
+
+      // Retornar sin el PDF base64 completo para ligereza (se obtiene con otro endpoint)
+      res.json({
+        id: documento.id,
+        folio: documento.folio,
+        solicitudId: documento.solicitudId,
+        solicitudNumero: documento.solicitud.numero,
+        itemsVerificados: documento.itemsVerificados,
+        todosVerificados: documento.todosVerificados,
+        nombreAlmacenista: documento.nombreAlmacenista,
+        fechaFirmaAlmacenista: documento.fechaFirmaAlmacenista,
+        nombreEnfermero: documento.nombreEnfermero,
+        fechaFirmaEnfermero: documento.fechaFirmaEnfermero,
+        observaciones: documento.observaciones,
+        tienePdf: !!documento.pdfBase64,
+        createdAt: documento.createdAt,
+        paciente: documento.solicitud.paciente,
+        solicitante: documento.solicitud.solicitante,
+        almacenista: documento.solicitud.almacenista
+      });
+    } catch (error) {
+      logger.logError('GET_DELIVERY_DOCUMENT', error);
+      res.status(500).json({
+        error: 'Error al obtener documento de entrega',
+        details: error.message
+      });
+    }
+  }
+);
+
+// GET /api/solicitudes/:id/documento-entrega/pdf - Descargar PDF del documento
+router.get('/:id/documento-entrega/pdf',
+  authenticateToken,
+  authorizeRoles(['administrador', 'almacenista', 'enfermero', 'medico_especialista', 'medico_residente', 'socio']),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const documento = await prisma.documentoEntrega.findUnique({
+        where: { solicitudId: parseInt(id) }
+      });
+
+      if (!documento) {
+        return res.status(404).json({ error: 'Documento de entrega no encontrado' });
+      }
+
+      if (!documento.pdfBase64) {
+        return res.status(404).json({ error: 'PDF no disponible para este documento' });
+      }
+
+      const pdfBuffer = Buffer.from(documento.pdfBase64, 'base64');
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${documento.folio}.pdf`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.send(pdfBuffer);
+    } catch (error) {
+      logger.logError('DOWNLOAD_DELIVERY_PDF', error);
+      res.status(500).json({
+        error: 'Error al descargar PDF',
+        details: error.message
+      });
+    }
+  }
+);
+
+// GET /api/solicitudes/:id/documento-entrega/firmas - Obtener firmas del documento
+router.get('/:id/documento-entrega/firmas',
+  authenticateToken,
+  authorizeRoles(['administrador', 'almacenista', 'enfermero', 'medico_especialista', 'medico_residente', 'socio']),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const documento = await prisma.documentoEntrega.findUnique({
+        where: { solicitudId: parseInt(id) },
+        select: {
+          id: true,
+          folio: true,
+          firmaAlmacenista: true,
+          nombreAlmacenista: true,
+          fechaFirmaAlmacenista: true,
+          firmaEnfermero: true,
+          nombreEnfermero: true,
+          fechaFirmaEnfermero: true
+        }
+      });
+
+      if (!documento) {
+        return res.status(404).json({ error: 'Documento de entrega no encontrado' });
+      }
+
+      res.json(documento);
+    } catch (error) {
+      logger.logError('GET_DELIVERY_SIGNATURES', error);
+      res.status(500).json({
+        error: 'Error al obtener firmas',
+        details: error.message
       });
     }
   }

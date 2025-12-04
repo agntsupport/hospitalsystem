@@ -97,6 +97,70 @@ export interface CreateSolicitudData {
   }[];
 }
 
+// Tipos para Documentos de Entrega COFEPRIS
+export interface ItemVerificado {
+  productoId: number;
+  codigo: string;
+  nombre: string;
+  cantidad: number;
+  verificado: boolean;
+  observacion: string;
+}
+
+export interface CreateDeliveryDocumentData {
+  itemsVerificados: ItemVerificado[];
+  firmaAlmacenista: string;
+  nombreAlmacenista: string;
+  firmaEnfermero: string;
+  nombreEnfermero: string;
+  observaciones?: string;
+}
+
+export interface DeliveryDocument {
+  id: number;
+  folio: string;
+  solicitudId: number;
+  solicitudNumero: string;
+  itemsVerificados: ItemVerificado[];
+  todosVerificados: boolean;
+  nombreAlmacenista: string;
+  fechaFirmaAlmacenista: string;
+  nombreEnfermero: string;
+  fechaFirmaEnfermero: string;
+  observaciones?: string;
+  tienePdf: boolean;
+  createdAt: string;
+  paciente?: {
+    id: number;
+    nombre: string;
+    apellidoPaterno: string;
+    apellidoMaterno?: string;
+    numeroExpediente?: string;
+  };
+  solicitante?: {
+    id: number;
+    nombre?: string;
+    apellidos?: string;
+    rol: string;
+  };
+  almacenista?: {
+    id: number;
+    nombre?: string;
+    apellidos?: string;
+  };
+}
+
+export interface CreateDeliveryDocumentResponse {
+  message: string;
+  documento: {
+    id: number;
+    folio: string;
+    fechaCreacion: string;
+    todosVerificados: boolean;
+    tienePdf: boolean;
+  };
+}
+
 export interface SolicitudesResponse {
   data: SolicitudProducto[];
   total: number;
@@ -310,6 +374,57 @@ class SolicitudesService {
     }
 
     return acciones;
+  }
+
+  // ==============================================
+  // DOCUMENTOS DE ENTREGA COFEPRIS
+  // ==============================================
+
+  /**
+   * Crear documento de entrega con checklist y firmas
+   */
+  async createDeliveryDocument(
+    solicitudId: number,
+    data: CreateDeliveryDocumentData
+  ): Promise<CreateDeliveryDocumentResponse> {
+    const response = await api.post<CreateDeliveryDocumentResponse>(
+      `/solicitudes/${solicitudId}/documento-entrega`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Obtener documento de entrega de una solicitud
+   */
+  async getDeliveryDocument(solicitudId: number): Promise<DeliveryDocument> {
+    const response = await api.get<DeliveryDocument>(
+      `/solicitudes/${solicitudId}/documento-entrega`
+    );
+    return response.data;
+  }
+
+  /**
+   * Descargar PDF del documento de entrega
+   */
+  async downloadDeliveryPdf(solicitudId: number): Promise<Blob> {
+    const response = await api.get(
+      `/solicitudes/${solicitudId}/documento-entrega/pdf`,
+      { responseType: 'blob' }
+    );
+    return response.data;
+  }
+
+  /**
+   * Verificar si una solicitud tiene documento de entrega
+   */
+  async hasDeliveryDocument(solicitudId: number): Promise<boolean> {
+    try {
+      await this.getDeliveryDocument(solicitudId);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

@@ -23,7 +23,8 @@ import {
   TrendingUp as TrendingUpIcon,
   Business as BusinessIcon,
   Refresh as RefreshIcon,
-  LocalHospital as DoctorIcon
+  LocalHospital as DoctorIcon,
+  AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 import PageHeader from '@/components/common/PageHeader';
 import { FullPageLoader } from '@/components/common/LoadingState';
@@ -37,6 +38,7 @@ import FinancialReportsTab from './FinancialReportsTab';
 import OperationalReportsTab from './OperationalReportsTab';
 import ExecutiveDashboardTab from './ExecutiveDashboardTab';
 import ManagerialReportsTab from './ManagerialReportsTab';
+import CommissionsReportTab from '../../components/comisiones/CommissionsReportTab';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -127,6 +129,7 @@ const ReportsPage: React.FC = () => {
   const canViewOperational = validateAccess(['administrador', 'socio', 'almacenista']);
   const canViewExecutive = validateAccess(['administrador', 'socio']);
   const canViewManagerial = validateAccess(['administrador', 'socio']);
+  const canViewCommissions = validateAccess(['administrador']); // Solo admin puede ver comisiones
 
   if (!canViewFinancial && !canViewOperational && !canViewExecutive) {
     return (
@@ -285,6 +288,13 @@ const ReportsPage: React.FC = () => {
                 {...a11yProps((canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0) + (canViewOperational ? 1 : 0))}
               />
             )}
+            {canViewCommissions && (
+              <Tab
+                icon={<MoneyIcon />}
+                label="Comisiones Médicas"
+                {...a11yProps((canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0) + (canViewOperational ? 1 : 0) + (canViewManagerial ? 1 : 0))}
+              />
+            )}
           </Tabs>
         </Box>
 
@@ -332,6 +342,12 @@ const ReportsPage: React.FC = () => {
               onError={setError}
               onLoading={setLoading}
             />
+          </TabPanel>
+        )}
+
+        {canViewCommissions && (
+          <TabPanel value={tabValue} index={(canViewExecutive ? 1 : 0) + (canViewFinancial ? 1 : 0) + (canViewOperational ? 1 : 0) + (canViewManagerial ? 1 : 0)}>
+            <CommissionsReportTab />
           </TabPanel>
         )}
       </Paper>

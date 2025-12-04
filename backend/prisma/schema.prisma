@@ -59,6 +59,8 @@ model Usuario {
   descuentosAutorizados     DescuentoAplicado[]        @relation("DescuentoAutorizado")
   recibosEmitidos           Recibo[]                   @relation("ReciboEmitido")
   recibosCancelados         Recibo[]                   @relation("ReciboCancelado")
+  // Fase 26: Comisiones médicas
+  comisionesCreadas         ComisionMedica[]
 
   @@index([rol])
   @@index([activo])
@@ -193,6 +195,7 @@ model Empleado {
   notasHospitalizacion NotaHospitalizacion[]
   cancelaciones        Cancelacion[]
   cirugiasMedico       CirugiaQuirofano[]
+  comisiones           ComisionMedica[]
 
   @@index([tipoEmpleado])
   @@index([activo])
@@ -1247,6 +1250,7 @@ model SolicitudProductos {
   detalles          DetalleSolicitudProducto[]
   historial         HistorialSolicitud[]
   notificaciones    NotificacionSolicitud[]
+  documentoEntrega  DocumentoEntrega?
 
   @@index([estado])
   @@index([solicitanteId])
@@ -1787,4 +1791,103 @@ enum EstadoRecibo {
   emitido
   cancelado
   reimpreso
+}
+
+// ==============================================
+// FASE 26: ACTAS DE ENTREGA COFEPRIS
+// ==============================================
+
+model DocumentoEntrega {
+  id                    Int       @id @default(autoincrement())
+  solicitudId           Int       @unique @map("solicitud_id")
+  folio                 String    @unique  // ACTA-{año}-{secuencial}
+
+  // Checklist de verificación
+  itemsVerificados      Json      @map("items_verificados")  // Array de {productoId, nombre, cantidad, verificado, observacion}
+  todosVerificados      Boolean   @default(false) @map("todos_verificados")
+
+  // Firmas digitales (Base64 PNG)
+  firmaAlmacenista      String?   @map("firma_almacenista") @db.Text
+  nombreAlmacenista     String?   @map("nombre_almacenista")
+  fechaFirmaAlmacenista DateTime? @map("fecha_firma_almacenista")
+
+  firmaEnfermero        String?   @map("firma_enfermero") @db.Text
+  nombreEnfermero       String?   @map("nombre_enfermero")
+  fechaFirmaEnfermero   DateTime? @map("fecha_firma_enfermero")
+
+  // PDF almacenado
+  pdfBase64             String?   @map("pdf_base64") @db.Text
+
+  // Metadatos
+  observaciones         String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relaciones
+  solicitud             SolicitudProductos @relation(fields: [solicitudId], references: [id])
+
+  @@index([folio])
+  @@index([createdAt])
+  @@map("documentos_entrega")
+}
+
+// ==============================================
+// FASE 26: COMISIONES MÉDICAS
+// ==============================================
+
+model ComisionMedica {
+  id                Int            @id @default(autoincrement())
+
+  // Período
+  fechaInicio       DateTime       @map("fecha_inicio")
+  fechaFin          DateTime       @map("fecha_fin")
+
+  // Médico
+  medicoId          Int            @map("medico_id")
+  nombreMedico      String         @map("nombre_medico")
+  especialidad      String?
+  cedulaProfesional String?        @map("cedula_profesional")
+
+  // Cálculos
+  totalCuentas      Int            @map("total_cuentas")  // Número de cuentas cerradas
+  montoFacturado    Decimal        @map("monto_facturado") @db.Decimal(12, 2)  // Total de cuentas
+  porcentaje        Decimal        @default(5.00) @db.Decimal(5, 2)
+  montoComision     Decimal        @map("monto_comision") @db.Decimal(12, 2)  // montoFacturado * 0.05
+
+  // Estado de pago
+  estado            EstadoComision @default(PENDIENTE)
+  fechaPago         DateTime?      @map("fecha_pago")
+
+  // Firma del médico al recibir pago
+  firmaMedico       String?        @map("firma_medico") @db.Text
+  fechaFirmaMedico  DateTime?      @map("fecha_firma_medico")
+
+  // Firma del administrador que paga
+  firmaAdmin        String?        @map("firma_admin") @db.Text
+  nombreAdmin       String?        @map("nombre_admin")
+  fechaFirmaAdmin   DateTime?      @map("fecha_firma_admin")
+
+  // PDF del comprobante
+  pdfComprobante    String?        @map("pdf_comprobante") @db.Text
+
+  // Auditoría
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  creadoPorId       Int            @map("creado_por_id")
+
+  // Relaciones
+  medico            Empleado       @relation(fields: [medicoId], references: [id])
+  creadoPor         Usuario        @relation(fields: [creadoPorId], references: [id])
+
+  @@unique([medicoId, fechaInicio, fechaFin])  // Una comisión por período por médico
+  @@index([estado])
+  @@index([fechaInicio, fechaFin])
+  @@index([medicoId])
+  @@map("comisiones_medicas")
+}
+
+enum EstadoComision {
+  PENDIENTE
+  PAGADA
+  ANULADA
 }
