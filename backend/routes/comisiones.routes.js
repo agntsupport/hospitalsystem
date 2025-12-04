@@ -36,6 +36,7 @@ router.get('/calcular', authenticateToken, authorizeRoles('administrador'), asyn
     fin.setHours(23, 59, 59, 999);
 
     // Buscar cuentas cerradas en el periodo que tengan médico tratante asignado
+    // Se usa el totalCuenta almacenado (historial) en lugar de sumar transacciones
     const cuentasCerradas = await prisma.cuentaPaciente.findMany({
       where: {
         estado: 'cerrada',
@@ -65,14 +66,6 @@ router.get('/calcular', authenticateToken, authorizeRoles('administrador'), asyn
             especialidad: true,
             cedulaProfesional: true
           }
-        },
-        transacciones: {
-          where: {
-            OR: [
-              { tipo: 'servicio' },
-              { tipo: 'producto' }
-            ]
-          }
         }
       }
     });
@@ -81,10 +74,8 @@ router.get('/calcular', authenticateToken, authorizeRoles('administrador'), asyn
     const comisionesPorMedico = {};
 
     for (const cuenta of cuentasCerradas) {
-      // Calcular total de la cuenta (servicios + productos)
-      const totalCuenta = cuenta.transacciones.reduce((sum, t) => {
-        return sum + parseFloat(t.monto || 0);
-      }, 0);
+      // Usar el totalCuenta almacenado en el historial de cuentas cerradas
+      const totalCuenta = parseFloat(cuenta.totalCuenta || 0);
 
       // Obtener médico tratante directamente de la cuenta
       const medico = cuenta.medicoTratante;
