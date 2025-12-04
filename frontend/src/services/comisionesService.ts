@@ -198,6 +198,14 @@ class ComisionesService {
   }
 
   /**
+   * Regenerar PDF de una comisión pagada que no tiene PDF
+   */
+  async regenerarPdf(id: number): Promise<{ message: string; data: ComisionMedica & { tienePdf: boolean } }> {
+    const response = await api.put(`/comisiones/${id}/regenerar-pdf`);
+    return response as unknown as { message: string; data: ComisionMedica & { tienePdf: boolean } };
+  }
+
+  /**
    * Obtener estadísticas de comisiones
    */
   async getStats(): Promise<ComisionStats> {

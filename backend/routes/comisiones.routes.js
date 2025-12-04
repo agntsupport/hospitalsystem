@@ -429,36 +429,29 @@ router.put('/:id/pagar', authenticateToken, authorizeRoles('administrador'), asy
       });
     }
 
-    // Generar PDF del comprobante
+    // Generar PDF del comprobante con la estructura que espera generateCommissionReceiptHtml
     let pdfBase64 = null;
     try {
       pdfBase64 = await generateCommissionReceiptPdf({
-        comision: {
-          id: comision.id,
-          fechaInicio: comision.fechaInicio,
-          fechaFin: comision.fechaFin,
-          totalCuentas: comision.totalCuentas,
-          montoFacturado: comision.montoFacturado,
-          porcentaje: comision.porcentaje,
-          montoComision: comision.montoComision
-        },
         medico: {
-          nombre: comision.nombreMedico,
+          nombreMedico: comision.nombreMedico,
           especialidad: comision.especialidad,
-          cedula: comision.cedulaProfesional
+          cedulaProfesional: comision.cedulaProfesional
         },
-        firmas: {
-          firmaMedico: comision.firmaMedico,
-          fechaFirmaMedico: comision.fechaFirmaMedico,
-          firmaAdmin,
-          nombreAdmin,
-          fechaFirmaAdmin: new Date()
+        periodo: {
+          fechaInicio: comision.fechaInicio,
+          fechaFin: comision.fechaFin
         },
-        hospitalInfo: {
-          nombre: 'Hospital Integral',
-          direccion: 'Dirección del Hospital',
-          telefono: '443 104 7479'
-        }
+        totalCuentas: comision.totalCuentas,
+        montoFacturado: comision.montoFacturado,
+        porcentaje: comision.porcentaje,
+        montoComision: comision.montoComision,
+        estado: 'PAGADA',
+        fechaPago: new Date(),
+        firmaMedico: comision.firmaMedico,
+        firmaAdmin,
+        nombreAdmin,
+        cuentasDetalle: [] // Se puede mejorar agregando detalle real
       });
     } catch (pdfError) {
       console.error('Error generando PDF:', pdfError);
@@ -580,6 +573,97 @@ router.get('/:id/pdf', authenticateToken, authorizeRoles('administrador'), async
     res.status(500).json({
       success: false,
       error: 'Error al descargar PDF'
+    });
+  }
+});
+
+/**
+ * PUT /api/comisiones/:id/regenerar-pdf
+ * Regenera el PDF para una comisión pagada que no tiene PDF
+ */
+router.put('/:id/regenerar-pdf', authenticateToken, authorizeRoles('administrador'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const comision = await prisma.comisionMedica.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!comision) {
+      return res.status(404).json({
+        success: false,
+        error: 'Comisión no encontrada'
+      });
+    }
+
+    if (comision.estado !== 'PAGADA') {
+      return res.status(400).json({
+        success: false,
+        error: 'Solo se puede regenerar PDF de comisiones pagadas'
+      });
+    }
+
+    // Generar PDF con la estructura correcta
+    let pdfBase64 = null;
+    try {
+      pdfBase64 = await generateCommissionReceiptPdf({
+        medico: {
+          nombreMedico: comision.nombreMedico,
+          especialidad: comision.especialidad,
+          cedulaProfesional: comision.cedulaProfesional
+        },
+        periodo: {
+          fechaInicio: comision.fechaInicio,
+          fechaFin: comision.fechaFin
+        },
+        totalCuentas: comision.totalCuentas,
+        montoFacturado: comision.montoFacturado,
+        porcentaje: comision.porcentaje,
+        montoComision: comision.montoComision,
+        estado: 'PAGADA',
+        fechaPago: comision.fechaPago,
+        firmaMedico: comision.firmaMedico,
+        firmaAdmin: comision.firmaAdmin,
+        nombreAdmin: comision.nombreAdmin,
+        cuentasDetalle: []
+      });
+    } catch (pdfError) {
+      console.error('Error generando PDF:', pdfError);
+      return res.status(500).json({
+        success: false,
+        error: `Error al generar PDF: ${pdfError.message}`
+      });
+    }
+
+    if (!pdfBase64) {
+      return res.status(500).json({
+        success: false,
+        error: 'No se pudo generar el PDF'
+      });
+    }
+
+    // Actualizar comisión con el PDF
+    const updated = await prisma.comisionMedica.update({
+      where: { id: parseInt(id) },
+      data: {
+        pdfComprobante: pdfBase64
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'PDF regenerado exitosamente',
+      data: {
+        ...updated,
+        tienePdf: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Error regenerando PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al regenerar PDF'
     });
   }
 });

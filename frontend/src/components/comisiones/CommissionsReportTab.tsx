@@ -36,6 +36,7 @@ import {
   Visibility as ViewIcon,
   Refresh as RefreshIcon,
   Calculate as CalculateIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import StatCard, { StatCardsGrid } from '../common/StatCard';
@@ -141,6 +142,21 @@ const CommissionsReportTab: React.FC = () => {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       toast.error(`Error al descargar: ${errorMessage}`);
+    }
+    handleCloseMenu();
+  };
+
+  // Regenerar PDF para comisiones pagadas sin comprobante
+  const handleRegenerarPdf = async () => {
+    if (!selectedComision) return;
+
+    try {
+      await comisionesService.regenerarPdf(selectedComision.id);
+      toast.success('PDF regenerado exitosamente. Ahora puedes descargarlo.');
+      loadData();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al regenerar PDF: ${errorMessage}`);
     }
     handleCloseMenu();
   };
@@ -331,6 +347,12 @@ const CommissionsReportTab: React.FC = () => {
           <MenuItem onClick={handleDownloadPdf}>
             <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
             Descargar PDF
+          </MenuItem>
+        )}
+        {selectedComision?.estado === 'PAGADA' && !selectedComision.pdfComprobante && (
+          <MenuItem onClick={handleRegenerarPdf}>
+            <PdfIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+            Generar PDF
           </MenuItem>
         )}
         {selectedComision?.estado === 'PENDIENTE' && (
