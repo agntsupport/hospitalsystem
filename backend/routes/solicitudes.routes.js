@@ -1328,7 +1328,7 @@ router.post('/:id/documento-entrega',
         return documento;
       }, { timeout: 30000 });
 
-      logger.logAudit('DOCUMENTO_ENTREGA_CREADO', {
+      logger.logOperation('DOCUMENTO_ENTREGA_CREADO', {
         documentoId: result.id,
         folio: result.folio,
         solicitudId: id,
