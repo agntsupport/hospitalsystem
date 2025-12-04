@@ -1142,12 +1142,15 @@ router.post('/:id/documento-entrega',
         return res.status(404).json({ error: 'Solicitud no encontrada' });
       }
 
-      // Validar estado
-      if (!['PREPARANDO', 'LISTO_ENTREGA'].includes(solicitud.estado)) {
+      // Validar estado - permitir ENTREGADO si aún no tiene documento
+      if (!['PREPARANDO', 'LISTO_ENTREGA', 'ENTREGADO'].includes(solicitud.estado)) {
         return res.status(400).json({
           error: `No se puede generar documento para solicitud en estado ${solicitud.estado}`
         });
       }
+
+      // Variable para saber si ya se procesó el stock (estado ENTREGADO sin documento)
+      const yaEntregado = solicitud.estado === 'ENTREGADO';
 
       // Verificar que no tenga documento previo
       if (solicitud.documentoEntrega) {
@@ -1219,100 +1222,106 @@ router.post('/:id/documento-entrega',
           }
         });
 
-        // Actualizar estado de solicitud a ENTREGADO
-        await tx.solicitudProductos.update({
-          where: { id: parseInt(id) },
-          data: {
-            estado: 'ENTREGADO',
-            fechaEntrega: now
-          }
-        });
-
-        // Registrar en historial
-        await tx.historialSolicitud.create({
-          data: {
-            solicitudId: parseInt(id),
-            estadoAnterior: solicitud.estado,
-            estadoNuevo: 'ENTREGADO',
-            usuarioId: req.user.id,
-            observaciones: `Documento de entrega generado: ${folio}`
-          }
-        });
-
-        // Decrementar stock y registrar transacciones
-        for (const detalle of solicitud.detalles) {
-          const producto = detalle.producto;
-
-          // Verificar stock
-          if (producto.stockActual < detalle.cantidadSolicitada) {
-            throw new Error(`Stock insuficiente para ${producto.nombre}`);
-          }
-
-          // Decrementar stock
-          await tx.producto.update({
-            where: { id: producto.id },
+        // Solo actualizar estado si aún no está en ENTREGADO
+        if (!yaEntregado) {
+          await tx.solicitudProductos.update({
+            where: { id: parseInt(id) },
             data: {
-              stockActual: { decrement: detalle.cantidadSolicitada }
-            }
-          });
-
-          // Registrar movimiento de inventario
-          await tx.movimientoInventario.create({
-            data: {
-              productoId: producto.id,
-              tipoMovimiento: 'salida',
-              cantidad: detalle.cantidadSolicitada,
-              precioUnitario: producto.precioVenta,
-              motivo: `Entrega solicitud ${solicitud.numero} - Acta ${folio}`,
-              usuarioId: req.user.id,
-              cuentaPacienteId: solicitud.cuentaPacienteId
-            }
-          });
-
-          // Registrar transacción en cuenta
-          await tx.transaccionCuenta.create({
-            data: {
-              cuentaId: solicitud.cuentaPacienteId,
-              tipo: 'producto',
-              concepto: `${producto.nombre} - Solicitud ${solicitud.numero}`,
-              cantidad: detalle.cantidadSolicitada,
-              precioUnitario: producto.precioVenta,
-              subtotal: parseFloat(producto.precioVenta) * detalle.cantidadSolicitada,
-              productoId: producto.id,
-              empleadoCargoId: req.user.id
+              estado: 'ENTREGADO',
+              fechaEntrega: now
             }
           });
         }
 
-        // Recalcular totales de cuenta
-        const totalProductos = await tx.transaccionCuenta.aggregate({
-          where: { cuentaId: solicitud.cuentaPacienteId, tipo: 'producto' },
-          _sum: { subtotal: true }
-        });
-
-        const totalServicios = await tx.transaccionCuenta.aggregate({
-          where: { cuentaId: solicitud.cuentaPacienteId, tipo: 'servicio' },
-          _sum: { subtotal: true }
-        });
-
-        const cuenta = await tx.cuentaPaciente.findUnique({
-          where: { id: solicitud.cuentaPacienteId }
-        });
-
-        const nuevoTotalProductos = parseFloat(totalProductos._sum.subtotal || 0);
-        const nuevoTotalServicios = parseFloat(totalServicios._sum.subtotal || 0);
-        const nuevoTotalCuenta = nuevoTotalProductos + nuevoTotalServicios;
-        const nuevoSaldoPendiente = parseFloat(cuenta.anticipo || 0) - nuevoTotalCuenta;
-
-        await tx.cuentaPaciente.update({
-          where: { id: solicitud.cuentaPacienteId },
+        // Registrar en historial (siempre, para el documento)
+        await tx.historialSolicitud.create({
           data: {
-            totalProductos: nuevoTotalProductos,
-            totalServicios: nuevoTotalServicios,
-            totalCuenta: nuevoTotalCuenta,
-            saldoPendiente: nuevoSaldoPendiente
+            solicitudId: parseInt(id),
+            estadoAnterior: solicitud.estado,
+            estadoNuevo: yaEntregado ? 'ENTREGADO' : 'ENTREGADO',
+            usuarioId: req.user.id,
+            observaciones: yaEntregado
+              ? `Documento de entrega generado (retroactivo): ${folio}`
+              : `Documento de entrega generado: ${folio}`
           }
         });
+
+        // Solo procesar stock y transacciones si no estaba ya ENTREGADO
+        if (!yaEntregado) {
+          for (const detalle of solicitud.detalles) {
+            const producto = detalle.producto;
+
+            // Verificar stock
+            if (producto.stockActual < detalle.cantidadSolicitada) {
+              throw new Error(`Stock insuficiente para ${producto.nombre}`);
+            }
+
+            // Decrementar stock
+            await tx.producto.update({
+              where: { id: producto.id },
+              data: {
+                stockActual: { decrement: detalle.cantidadSolicitada }
+              }
+            });
+
+            // Registrar movimiento de inventario
+            await tx.movimientoInventario.create({
+              data: {
+                productoId: producto.id,
+                tipoMovimiento: 'salida',
+                cantidad: detalle.cantidadSolicitada,
+                precioUnitario: producto.precioVenta,
+                motivo: `Entrega solicitud ${solicitud.numero} - Acta ${folio}`,
+                usuarioId: req.user.id,
+                cuentaPacienteId: solicitud.cuentaPacienteId
+              }
+            });
+
+            // Registrar transacción en cuenta
+            await tx.transaccionCuenta.create({
+              data: {
+                cuentaId: solicitud.cuentaPacienteId,
+                tipo: 'producto',
+                concepto: `${producto.nombre} - Solicitud ${solicitud.numero}`,
+                cantidad: detalle.cantidadSolicitada,
+                precioUnitario: producto.precioVenta,
+                subtotal: parseFloat(producto.precioVenta) * detalle.cantidadSolicitada,
+                productoId: producto.id,
+                empleadoCargoId: req.user.id
+              }
+            });
+          }
+
+          // Recalcular totales de cuenta
+          const totalProductos = await tx.transaccionCuenta.aggregate({
+            where: { cuentaId: solicitud.cuentaPacienteId, tipo: 'producto' },
+            _sum: { subtotal: true }
+          });
+
+          const totalServicios = await tx.transaccionCuenta.aggregate({
+            where: { cuentaId: solicitud.cuentaPacienteId, tipo: 'servicio' },
+            _sum: { subtotal: true }
+          });
+
+          const cuenta = await tx.cuentaPaciente.findUnique({
+            where: { id: solicitud.cuentaPacienteId }
+          });
+
+          const nuevoTotalProductos = parseFloat(totalProductos._sum.subtotal || 0);
+          const nuevoTotalServicios = parseFloat(totalServicios._sum.subtotal || 0);
+          const nuevoTotalCuenta = nuevoTotalProductos + nuevoTotalServicios;
+          const nuevoSaldoPendiente = parseFloat(cuenta.anticipo || 0) - nuevoTotalCuenta;
+
+          await tx.cuentaPaciente.update({
+            where: { id: solicitud.cuentaPacienteId },
+            data: {
+              totalProductos: nuevoTotalProductos,
+              totalServicios: nuevoTotalServicios,
+              totalCuenta: nuevoTotalCuenta,
+              saldoPendiente: nuevoSaldoPendiente
+            }
+          });
+        }
 
         // Notificar al solicitante
         await tx.notificacionSolicitud.create({
@@ -1320,8 +1329,10 @@ router.post('/:id/documento-entrega',
             solicitudId: parseInt(id),
             usuarioId: solicitud.solicitanteId,
             tipo: 'ENTREGA_CONFIRMADA',
-            titulo: 'Productos entregados',
-            mensaje: `Su solicitud ${solicitud.numero} ha sido entregada. Acta: ${folio}`
+            titulo: yaEntregado ? 'Acta de entrega generada' : 'Productos entregados',
+            mensaje: yaEntregado
+              ? `Se ha generado el acta de entrega para solicitud ${solicitud.numero}. Folio: ${folio}`
+              : `Su solicitud ${solicitud.numero} ha sido entregada. Acta: ${folio}`
           }
         });
 
