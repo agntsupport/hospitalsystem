@@ -391,7 +391,7 @@ class SolicitudesService {
       `/solicitudes/${solicitudId}/documento-entrega`,
       data
     );
-    return response.data;
+    return response.data!;
   }
 
   /**
@@ -401,7 +401,7 @@ class SolicitudesService {
     const response = await api.get<DeliveryDocument>(
       `/solicitudes/${solicitudId}/documento-entrega`
     );
-    return response.data;
+    return response.data!;
   }
 
   /**
